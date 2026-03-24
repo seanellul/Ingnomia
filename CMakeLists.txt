@@ -92,6 +92,7 @@ target_link_libraries(${PROJECT_NAME}
 		Qt5::OpenGL
 		$<$<BOOL:${Steam_FOUND}>:Steam>
 		NoesisApp
+		imgui
 		fastnoise
 		exprtk
 		OpenAL

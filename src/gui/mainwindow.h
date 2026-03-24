@@ -26,6 +26,9 @@
 #include <QOpenGLWindow>
 #include <QTimer>
 
+// ImGui
+class QWheelEvent;
+
 enum class KeyboardMove : unsigned char
 {
 	None  = 0,
@@ -93,6 +96,9 @@ protected:
 
 private:
 	void noesisInit();
+	void imguiInit();
+	void imguiShutdown();
+	void drawImGui();
 
 	void keyboardZPlus( bool shift = false, bool ctrl = false );
 	void keyboardZMinus( bool shift = false, bool ctrl = false );
@@ -103,6 +109,7 @@ private:
 
 	void toggleFullScreen();
 	bool m_isFullScreen = false;
+	bool m_showImGuiDemo = true;
 
 	void onExit();
 

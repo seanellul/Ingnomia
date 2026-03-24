@@ -82,6 +82,10 @@
 #include <QMouseEvent>
 #include <QTimer>
 
+#include <imgui.h>
+#include <imgui_impl_opengl3.h>
+#include "imgui_impl_qt5.h"
+
 #include <string>
 
 static MainWindow* instance;
@@ -179,6 +183,10 @@ void MainWindow::onFullScreen( bool value )
 
 void MainWindow::keyPressEvent( QKeyEvent* event )
 {
+	ImGuiQt5::ProcessKeyEvent( event );
+	if ( ImGui::GetIO().WantCaptureKeyboard )
+		return;
+
 	int qtKey = event->key();
 	auto noesisKey = Global::keyConvert( (Qt::Key)qtKey );
 	//qDebug() << "keyPressEvent" << event->key() << " " << event->text() << noesisKey;
@@ -280,6 +288,10 @@ void MainWindow::keyPressEvent( QKeyEvent* event )
 
 void MainWindow::keyReleaseEvent( QKeyEvent* event )
 {
+	ImGuiQt5::ProcessKeyEvent( event );
+	if ( ImGui::GetIO().WantCaptureKeyboard )
+		return;
+
 	auto noesisKey = Global::keyConvert( (Qt::Key)event->key() );
 	//qDebug() << "keyReleaseEvent" << event->key() << " " << event->text() << noesisKey;
 	if ( m_view->KeyUp( noesisKey ) )
@@ -356,6 +368,10 @@ void MainWindow::keyboardMove()
 
 void MainWindow::mouseMoveEvent( QMouseEvent* event )
 {
+	ImGuiQt5::ProcessMouseEvent( event );
+	if ( ImGui::GetIO().WantCaptureMouse )
+		return;
+
 	auto gp = this->mapFromGlobal( event->globalPos() );
 	if ( m_view )
 	{
@@ -411,6 +427,10 @@ void MainWindow::onInitViewAfterLoad()
 
 void MainWindow::mousePressEvent( QMouseEvent* event )
 {
+	ImGuiQt5::ProcessMouseEvent( event );
+	if ( ImGui::GetIO().WantCaptureMouse )
+		return;
+
 	//qDebug() << "mousePressEvent";
 	auto gp = this->mapFromGlobal( event->globalPos() );
 	if ( event->button() & Qt::LeftButton )
@@ -454,6 +474,10 @@ void MainWindow::mousePressEvent( QMouseEvent* event )
 
 void MainWindow::mouseReleaseEvent( QMouseEvent* event )
 {
+	ImGuiQt5::ProcessMouseEvent( event );
+	if ( ImGui::GetIO().WantCaptureMouse )
+		return;
+
 	//qDebug() << "mouseReleaseEvent";
 	if ( event->button() & Qt::LeftButton )
 	{
@@ -505,6 +529,10 @@ void MainWindow::mouseReleaseEvent( QMouseEvent* event )
 
 void MainWindow::wheelEvent( QWheelEvent* event )
 {
+	ImGuiQt5::ProcessWheelEvent( event );
+	if ( ImGui::GetIO().WantCaptureMouse )
+		return;
+
 	QWheelEvent* wEvent = event; //dynamic_cast<QWheelEvent*>( event );
 	if ( m_view )
 	{
@@ -656,6 +684,33 @@ bool MainWindow::noesisUpdate()
 	return false;
 }
 
+void MainWindow::imguiInit()
+{
+	ImGuiQt5::Init( this );
+	ImGui_ImplOpenGL3_Init( "#version 410" );
+}
+
+void MainWindow::imguiShutdown()
+{
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGuiQt5::Shutdown();
+}
+
+void MainWindow::drawImGui()
+{
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGuiQt5::NewFrame( this );
+	ImGui::NewFrame();
+
+	if ( m_showImGuiDemo )
+	{
+		ImGui::ShowDemoWindow( &m_showImGuiDemo );
+	}
+
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData( ImGui::GetDrawData() );
+}
+
 void MainWindow::idleRenderTick()
 {
 	// Check for ongoing keyboard movement
@@ -702,6 +757,9 @@ void MainWindow::paintGL()
 
 	// Rendering is done in the active framebuffer
 	m_view->GetRenderer()->Render();
+
+	// ImGui overlay on top of everything
+	drawImGui();
 
 	m_timer->start( 0 );
 	m_pendingUpdate = false;
@@ -753,6 +811,7 @@ void MainWindow::initializeGL()
 	m_renderer->initializeGL();
 
 	noesisInit();
+	imguiInit();
 	m_timer = new QTimer( this );
 	connect( m_timer, &QTimer::timeout, this, &MainWindow::idleRenderTick );
 
