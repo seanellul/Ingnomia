@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 #define TF_NONE                 0x00000000u
 #define TF_WALKABLE             0x00000001u
@@ -48,32 +48,16 @@ uniform int uWorldRotation;
 uniform uvec3 uRenderMin;
 uniform uvec3 uRenderMax;
 
-// DO NOT CHANGE, must match game internal layout
-struct TileData {
-	// TF_ flags 0:32
-	uint flags;
-	// TF_ flags 32:64
-	uint flags2;
+// TileData layout (9 uints per tile):
+// 0=flags, 1=flags2, 2=floorSpriteUID, 3=wallSpriteUID,
+// 4=itemSpriteUID, 5=creatureSpriteUID, 6=jobSpriteFloorUID,
+// 7=jobSpriteWallUID, 8=packedLevels
+uniform usamplerBuffer uTileData;
 
-	// Sprites are all:
-	// spriteID=0:16, spriteFlags=16:32
-	uint floorSpriteUID ;
-	uint wallSpriteUID;
-	
-	uint itemSpriteUID;
-	uint creatureSpriteUID;
-
-	uint jobSpriteFloorUID;
-	uint jobSpriteWallUID;
-
-	// fluidLevel=0:8, lightLevel=0:8, vegetationLevel=8:16
-	uint packedLevels;
-};
-
-layout(std430, binding = 0) readonly restrict buffer tileData1
+uint getTileUint(uint tileIndex, uint fieldOffset)
 {
-	TileData data[];
-} tileData;
+	return texelFetch(uTileData, int(tileIndex * 9u + fieldOffset)).r;
+}
 
 uniform bool uWallsLowered;
 uniform bool uPaintFrontToBack;
@@ -136,10 +120,10 @@ void main()
 {
 	uint id = gl_InstanceID;
 
-	const bool uIsWall = aPos.z != 0;
+	bool uIsWall = aPos.z != 0;
 
 	// Min and max are inclusive in volume
-	const uvec3 renderVolume = uRenderMax - uRenderMin + uvec3(1, 1, 1);
+	uvec3 renderVolume = uRenderMax - uRenderMin + uvec3(1, 1, 1);
 
 	uint pitchZ = renderVolume.x * renderVolume.y;
 	uint pitchY = renderVolume.x;
@@ -160,12 +144,13 @@ void main()
 	tile.y = reverseY ? uRenderMax.y - localIndex.y : uRenderMin.y + localIndex.y;
 	tile.x = reverseX ? uRenderMax.x - localIndex.x: uRenderMin.x + localIndex.x;
 
-	const uint index = tileID(tile);
+	uint index = tileID(tile);
 
-	uint vFlags = tileData.data[index].flags;
-	uint vFlags2 = tileData.data[index].flags2;
-	uint vLightLevel = ( tileData.data[index].packedLevels >> 8 ) & 0xff;
-	uint vVegetationLevel = ( tileData.data[index].packedLevels >> 16 ) & 0xff;
+	uint vFlags = getTileUint(index, 0u);
+	uint vFlags2 = getTileUint(index, 1u);
+	uint packedLevels = getTileUint(index, 8u);
+	uint vLightLevel = ( packedLevels >> 8 ) & 0xffu;
+	uint vVegetationLevel = ( packedLevels >> 16 ) & 0xffu;
 
 	uint floorSprite = 0;
 	uint wallSprite = 0;
@@ -177,23 +162,23 @@ void main()
 	bool containsTransparency;
 	if( uIsWall )
 	{
-		containsTransparency = ( vFlags & TF_TRANSPARENT ) != 0 || ( tileData.data[index].packedLevels & 0xff ) >= 3;
+		containsTransparency = ( vFlags & TF_TRANSPARENT ) != 0 || ( packedLevels & 0xffu ) >= 3;
 	}
 	else
 	{
-		containsTransparency = ( vFlags & TF_TRANSPARENT ) != 0 || ( tileData.data[index].packedLevels & 0xff ) != 0;
+		containsTransparency = ( vFlags & TF_TRANSPARENT ) != 0 || ( packedLevels & 0xffu ) != 0;
 	}
-	const bool renderingEnabled = uPaintFrontToBack ^^ containsTransparency;
+	bool renderingEnabled = uPaintFrontToBack ^^ containsTransparency;
 	if( renderingEnabled )
 	{
-		floorSprite = tileData.data[index].floorSpriteUID;
-		wallSprite = tileData.data[index].wallSpriteUID;
-		itemSprite = tileData.data[index].itemSpriteUID;
-		jobFloorSprite = tileData.data[index].jobSpriteFloorUID;
-		jobWallSprite = tileData.data[index].jobSpriteWallUID;
-		creatureSprite = tileData.data[index].creatureSpriteUID;
+		floorSprite = getTileUint(index, 2u);
+		wallSprite = getTileUint(index, 3u);
+		itemSprite = getTileUint(index, 4u);
+		jobFloorSprite = getTileUint(index, 6u);
+		jobWallSprite = getTileUint(index, 7u);
+		creatureSprite = getTileUint(index, 5u);
 	}
-	
+
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
 	// water related calculations
@@ -204,19 +189,19 @@ void main()
 
 	if( !uPaintFrontToBack )
 	{
-		const uvec3 above = uvec3(tile.xy, tile.z + 1);
-		const uvec3 offsetLeft = rotateOffset( uvec3( 0, 1, 0 ) );
-		const uvec3 offsetRight = rotateOffset( uvec3( 1, 0, 0 ) );
+		uvec3 above = uvec3(tile.xy, tile.z + 1);
+		uvec3 offsetLeft = rotateOffset( uvec3( 0, 1, 0 ) );
+		uvec3 offsetRight = rotateOffset( uvec3( 1, 0, 0 ) );
 
-		const uint indexAbove = tileID( above );		
-		const uint indexL = tileID( tile + offsetLeft );
-		const uint indexR = tileID( tile + offsetRight );
+		uint indexAbove = tileID( above );
+		uint indexL = tileID( tile + offsetLeft );
+		uint indexR = tileID( tile + offsetRight );
 
-		const uint vFluidLevel = tileData.data[index].packedLevels & 0xff;
+		uint vFluidLevel = packedLevels & 0xffu;
 
-		const uint vFluidLevelAbove = tileData.data[indexAbove].packedLevels & 0xff;
-		const uint vFluidLevelLeft = tileData.data[indexL].packedLevels & 0xff;
-		const uint vFluidLevelRight = tileData.data[indexR].packedLevels & 0xff;
+		uint vFluidLevelAbove = getTileUint(indexAbove, 8u) & 0xffu;
+		uint vFluidLevelLeft = getTileUint(indexL, 8u) & 0xffu;
+		uint vFluidLevelRight = getTileUint(indexR, 8u) & 0xffu;
 
 		if( vFluidLevel >= 3 )
 		{
@@ -239,7 +224,7 @@ void main()
 			if(vFluidLevel <= 2)
 			{
 				vFluidFlags |= WATER_FLOOR;
-				if(tileData.data[index].floorSpriteUID != 0)
+				if(getTileUint(index, 2u) != 0)
 				{
 					// Edge case when water would render "half height inside floor"
 					vFluidFlags |= WATER_ONFLOOR;
@@ -278,8 +263,7 @@ void main()
 	)
 	{
 		// ... if not, then skip projection and cull it
-		const float NaN = 1 / 0;
-		gl_Position = vec4(NaN, NaN, NaN, NaN);
+		gl_Position = vec4(1.0/0.0, 1.0/0.0, 1.0/0.0, 1.0/0.0);
 	}
 	else
 	{

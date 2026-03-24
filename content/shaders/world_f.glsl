@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 #define TF_NONE                 0x00000000u
 #define TF_WALKABLE             0x00000001u
@@ -37,7 +37,7 @@
 
 #define CAT(x, y) CAT_(x, y)
 #define CAT_(x, y) x ## y
-#define UNPACKSPRITE(alias, src) const uint CAT(alias, ID) = src & 0xffff; const uint CAT(alias, Flags) = src >> 16;
+#define UNPACKSPRITE(alias, src) uint CAT(alias, ID) = src & 0xffffu; uint CAT(alias, Flags) = src >> 16u;
 layout(location = 0) noperspective in vec2 vTexCoords;
 layout(location = 1) flat in uvec4  block1;
 layout(location = 2) flat in uvec4  block2;
@@ -45,7 +45,7 @@ layout(location = 3) flat in uvec4  block3;
 
 layout(location = 0) out vec4 fColor;
 
-uniform sampler2DArray uTexture[32];
+uniform sampler2DArray uTexture[16];
 
 uniform int uTickNumber;
 
@@ -86,7 +86,6 @@ vec4 getTexel( uint spriteID, uint rot, uint animFrame )
 	switch(tex)
 	{
 		D(0)
-		D(16)
 	}
 	#undef D
 	#undef C
@@ -108,19 +107,19 @@ void main()
 	UNPACKSPRITE(itemSprite, block2.x);
 	UNPACKSPRITE(creatureSprite, block2.y);
 
-	const uint vFluidLevelPacked1 = block2.z;
-	const bool uIsWall = ( block2.w != 0 );
+	uint vFluidLevelPacked1 = block2.z;
+	bool uIsWall = ( block2.w != 0 );
 
-	const uint vFlags = block3.x;
-	const uint vFlags2 = block3.y;
+	uint vFlags = block3.x;
+	uint vFlags2 = block3.y;
 
-	const uint vLightLevel = block3.z;
-	const uint vVegetationLevel = block3.w;
+	uint vLightLevel = block3.z;
+	uint vVegetationLevel = block3.w;
 
-	uint vFluidLevel = (vFluidLevelPacked1 >> 0) & 0xff;
-	uint vFluidLevelLeft = (vFluidLevelPacked1 >> 8) & 0xff;
-	uint vFluidLevelRight = (vFluidLevelPacked1 >> 16) & 0xff;
-	uint vFluidFlags = (vFluidLevelPacked1 >> 24) & 0xff;
+	uint vFluidLevel = (vFluidLevelPacked1 >> 0) & 0xffu;
+	uint vFluidLevelLeft = (vFluidLevelPacked1 >> 8) & 0xffu;
+	uint vFluidLevelRight = (vFluidLevelPacked1 >> 16) & 0xffu;
+	uint vFluidFlags = (vFluidLevelPacked1 >> 24) & 0xffu;
 
 	
 	if( !uIsWall )
@@ -140,10 +139,10 @@ void main()
 			spriteID = floorSpriteID;
 			if( spriteID != 0 )
 			{
-				rot = floorSpriteFlags & 3;
+				rot = floorSpriteFlags & 3u;
 				rot = ( rot + uWorldRotation ) % 4;
 				
-				if( ( floorSpriteFlags & 4 ) == 4 )
+				if( ( floorSpriteFlags & 4u ) == 4 )
 				{
 					animFrame = ( uTickNumber / 10 ) % 4;
 				}
@@ -166,7 +165,7 @@ void main()
 			animFrame = 0;
 			if( uShowJobs && ( spriteID != 0 )  )
 			{
-				rot = jobFloorSpriteFlags & 3;
+				rot = jobFloorSpriteFlags & 3u;
 				rot = ( rot + uWorldRotation ) % 4;
 				
 				vec4 tmpTexel = getTexel( spriteID, rot, animFrame );
@@ -243,12 +242,12 @@ void main()
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 		if( ( vFluidFlags & ( WATER_FLOOR | WATER_EDGE ) ) != 0 )
 		{
-			const bool renderAboveFloor = ( vFluidFlags & WATER_ONFLOOR ) != 0;
-			const int startLevel =  renderAboveFloor ? 2 : int(min(vFluidLevel, 2));
-			const int referenceLevel = int(vTexCoords.x < 0.5 ? vFluidLevelLeft : vFluidLevelRight);
-			const int offset = vTexCoords.x < 0.5 ? leftWallOffset : rightWallOffset;
+			bool renderAboveFloor = ( vFluidFlags & WATER_ONFLOOR ) != 0;
+			int startLevel =  renderAboveFloor ? 2 : int(min(vFluidLevel, 2));
+			int referenceLevel = int(vTexCoords.x < 0.5 ? vFluidLevelLeft : vFluidLevelRight);
+			int offset = vTexCoords.x < 0.5 ? leftWallOffset : rightWallOffset;
 
-			const float fl = float( startLevel - 2 ) * flSize;
+			float fl = float( startLevel - 2 ) * flSize;
 
 			vec4 tmpTexel = vec4( 0, 0, 0, 0 );
 
@@ -303,17 +302,17 @@ void main()
 			spriteID = wallSpriteID;
 			if( spriteID != 0 )
 			{
-				rot = wallSpriteFlags & 3;
+				rot = wallSpriteFlags & 3u;
 				rot = ( rot + uWorldRotation ) % 4;
 
-				if( ( wallSpriteFlags & 4 ) == 4 )
+				if( ( wallSpriteFlags & 4u ) == 4 )
 				{
 					animFrame = ( uTickNumber / 3 ) % 4;
 				}
 				if( uWallsLowered )
 				{
 					animFrame = 0;
-					if( ( wallSpriteFlags & 8 ) == 8 )
+					if( ( wallSpriteFlags & 8u ) == 8 )
 					{
 						spriteID = spriteID + 1;
 					}
@@ -328,7 +327,7 @@ void main()
 			animFrame = 0;
 			if( spriteID != 0 )
 			{
-				rot = itemSpriteID & 3;
+				rot = itemSpriteID & 3u;
 				rot = ( rot + uWorldRotation ) % 4;
 				
 				vec4 tmpTexel = getTexel( spriteID, rot, animFrame );
@@ -342,7 +341,7 @@ void main()
 		animFrame = 0;
 		if( uShowJobs && spriteID != 0 )
 		{
-			rot = jobWallSpriteFlags & 3;
+			rot = jobWallSpriteFlags & 3u;
 			rot = ( rot + uWorldRotation ) % 4;
 			
 			vec4 tmpTexel = getTexel( spriteID, rot, animFrame );
@@ -368,7 +367,7 @@ void main()
 		animFrame = 0;
 		if( spriteID != 0 )
 		{
-			rot = creatureSpriteFlags & 3;
+			rot = creatureSpriteFlags & 3u;
 			rot = ( rot + uWorldRotation ) % 4;
 			
 			vec4 tmpTexel = getTexel( spriteID, rot, animFrame );
@@ -384,11 +383,11 @@ void main()
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 		if( ( vFluidFlags & ( WATER_TOP | WATER_WALL ) ) != 0 && vFluidLevel > 2 )
 		{
-			const int startLevel = int(vFluidLevel - 2);
-			const int referenceLevel = int( vTexCoords.x < 0.5 ? max(2, vFluidLevelLeft) : max(2, vFluidLevelRight) ) - 2;
-			const int offset = vTexCoords.x < 0.5 ? leftWallOffset : rightWallOffset;
+			int startLevel = int(vFluidLevel - 2);
+			int referenceLevel = int( vTexCoords.x < 0.5 ? max(2, vFluidLevelLeft) : max(2, vFluidLevelRight) ) - 2;
+			int offset = vTexCoords.x < 0.5 ? leftWallOffset : rightWallOffset;
 
-			const float fl = float( startLevel ) * flSize;
+			float fl = float( startLevel ) * flSize;
 
 			vec4 tmpTexel = vec4( 0, 0, 0, 0 );
 			
@@ -438,7 +437,7 @@ void main()
 		}
 		float brightness = dot(texel.rgb, perceivedBrightness.xyz);
 		float lightMult = ( 1 - uLightMin ) * light + uLightMin;
-		const float minSaturation = 0.1;
+		float minSaturation = 0.1;
 		float saturation = ( 1 - minSaturation ) * light + minSaturation;
 		// Desaturate, then darken
 		texel.rgb = mix(brightness * vec3(1,1,1), texel.rgb, saturation) * lightMult;

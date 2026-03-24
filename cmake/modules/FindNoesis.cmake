@@ -12,8 +12,25 @@ find_library(NOESIS_LIBRARY
 		libNoesis Noesis
 	HINTS
 		${NOESIS_ROOT}/Bin/linux_x86_64
+		${NOESIS_ROOT}/Bin/macos
+		${NOESIS_ROOT}/Bin/macos_x86_64
+		${NOESIS_ROOT}/Bin/macos_arm64
 		${NOESIS_ROOT}/Lib/windows_x86_64
 )
+
+# Fallback: find_library may miss dylibs without lib prefix on macOS
+if(NOT NOESIS_LIBRARY)
+	find_file(NOESIS_LIBRARY
+		NAMES
+			Noesis.dylib
+			libNoesis.so
+		HINTS
+			${NOESIS_ROOT}/Bin/macos
+			${NOESIS_ROOT}/Bin/macos_x86_64
+			${NOESIS_ROOT}/Bin/macos_arm64
+			${NOESIS_ROOT}/Bin/linux_x86_64
+	)
+endif()
 
 if(WIN32)
 	find_file(NOESIS_DLL

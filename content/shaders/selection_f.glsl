@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout(location = 0) noperspective in vec2 vTexCoords;
 
@@ -10,7 +10,7 @@ uniform int uSpriteID;
 uniform int uRotation;
 uniform bool uValid;
 
-uniform sampler2DArray uTexture[32];
+uniform sampler2DArray uTexture[16];
 
 
 vec4 getTexel( uint spriteID, uint rot, uint animFrame )
@@ -30,7 +30,6 @@ vec4 getTexel( uint spriteID, uint rot, uint animFrame )
 	switch(tex)
 	{
 		D(0)
-		D(16)
 	}
 	#undef D
 	#undef C

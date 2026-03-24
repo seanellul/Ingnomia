@@ -614,7 +614,11 @@ void MainWindow::noesisInit()
 	Noesis::GUI::DisableInspector();
 
 	// Noesis initialization. This must be the first step before using any NoesisGUI functionality
-	Noesis::GUI::Init( licenseName, licenseKey );
+	if ( sizeof( licenseName ) > 1 && sizeof( licenseKey ) > 1 )
+	{
+		Noesis::GUI::SetLicense( licenseName, licenseKey );
+	}
+	Noesis::GUI::Init();
 
 	installResourceProviders();
 
@@ -658,8 +662,9 @@ void MainWindow::idleRenderTick()
 	keyboardMove();
 
 	// Check if redraw is required
-	if ( noesisUpdate() && !m_pendingUpdate )
+	if ( !m_pendingUpdate )
 	{
+		noesisUpdate();
 		// Trigger rendering
 		m_pendingUpdate = true;
 		update();

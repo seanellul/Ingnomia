@@ -382,3 +382,6 @@ build/
 /docs/html
 
 /content/audio
+
+# Noesis SDK (proprietary, not redistributable)
+/noesis_sdk

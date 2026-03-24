@@ -30,13 +30,13 @@
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLWindow>
 
-#include <QOpenGLFunctions_4_3_Core>
+#include <QOpenGLFunctions_4_1_Core>
 
 struct Position;
 class QOpenGLTexture;
 class MainWindow;
 
-class MainWindowRenderer : public QObject, protected QOpenGLFunctions_4_3_Core
+class MainWindowRenderer : public QObject, protected QOpenGLFunctions_4_1_Core
 {
 	Q_OBJECT
 
@@ -52,14 +52,13 @@ public:
 protected:
 	QOpenGLVertexArrayObject m_vao;
 	QScopedPointer<QOpenGLShaderProgram> m_worldShader;
-	QScopedPointer<QOpenGLShaderProgram> m_worldUpdateShader;
 	QScopedPointer<QOpenGLShaderProgram> m_thoughtBubbleShader;
 	QScopedPointer<QOpenGLShaderProgram> m_selectionShader;
 	QScopedPointer<QOpenGLShaderProgram> m_axleShader;
 
-	GLuint m_textures[32] = { 0 };
+	GLuint m_textures[16] = { 0 };
 	GLuint m_tileBo       = 0;
-	GLuint m_tileUpdateBo = 0;
+	GLuint m_tileTbo      = 0;
 	GLuint m_vbo          = 0;
 	GLuint m_vibo         = 0;
 
@@ -68,7 +67,6 @@ protected:
 private:
 	QString copyShaderToString( QString name );
 	QOpenGLShaderProgram* initShader( QString name );
-	QOpenGLShaderProgram* initComputeShader( QString name );
 	bool initShaders();
 
 	void initTextures();

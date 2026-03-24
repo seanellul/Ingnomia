@@ -293,7 +293,7 @@ void ViewModel::OnBackToMain( BaseComponent* )
 	_ingame       = false;
 	OnPropertyChanged( "ShowMainMenu" );
 	_showGameGUI = false;
-	OnPropertyChanged( "ShowGameGui" );
+	OnPropertyChanged( "ShowGameGUI" );
 	m_proxy->setShowMainMenu( true );
 	m_proxy->endGame();
 	SetState( State::Main );
@@ -343,7 +343,7 @@ void ViewModel::OnBack( BaseComponent* )
 			break;
 	}
 	OnPropertyChanged( "ShowMainMenu" );
-	OnPropertyChanged( "ShowGameGui" );
+	OnPropertyChanged( "ShowGameGUI" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +353,7 @@ void ViewModel::OnResume( BaseComponent* )
 	_showMainMenu = false;
 	_showGameGUI  = true;
 	OnPropertyChanged( "ShowMainMenu" );
-	OnPropertyChanged( "ShowGameGui" );
+	OnPropertyChanged( "ShowGameGUI" );
 	m_proxy->setShowMainMenu( false );
 }
 

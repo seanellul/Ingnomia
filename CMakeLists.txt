@@ -14,14 +14,15 @@ project(Ingnomia
 	VERSION ${DEFAULT_VERSION}
 	DESCRIPTION "Gnome city builder"
 	HOMEPAGE_URL "https://github.com/rschurade/Ingnomia"
-	LANGUAGES "CXX"
+	LANGUAGES "CXX" "OBJCXX"
 )
 
+cmake_policy(SET CMP0144 NEW)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
 
 find_package(Qt5 REQUIRED QUIET COMPONENTS Core Xml Sql OpenGL)
 
-find_package(Steam REQUIRED)
+find_package(Steam QUIET)
 find_package(Noesis REQUIRED)
 find_package(OpenAL REQUIRED)
 # Noesis license
@@ -44,7 +45,7 @@ set_target_properties(${PROJECT_NAME}
 		CXX_STANDARD 17
 		AUTOMOC ON
 		INTERPROCEDURAL_OPTIMIZATION ON
-		INSTALL_RPATH "$ORIGIN"
+		INSTALL_RPATH "$<IF:$<PLATFORM_ID:Darwin>,@loader_path,$ORIGIN>"
 )
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY AUTOGEN_SOURCE_GROUP "Generated")
@@ -89,7 +90,7 @@ target_link_libraries(${PROJECT_NAME}
 		Qt5::Xml
 		Qt5::Sql
 		Qt5::OpenGL
-		Steam
+		$<$<BOOL:${Steam_FOUND}>:Steam>
 		NoesisApp
 		fastnoise
 		exprtk
@@ -164,9 +165,11 @@ install(
 	DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-get_target_property(STEAM_DLL Steam LOCATION)
+if(Steam_FOUND)
+	get_target_property(STEAM_DLL Steam LOCATION)
+	list(APPEND RUNTIME_DLLS ${STEAM_DLL})
+endif()
 get_target_property(NOESIS_DLL Noesis LOCATION)
-list(APPEND RUNTIME_DLLS ${STEAM_DLL})
 list(APPEND RUNTIME_DLLS ${NOESIS_DLL})
 
 if(WIN32)

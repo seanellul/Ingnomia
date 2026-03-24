@@ -51,14 +51,20 @@ public:
 	DebugScope() = delete;
 	DebugScope( const char* c )
 	{
+#ifndef __APPLE__
 		static GLuint counter    = 0;
 		QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
 		f->glPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, counter++, static_cast<GLsizei>( strlen( c ) ), c );
+#else
+		Q_UNUSED( c );
+#endif
 	}
 	~DebugScope()
 	{
+#ifndef __APPLE__
 		QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
 		f->glPopDebugGroup();
+#endif
 	}
 };
 } // namespace
@@ -90,10 +96,10 @@ MainWindowRenderer::MainWindowRenderer( MainWindow* parent ) :
 
 	if ( !initializeOpenGLFunctions() )
 	{
-		qDebug() << "failed to initialize OpenGL - make sure your graphics card and driver support OpenGL 4.3";
-		qCritical() << "failed to initialize OpenGL functions core 4.3 - exiting";
+		qDebug() << "failed to initialize OpenGL - make sure your graphics card and driver support OpenGL 4.1";
+		qCritical() << "failed to initialize OpenGL functions core 4.1 - exiting";
 		QMessageBox msgBox;
-		msgBox.setText( "Failed to initialize OpenGL - make sure your graphics card and driver support OpenGL 4.3" );
+		msgBox.setText( "Failed to initialize OpenGL - make sure your graphics card and driver support OpenGL 4.1" );
 		msgBox.exec();
 		exit( 0 );
 	}
@@ -104,6 +110,7 @@ MainWindowRenderer::MainWindowRenderer( MainWindow* parent ) :
 
 	qDebug() << m_parent->context()->format();
 
+#ifndef __APPLE__
 	QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
 	GLDEBUGPROC logHandler   = []( GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam ) -> void
 	{
@@ -133,6 +140,7 @@ MainWindowRenderer::MainWindowRenderer( MainWindow* parent ) :
 	};
 	glEnable( GL_DEBUG_OUTPUT );
 	f->glDebugMessageCallback( logHandler, nullptr );
+#endif
 }
 MainWindowRenderer ::~MainWindowRenderer()
 {
@@ -197,7 +205,6 @@ void MainWindowRenderer::cleanup()
 {
 	m_parent->makeCurrent();
 	m_worldShader.reset();
-	m_worldUpdateShader.reset();
 	m_thoughtBubbleShader.reset();
 	m_selectionShader.reset();
 	m_axleShader.reset();
@@ -213,12 +220,12 @@ void MainWindowRenderer::cleanup()
 void MainWindowRenderer::cleanupWorld()
 {
 	m_parent->makeCurrent();
-	glDeleteTextures( 32, m_textures );
+	glDeleteTextures( 16, m_textures );
 	memset( m_textures, 0, sizeof( m_textures ) );
 	glDeleteBuffers( 1, &m_tileBo );
 	m_tileBo = 0;
-	glDeleteBuffers( 1, &m_tileUpdateBo );
-	m_tileUpdateBo     = 0;
+	glDeleteTextures( 1, &m_tileTbo );
+	m_tileTbo = 0;
 	m_texesInitialized = false;
 
 	m_parent->doneCurrent();
@@ -298,49 +305,14 @@ QOpenGLShaderProgram* MainWindowRenderer::initShader( QString name )
 	return shader.take();
 }
 
-QOpenGLShaderProgram* MainWindowRenderer::initComputeShader( QString name )
-{
-	QString cs = copyShaderToString( name + "_c" );
-
-	QScopedPointer<QOpenGLShaderProgram> shader( new QOpenGLShaderProgram );
-
-	bool ok = true;
-	ok &= shader->addShaderFromSourceCode( QOpenGLShader::Compute, cs );
-	if ( !ok )
-	{
-		qCritical() << "failed to add shader source code";
-		return nullptr;
-	}
-
-	ok &= shader->link();
-
-	if ( !ok )
-	{
-		qCritical() << "failed to link shader";
-		return nullptr;
-	}
-
-	ok &= shader->bind();
-	if ( !ok )
-	{
-		qCritical() << "failed to bind shader";
-		return nullptr;
-	}
-
-	shader->release();
-
-	return shader.take();
-}
-
 bool MainWindowRenderer::initShaders()
 {
 	m_worldShader.reset(initShader( "world" ));
-	m_worldUpdateShader.reset(initComputeShader( "worldupdate" ));
 	m_thoughtBubbleShader.reset(initShader( "thoughtbubble" ));
 	m_selectionShader.reset(initShader( "selection" ));
 	m_axleShader.reset(initShader( "axle" ));
 
-	if ( !m_worldShader || !m_worldUpdateShader || !m_thoughtBubbleShader || !m_selectionShader || !m_axleShader )
+	if ( !m_worldShader || !m_thoughtBubbleShader || !m_selectionShader || !m_axleShader )
 	{
 		// Can't proceed, and need to know what happened!
 		abort();
@@ -360,12 +332,16 @@ void MainWindowRenderer::createArrayTexture( int unit, int depth )
 	glActiveTexture( GL_TEXTURE0 + unit );
 	glGenTextures( 1, &m_textures[unit] );
 	glBindTexture( GL_TEXTURE_2D_ARRAY, m_textures[unit] );
-	glTexStorage3D(
+	glTexImage3D(
 		GL_TEXTURE_2D_ARRAY,
-		1,             // No mipmaps
+		0,             // Mip level 0
 		GL_RGBA8,      // Internal format
-		32, 64,        // width,height
-		depth          // Number of layers
+		32, 64,        // width, height
+		depth,         // Number of layers
+		0,             // Border
+		GL_RGBA,       // Format
+		GL_UNSIGNED_BYTE,
+		nullptr        // No initial data
 	);
 	glTexParameteri( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 	glTexParameteri( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
@@ -398,7 +374,7 @@ void MainWindowRenderer::initTextures()
 
 	int maxArrayTextures = Global::cfg->get( "MaxArrayTextures" ).toInt();
 
-	for ( int i = 0; i < 32; ++i )
+	for ( int i = 0; i < 16; ++i )
 	{
 		createArrayTexture( i, maxArrayTextures );
 	}
@@ -411,19 +387,25 @@ void MainWindowRenderer::initWorld()
 	QElapsedTimer timer;
 	timer.start();
 
+	GLsizeiptr bufferSize = TD_SIZE * sizeof( unsigned int ) * Global::eventConnector->game()->w()->world().size();
+
 	glGenBuffers( 1, &m_tileBo );
-	glBindBuffer( GL_SHADER_STORAGE_BUFFER, m_tileBo );
-	glBufferData( GL_SHADER_STORAGE_BUFFER, TD_SIZE * sizeof( unsigned int ) * Global::eventConnector->game()->w()->world().size(), nullptr, GL_DYNAMIC_DRAW );
-	const uint8_t zero = 0;
-	glClearBufferData( GL_SHADER_STORAGE_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero );
-	glBindBuffer( GL_SHADER_STORAGE_BUFFER, 0 ); // unbind
+	glBindBuffer( GL_TEXTURE_BUFFER, m_tileBo );
+	glBufferData( GL_TEXTURE_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW );
+	// Zero-fill the buffer
+	void* ptr = glMapBuffer( GL_TEXTURE_BUFFER, GL_WRITE_ONLY );
+	if ( ptr )
+	{
+		memset( ptr, 0, bufferSize );
+		glUnmapBuffer( GL_TEXTURE_BUFFER );
+	}
+	glBindBuffer( GL_TEXTURE_BUFFER, 0 );
 
-	glBindBufferBase( GL_SHADER_STORAGE_BUFFER, 0, m_tileBo );
-
-	glGenBuffers( 1, &m_tileUpdateBo );
-
-	glBindBufferBase( GL_SHADER_STORAGE_BUFFER, 0, m_tileBo );
-	glBindBufferBase( GL_SHADER_STORAGE_BUFFER, 1, m_tileUpdateBo );
+	// Create texture buffer object to access tile data from shaders
+	glGenTextures( 1, &m_tileTbo );
+	glActiveTexture( GL_TEXTURE0 + 16 );
+	glBindTexture( GL_TEXTURE_BUFFER, m_tileTbo );
+	glTexBuffer( GL_TEXTURE_BUFFER, GL_R32UI, m_tileBo );
 
 	m_texesInitialized = true;
 
@@ -515,7 +497,7 @@ void MainWindowRenderer::paintWorld()
 	updateWorld();
 
 	// Rebind correct textures to texture units
-	for ( auto unit = 0; unit < 32; ++unit )
+	for ( auto unit = 0; unit < 16; ++unit )
 	{
 		glActiveTexture( GL_TEXTURE0 + unit );
 		glBindTexture( GL_TEXTURE_2D_ARRAY, m_textures[unit] );
@@ -523,8 +505,6 @@ void MainWindowRenderer::paintWorld()
 
 	timer.start();
 	updateTextures();
-
-	glMemoryBarrier( GL_SHADER_STORAGE_BARRIER_BIT | GL_TEXTURE_UPDATE_BARRIER_BIT );
 
 	QString msg = "render time: " + QString::number( timer.elapsed() ) + " ms";
 	//emit sendOverlayMessage( 1, msg );
@@ -606,6 +586,11 @@ void MainWindowRenderer::paintTiles()
 	m_worldShader->bind();
 	setCommonUniforms( m_worldShader.get() );
 
+	// Bind tile data TBO
+	glActiveTexture( GL_TEXTURE0 + 16 );
+	glBindTexture( GL_TEXTURE_BUFFER, m_tileTbo );
+	m_worldShader->setUniformValue( "uTileData", 16 );
+
 	for ( int i = 0; i < m_texesUsed; ++i )
 	{
 		auto texNum = "uTexture[" + QString::number( i ) + "]";
@@ -680,7 +665,7 @@ void MainWindowRenderer::paintSelection()
 		m_selectionShader->setUniformValue( "uRotation", sd.localRot );
 		m_selectionShader->setUniformValue( "uValid", sd.valid );
 
-		glDrawArraysInstancedBaseInstance( GL_TRIANGLE_STRIP, 0, 4, 1, 0 );
+		glDrawArraysInstanced( GL_TRIANGLE_STRIP, 0, 4, 1 );
 	}
 
 	m_selectionShader->release();
@@ -706,7 +691,7 @@ void MainWindowRenderer::paintThoughtBubbles()
 			GLint tile = m_axleShader->uniformLocation( "tile" );
 			glUniform3ui( tile, thoughtBubble.pos.x, thoughtBubble.pos.y, thoughtBubble.pos.z );
 			m_thoughtBubbleShader->setUniformValue( "uType", thoughtBubble.sprite );
-			glDrawArraysInstancedBaseInstance( GL_TRIANGLE_STRIP, 0, 4, 1, 0 );
+			glDrawArraysInstanced( GL_TRIANGLE_STRIP, 0, 4, 1 );
 		}
 	}
 
@@ -737,7 +722,7 @@ void MainWindowRenderer::paintAxles()
 			m_axleShader->setUniformValue( "uRotation", ad.localRot );
 			m_axleShader->setUniformValue( "uAnim", ad.anim );
 
-			glDrawArraysInstancedBaseInstance( GL_TRIANGLE_STRIP, 0, 4, 1, 0 );
+			glDrawArraysInstanced( GL_TRIANGLE_STRIP, 0, 4, 1 );
 		}
 	}
 
@@ -832,14 +817,13 @@ void MainWindowRenderer::updateWorld()
 
 void MainWindowRenderer::uploadTileData( const QVector<TileDataUpdate>& tileData )
 {
-	glBindBuffer( GL_SHADER_STORAGE_BUFFER, m_tileUpdateBo );
-	glBufferData( GL_SHADER_STORAGE_BUFFER, sizeof( TileDataUpdate ) * tileData.size(), tileData.data(), GL_STREAM_DRAW );
-	glBindBuffer( GL_SHADER_STORAGE_BUFFER, 0 );
-
-	m_worldUpdateShader->bind();
-	m_worldUpdateShader->setUniformValue( "uUpdateSize", (GLint)tileData.size() );
-	glDispatchCompute( ( tileData.size() + 63 ) / 64, 1, 1 );
-	m_worldUpdateShader->release();
+	glBindBuffer( GL_TEXTURE_BUFFER, m_tileBo );
+	for ( const auto& update : tileData )
+	{
+		GLintptr offset = update.id * TD_SIZE * sizeof( unsigned int );
+		glBufferSubData( GL_TEXTURE_BUFFER, offset, sizeof( TileData ), &update.tile );
+	}
+	glBindBuffer( GL_TEXTURE_BUFFER, 0 );
 }
 
 void MainWindowRenderer::updateTextures()
@@ -867,6 +851,7 @@ void MainWindowRenderer::onUpdateSelection( const QMap<unsigned int, SelectionDa
 		m_selectionData.insert( key, data[key] );
 	}
 	m_selectionNoDepthTest = noDepthTest;
+	emit redrawRequired();
 }
 
 void MainWindowRenderer::onCenterCameraPosition( const Position& target )
@@ -888,4 +873,5 @@ void MainWindowRenderer::updatePositionAfterCWRotation( float& x, float& y )
 void MainWindowRenderer::onSetInMenu( bool value )
 {
 	m_inMenu = value;
+	emit redrawRequired();
 }

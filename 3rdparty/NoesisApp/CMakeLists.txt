@@ -8,7 +8,10 @@ set(NOESIS_APP_PACKAGES
 	App/DisplayLauncher
 	App/Display
 	App/Launcher
+	App/LangServer
+	App/LangServerHelpers
 	App/Providers
+	App/Shaders
 	App/Theme
 	App/Interactivity
 	App/MediaElement
@@ -45,8 +48,15 @@ foreach(PACKAGE ${NOESIS_APP_PACKAGES})
 	set(PACKAGE_ROOT "${NOESIS_ROOT}/Src/Packages/${PACKAGE}")
 	set(INCLUDE_DIR "${PACKAGE_ROOT}/Include")
 
-	file(GLOB_RECURSE PKG_SRCS "${PACKAGE_ROOT}/*.cpp"  "${PACKAGE_ROOT}/*.h")
+	file(GLOB_RECURSE PKG_SRCS "${PACKAGE_ROOT}/*.cpp" "${PACKAGE_ROOT}/*.h")
+	if(APPLE)
+		file(GLOB_RECURSE PKG_OBJC_SRCS "${PACKAGE_ROOT}/*.mm")
+		list(APPEND PKG_SRCS ${PKG_OBJC_SRCS})
+	endif()
 	file(GLOB_RECURSE PKG_RES "${PACKAGE_ROOT}/*.xaml" "${PACKAGE_ROOT}/*.ttf" "${PACKAGE_ROOT}/*.ttf" "${PACKAGE_ROOT}/*.otf")
+
+	# Exclude test files that depend on NsCore/UnitTest.h
+	list(FILTER PKG_SRCS EXCLUDE REGEX ".*Test\\.cpp$")
 
 	list(APPEND NOESIS_APP_SRC ${PKG_SRCS})
 	list(APPEND NOESIS_APP_BIN2H ${PKG_RES})
@@ -121,7 +131,25 @@ source_group(TREE "${NOESIS_ROOT}/Src/Packages" PREFIX "NoesisApp" FILES ${NOESI
 source_group(TREE "${NOESIS_ROOT}/Src/Packages" PREFIX "Resources" FILES ${NOESIS_APP_BIN2H})
 source_group(TREE "${NOESIS_ROOT}/Include" PREFIX "Core" FILES ${NOESIS_CORE_INCLUDES})
 
-if(UNIX)
+if(APPLE)
+	find_package(Threads REQUIRED)
+	find_package(OpenGL REQUIRED)
+	target_link_libraries(${PROJECT_NAME}
+		PRIVATE
+			OpenGL::GL
+			Threads::Threads
+			${CMAKE_DL_LIBS}
+			"-framework Cocoa"
+			"-framework AppKit"
+			"-framework QuartzCore"
+	)
+	# Compile .mm.cpp files as Objective-C++ on macOS
+	foreach(SRC ${NOESIS_APP_SRC})
+		if(SRC MATCHES "\\.mm\\.cpp$")
+			set_source_files_properties(${SRC} PROPERTIES LANGUAGE OBJCXX)
+		endif()
+	endforeach()
+elseif(UNIX)
 	# NoesisApp requires several additional libraries on Linux
 	find_package(Threads REQUIRED)
 	find_package(OpenGL REQUIRED)

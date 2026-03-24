@@ -29,7 +29,9 @@
 #include <QApplication>
 #include <QDateTime>
 #include <QDebug>
+#ifndef __APPLE__
 #include <QDesktopWidget>
+#endif
 #include <QDir>
 #include <QFileIconProvider>
 #include <QStandardPaths>
@@ -211,10 +213,12 @@ int main( int argc, char* argv[] )
 	defaultFormat.setDepthBufferSize( 16 );
 	// 0 = unthrottled, 1 = vysnc full FPS, 2 = vsync half FPS
 	defaultFormat.setSwapInterval( 0 );
-	defaultFormat.setVersion( 4, 3 );
+	defaultFormat.setVersion( 4, 1 );
 	defaultFormat.setRenderableType( QSurfaceFormat::OpenGL );
 	defaultFormat.setProfile( QSurfaceFormat::CoreProfile );
+#ifndef __APPLE__
 	defaultFormat.setOption( QSurfaceFormat::DebugContext );
+#endif
 	QSurfaceFormat::setDefaultFormat( defaultFormat );
 
 	GameManager* gm = new GameManager;

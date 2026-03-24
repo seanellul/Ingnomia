@@ -133,8 +133,8 @@ private:
 	int _realWidth;
 	int _realHeight;
 	float m_scale = 1.0;
-	Noesis::String _windowWidthString;
-	Noesis::String _windowHeightString;
+	Noesis::String _windowWidthString = "0";
+	Noesis::String _windowHeightString = "0";
 	Noesis::String m_version;
 
 	ProxyMainView* m_proxy = nullptr;
