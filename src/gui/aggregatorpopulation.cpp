@@ -118,6 +118,17 @@ void AggregatorPopulation::onRequestPopulationUpdate()
 				ggi.adulthood.description = row.value( "Description" ).toString();
 			}
 
+			// Populate mood
+			ggi.mood = gnome->mood();
+			ggi.mentalBreak = gnome->mood() < 5;
+			for ( const auto& t : gnome->thoughts() )
+			{
+				GuiThoughtInfo gti;
+				gti.text = t.text;
+				gti.moodValue = t.moodValue;
+				ggi.thoughts.append( gti );
+			}
+
 			// Populate relationships (only non-neutral ones)
 			auto opinions = g->gm()->opinionsOf( gnome->id() );
 			for ( auto it = opinions.constBegin(); it != opinions.constEnd(); ++it )

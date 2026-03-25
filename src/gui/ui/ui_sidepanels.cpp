@@ -324,6 +324,41 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 			{
 				if ( ImGui::TreeNode( gnome.name.toStdString().c_str() ) )
 				{
+					// Mood bar at top
+					ImVec4 moodColor;
+					if ( gnome.mood > 65 )
+						moodColor = ImVec4( 0.2f, 0.7f, 0.3f, 1.0f );
+					else if ( gnome.mood > 35 )
+						moodColor = ImVec4( 0.7f, 0.7f, 0.2f, 1.0f );
+					else if ( gnome.mood > 15 )
+						moodColor = ImVec4( 0.8f, 0.4f, 0.1f, 1.0f );
+					else
+						moodColor = ImVec4( 0.8f, 0.1f, 0.1f, 1.0f );
+
+					ImGui::PushStyleColor( ImGuiCol_PlotHistogram, moodColor );
+					ImGui::ProgressBar( gnome.mood / 100.0f, ImVec2( 200, 16 ), "" );
+					ImGui::PopStyleColor();
+					ImGui::SameLine();
+					if ( gnome.mentalBreak )
+						ImGui::TextColored( ImVec4( 1.0f, 0.2f, 0.2f, 1.0f ), "MENTAL BREAK! Mood: %d", gnome.mood );
+					else
+						ImGui::Text( "Mood: %d/100", gnome.mood );
+
+					// Active thoughts
+					if ( !gnome.thoughts.isEmpty() )
+					{
+						ImGui::Indent( 10.0f );
+						for ( const auto& thought : gnome.thoughts )
+						{
+							ImVec4 tColor = thought.moodValue > 0 ?
+								ImVec4( 0.3f, 0.7f, 0.3f, 1.0f ) :
+								ImVec4( 0.7f, 0.3f, 0.3f, 1.0f );
+							ImGui::TextColored( tColor, "%s (%+d)", thought.text.toStdString().c_str(), thought.moodValue );
+						}
+						ImGui::Unindent( 10.0f );
+					}
+					ImGui::Spacing();
+
 					// Backstory section
 					if ( !gnome.childhood.title.isEmpty() || !gnome.adulthood.title.isEmpty() )
 					{

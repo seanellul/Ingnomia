@@ -117,14 +117,14 @@ The most universally wanted feature. "Find cow dead, want to know why."
 - [x] HUD notification popup — toast system with fading overlays, color-coded by severity
 - [x] Scrollable event log panel — "Log" button in toolbar, filterable by category, color-coded entries
 
-### 1.2 — Stockpile UX Overhaul (#5, #57, #58, #59)
+### 1.2 — Stockpile UX Overhaul (#5, #57, #58, #59) (PARTIAL)
 Biggest source of frustration across all suggestions.
 
-- [ ] Auto-accept new item types when stockpile filter is set to "all" of a category
-- [ ] "For trade" stockpile designation — mark stockpiles, filter in trade window
-- [ ] Stockpile limit: count items across materials ("max 200 statuettes" regardless of wood type)
-- [ ] Copy/paste stockpile settings between stockpiles (clarify UX)
-- [ ] Drag-and-drop stockpile priority ordering
+- [x] Auto-accept new item types — data layer with `m_autoAcceptNew` flag (default: true)
+- [x] "For trade" stockpile designation — data layer with `m_forTrade` flag, serialized
+- [ ] Stockpile limit: count items across materials (existing `m_limitWithmaterial` toggle, needs UI)
+- [ ] Copy/paste stockpile settings between stockpiles (needs UI)
+- [ ] Drag-and-drop stockpile priority ordering (needs UI)
 
 ### 1.3 — Workshop Production Limits (#48) (DONE)
 `craft-to` mode was added in v0.4.0 ("jobs suspend when number reached") and workshop assignment was added in v0.6.1. But the community still wanted "craft until N **in stockpile**" which is different from "craft N total."
@@ -171,16 +171,16 @@ Relationships between gnomes — the engine for emergent stories. Depends on tra
 ### 2.1 — Happiness/Mood System (#17, #89, #91)
 The needs map exists (`creature.h:m_needs`) with Hunger/Thirst/Sleep. Automatons explicitly remove "Happiness" — so the slot exists but is unused. Depends on traits (2.0) and social (2.0b) for full effect.
 
-- [ ] Thought stack system: each thought has value + duration + stack limit (RimWorld model)
-- [ ] Mood 0-100 bar calculated from sum of active thoughts + trait-based base mood
-- [ ] Traits modulate thought intensity (Compassionate gnome: death = -8; Cold gnome: death = -2)
-- [ ] Mood affects work speed ±30% (DF focus mechanic — makes mood economically meaningful)
-- [ ] 3-tier mental breaks at 35%/20%/5% thresholds, type determined by personality traits
-- [ ] Catharsis +40 after break to prevent cascade spirals
-- [ ] Room impressiveness generates mood thoughts (8 tiers)
-- [ ] Happiness affects migration rate and kingdom worth
-- [ ] "Dead friends" mood penalty (#91 — 3⭐) — now powered by social system
-- [ ] Gnome needs panel in UI showing all current thoughts/mood
+- [x] Thought stack system: each thought has value + duration + stack limit (RimWorld model)
+- [x] Mood 0-100 bar calculated from sum of active thoughts + trait-based base mood (Optimism trait)
+- [x] Traits modulate thought intensity (Empathy amplifies death, Sociability amplifies social, etc.)
+- [x] Mood affects work speed ±30% via `moodWorkSpeedModifier()` (0.7x–1.3x)
+- [x] Mental breaks at mood < 5, type determined by personality traits (Tantrum/Catatonic/SadWander)
+- [x] Catharsis +15 after break to prevent cascade spirals
+- [ ] Room impressiveness generates mood thoughts (8 tiers) — deferred, needs room value calculation
+- [ ] Happiness affects migration rate and kingdom worth — deferred
+- [x] Social mood thoughts: "Near close friend" +3, "Near rival" -2
+- [x] Gnome needs/mood panel in Personality tab with color-coded bar + thought list
 
 ### 2.2 — Designated Movement Zones (#30)
 "No pass designation" was added in v0.4.7 with a checkbox to let gnomes ignore it (v0.4.8). But the community wanted a fuller zone system.

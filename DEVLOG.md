@@ -6,6 +6,49 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-25] Milestone 2.1 — Happiness/Mood System
+
+**Milestone**: 2.1 — Gnome Depth
+**Files changed**: `src/game/gnome.h`, `src/game/gnome.cpp`, `src/gui/aggregatorpopulation.h`, `src/gui/aggregatorpopulation.cpp`, `src/gui/ui/ui_sidepanels.cpp`
+
+### Changes
+
+- **Thought stack system** — each thought has value + duration + max stacks (RimWorld model). Thoughts expire over time and are re-generated from game events.
+- **Mood 0-100 bar** — calculated from base mood (Optimism trait), active thought sum, and needs penalties (hunger/thirst/sleep below 20). Stored in existing "Happiness" need slot.
+- **Trait modulation** — Empathy amplifies death thoughts, Sociability amplifies social thoughts, Greed amplifies room thoughts, Appetite amplifies food thoughts.
+- **Work speed modifier** — mood 0 = 0.7x, mood 50 = 1.0x, mood 100 = 1.3x. Exposed via `moodWorkSpeedModifier()`.
+- **Mental breaks** — trigger at mood < 5. Type determined by personality: high Temper → Tantrum, low Nerve → Catatonic, low Optimism → Sad Wander. Catharsis thought (+15 mood for 2500 ticks) prevents cascading breaks.
+- **Social mood thoughts** — "Near a close friend" (+3) and "Near a rival" (-2) generated when gnomes with strong opinions are within 5 tiles.
+- **Need-based thoughts** — "Very hungry/thirsty" (-6) and "Getting hungry/thirsty" (-2) generated from low need values.
+- **Mood display** in Personality tab — color-coded progress bar (green/yellow/orange/red), active thoughts listed with values, mental break warning in red.
+- **Full serialization** — mood, mental break state, and active thoughts saved/loaded.
+
+### Technical Details
+- `Thought` struct: id, text, moodValue, ticksLeft, maxStacks
+- `tickThoughts()` called every tick in `evalNeeds()`, decrements timers and recalculates mood
+- Trait modulation formula: `modulated = base + (base * traitValue / 100)` — a gnome with Empathy +50 gets 1.5x the base death mood penalty
+- Mental break threshold at mood < 5 (extreme tier only — minor/major thresholds deferred)
+
+---
+
+## [2026-03-25] Milestone 1.2 — Stockpile UX Overhaul
+
+**Milestone**: 1.2 — Stockpile UX Overhaul
+**Files changed**: `src/game/stockpile.h`, `src/game/stockpile.cpp`
+
+### Changes
+- **"For Trade" flag** — Stockpiles can be marked as "for trade" via `m_forTrade` property. Serialized/deserialized. UI integration and trade window filtering deferred to trade system rework.
+- **Auto-accept new items** — `m_autoAcceptNew` flag (default: true) enables stockpiles to automatically include new item types when their parent category is checked. Serialized with backward-compatible default.
+- **Backward-compatible** — Old saves without these fields load cleanly (forTrade defaults false, autoAcceptNew defaults true).
+
+### Technical Details
+- Both flags added as private members with public accessors in `stockpile.h`
+- Serialized via `out.insert()` in `serialize()`, deserialized in constructor from `vals`
+- `autoAcceptNew` uses `vals.contains()` check for backward compatibility with old saves
+- Note: UI for these features (checkboxes in stockpile panel, copy/paste buttons) needs ImGui panel work — the data layer is complete
+
+---
+
 ## [2026-03-25] Milestone 2.0b — Social System
 
 **Milestone**: 2.0b — Gnome Depth

@@ -62,6 +62,13 @@ struct GuiRelationshipInfo
 };
 Q_DECLARE_METATYPE( GuiRelationshipInfo )
 
+struct GuiThoughtInfo
+{
+	QString text;
+	int moodValue;
+};
+Q_DECLARE_METATYPE( GuiThoughtInfo )
+
 struct GuiGnomeInfo
 {
 	QString name;
@@ -72,6 +79,9 @@ struct GuiGnomeInfo
 	GuiBackstoryInfo childhood;
 	GuiBackstoryInfo adulthood;
 	QList<GuiRelationshipInfo> relationships;
+	int mood = 50;
+	bool mentalBreak = false;
+	QList<GuiThoughtInfo> thoughts;
 };
 Q_DECLARE_METATYPE( GuiGnomeInfo )
 

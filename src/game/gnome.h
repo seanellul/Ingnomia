@@ -28,6 +28,16 @@
 
 struct Uniform;
 
+// Thought system for mood calculation (Milestone 2.1)
+struct Thought
+{
+	QString id;       // e.g. "AteGoodMeal", "FriendDied", "NiceRoom"
+	QString text;     // display text
+	int moodValue;    // -20 to +20
+	int ticksLeft;    // ticks until expiry
+	int maxStacks;    // max times this thought can stack
+};
+
 class Gnome : public CanWork
 {
 public:
@@ -54,6 +64,16 @@ public:
 
 	void addNeed( QString id, int level );
 	int need( QString id );
+
+	// Mood/Thought system (Milestone 2.1)
+	void addThought( QString id, QString text, int moodValue, int durationTicks, int maxStacks = 5 );
+	void removeThought( QString id );
+	void tickThoughts();
+	int calculateMood() const;
+	int mood() const { return m_mood; }
+	float moodWorkSpeedModifier() const;
+	const QList<Thought>& thoughts() const { return m_thoughts; }
+	QString mentalBreakType() const;
 
 	void selectProfession( QString profession );
 
@@ -127,6 +147,12 @@ protected:
 	unsigned char m_carriedDrinks   = 0;
 
 	QList<ScheduleActivity> m_schedule;
+
+	// Mood system (Milestone 2.1)
+	QList<Thought> m_thoughts;
+	int m_mood = 50;             // 0-100 scale
+	bool m_mentalBreak = false;
+	quint64 m_lastMoodUpdateTick = 0;
 
 	void initTaskMap();
 

@@ -84,6 +84,30 @@ Gnome::Gnome( QVariantMap& in, Game* game ) :
 
 	m_needs = in.value( "Needs" ).toMap();
 
+	// Load mood system (backward-compatible)
+	if ( in.contains( "Mood" ) )
+	{
+		m_mood = in.value( "Mood" ).toInt();
+	}
+	if ( in.contains( "MentalBreak" ) )
+	{
+		m_mentalBreak = in.value( "MentalBreak" ).toBool();
+	}
+	if ( in.contains( "Thoughts" ) )
+	{
+		for ( const auto& tv : in.value( "Thoughts" ).toList() )
+		{
+			auto tm = tv.toMap();
+			Thought t;
+			t.id = tm.value( "ID" ).toString();
+			t.text = tm.value( "Text" ).toString();
+			t.moodValue = tm.value( "MoodValue" ).toInt();
+			t.ticksLeft = tm.value( "TicksLeft" ).toInt();
+			t.maxStacks = tm.value( "MaxStacks" ).toInt();
+			m_thoughts.append( t );
+		}
+	}
+
 	if ( in.contains( "Profession" ) )
 	{
 		m_profession = in.value( "Profession" ).toString();
@@ -161,6 +185,25 @@ void Gnome::serialize( QVariantMap& out )
 	out.insert( "Equipment", m_equipment.serialize() );
 
 	out.insert( "Profession", m_profession );
+
+	// Mood system serialization
+	out.insert( "Mood", m_mood );
+	out.insert( "MentalBreak", m_mentalBreak );
+	QVariantList vThoughts;
+	for ( const auto& t : m_thoughts )
+	{
+		QVariantMap tm;
+		tm.insert( "ID", t.id );
+		tm.insert( "Text", t.text );
+		tm.insert( "MoodValue", t.moodValue );
+		tm.insert( "TicksLeft", t.ticksLeft );
+		tm.insert( "MaxStacks", t.maxStacks );
+		vThoughts.append( tm );
+	}
+	if ( !vThoughts.isEmpty() )
+	{
+		out.insert( "Thoughts", vThoughts );
+	}
 
 	
 
@@ -591,6 +634,125 @@ int Gnome::need( QString id )
 	return 0;
 }
 
+// =============================================================================
+// Mood / Thought System (Milestone 2.1)
+// =============================================================================
+
+void Gnome::addThought( QString id, QString text, int moodValue, int durationTicks, int maxStacks )
+{
+	// Check stack count
+	int stacks = 0;
+	for ( const auto& t : m_thoughts )
+	{
+		if ( t.id == id ) stacks++;
+	}
+	if ( stacks >= maxStacks ) return;
+
+	// Apply trait modulation to mood value
+	int modulated = moodValue;
+	if ( id.contains( "Death" ) || id.contains( "Died" ) )
+	{
+		// Empathy modulates death-related thoughts
+		int empathy = trait( "Empathy" );
+		modulated = moodValue + ( moodValue * empathy / 100 ); // empathy amplifies
+	}
+	else if ( id.contains( "Social" ) || id.contains( "Friend" ) || id.contains( "Rival" ) )
+	{
+		int sociability = trait( "Sociability" );
+		modulated = moodValue + ( moodValue * sociability / 100 );
+	}
+	else if ( id.contains( "Room" ) || id.contains( "Bed" ) )
+	{
+		int greed = trait( "Greed" );
+		modulated = moodValue + ( moodValue * greed / 100 );
+	}
+	else if ( id.contains( "Food" ) || id.contains( "Meal" ) )
+	{
+		int appetite = trait( "Appetite" );
+		modulated = moodValue + ( moodValue * appetite / 100 );
+	}
+
+	Thought thought;
+	thought.id = id;
+	thought.text = text;
+	thought.moodValue = qBound( -30, modulated, 30 );
+	thought.ticksLeft = durationTicks;
+	thought.maxStacks = maxStacks;
+	m_thoughts.append( thought );
+}
+
+void Gnome::removeThought( QString id )
+{
+	for ( int i = m_thoughts.size() - 1; i >= 0; --i )
+	{
+		if ( m_thoughts[i].id == id )
+		{
+			m_thoughts.removeAt( i );
+		}
+	}
+}
+
+void Gnome::tickThoughts()
+{
+	for ( int i = m_thoughts.size() - 1; i >= 0; --i )
+	{
+		m_thoughts[i].ticksLeft--;
+		if ( m_thoughts[i].ticksLeft <= 0 )
+		{
+			m_thoughts.removeAt( i );
+		}
+	}
+
+	m_mood = calculateMood();
+
+	// Store mood in the existing Happiness need for display compatibility
+	m_needs.insert( "Happiness", m_mood );
+}
+
+int Gnome::calculateMood() const
+{
+	// Base mood from Optimism trait: -6 to +6
+	int optimism = trait( "Optimism" );
+	int baseMood = 50 + ( optimism * 6 / 50 ); // maps -50..+50 to 44..56
+
+	// Sum all active thought values
+	int thoughtSum = 0;
+	for ( const auto& t : m_thoughts )
+	{
+		thoughtSum += t.moodValue;
+	}
+
+	// Needs affect mood
+	int hunger = m_needs.contains( "Hunger" ) ? m_needs["Hunger"].toInt() : 50;
+	int thirst = m_needs.contains( "Thirst" ) ? m_needs["Thirst"].toInt() : 50;
+	int sleep = m_needs.contains( "Sleep" ) ? m_needs["Sleep"].toInt() : 50;
+
+	int needsPenalty = 0;
+	if ( hunger < 20 ) needsPenalty -= ( 20 - hunger ) / 4;  // up to -5
+	if ( thirst < 20 ) needsPenalty -= ( 20 - thirst ) / 4;
+	if ( sleep < 20 ) needsPenalty -= ( 20 - sleep ) / 4;
+
+	return qBound( 0, baseMood + thoughtSum + needsPenalty, 100 );
+}
+
+float Gnome::moodWorkSpeedModifier() const
+{
+	// Mood 50 = 1.0x, mood 0 = 0.7x, mood 100 = 1.3x
+	return 0.7f + ( m_mood / 100.0f ) * 0.6f;
+}
+
+QString Gnome::mentalBreakType() const
+{
+	int temper = trait( "Temper" );
+	int nerve = trait( "Nerve" );
+	int optimism = trait( "Optimism" );
+
+	if ( temper > 15 ) return "Tantrum";
+	if ( nerve < -15 ) return "Catatonic";
+	if ( optimism < -15 ) return "SadWander";
+	return "SadWander"; // default
+}
+
 void Gnome::selectProfession( QString profession )
 {
 	if ( m_profession != profession )
@@ -807,7 +969,7 @@ void Gnome::die()
 		}
 	}
 
-	Global::logger().log( LogType::WARNING, m_name + " has died.", m_id );
+	Global::logger().log( LogType::DEATH, m_name + " has died.", m_id );
 }
 
 bool Gnome::checkFloor()
@@ -876,6 +1038,53 @@ bool Gnome::evalNeeds( bool seasonChanged, bool dayChanged, bool hourChanged, bo
 					}
 				}
 			}
+		}
+
+		// Generate mood thoughts from needs
+		int hunger = m_needs.contains( "Hunger" ) ? m_needs["Hunger"].toInt() : 50;
+		int thirst = m_needs.contains( "Thirst" ) ? m_needs["Thirst"].toInt() : 50;
+		if ( hunger < 10 )
+			addThought( "VeryHungry", "Very hungry", -6, 600, 1 );
+		else if ( hunger < 30 )
+			addThought( "Hungry", "Getting hungry", -2, 300, 1 );
+		if ( thirst < 10 )
+			addThought( "VeryThirsty", "Very thirsty", -6, 600, 1 );
+		else if ( thirst < 30 )
+			addThought( "Thirsty", "Getting thirsty", -2, 300, 1 );
+
+		// Social mood thoughts — check relationships with nearby gnomes
+		for ( auto other : g->gm()->gnomes() )
+		{
+			if ( other->id() == id() || other->isDead() ) continue;
+			Position otherPos = other->getPos();
+			int dist = abs( m_position.x - otherPos.x ) + abs( m_position.y - otherPos.y ) + abs( m_position.z - otherPos.z );
+			if ( dist > 5 ) continue;
+
+			int op = g->gm()->opinion( id(), other->id() );
+			if ( op > 30 )
+				addThought( "FriendNearby", "Near a close friend", 3, 200, 1 );
+			else if ( op < -30 )
+				addThought( "RivalNearby", "Near a rival", -2, 200, 1 );
+		}
+	}
+
+	// Tick thoughts every tick (decrement timers, recalculate mood)
+	tickThoughts();
+
+	// Mental break check
+	if ( m_mood < 5 && !m_mentalBreak )
+	{
+		m_mentalBreak = true;
+		QString breakType = mentalBreakType();
+		Global::logger().log( LogType::WARNING, m_name + " is having a mental break! (" + breakType + ")", m_id );
+	}
+	else if ( m_mood > 35 )
+	{
+		if ( m_mentalBreak )
+		{
+			m_mentalBreak = false;
+			// Catharsis: +40 mood equivalent for 2500 ticks (~2.5 in-game days)
+			addThought( "Catharsis", "Feeling better after a breakdown", 15, 2500, 1 );
 		}
 	}
 
