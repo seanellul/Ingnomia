@@ -1125,22 +1125,26 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 	}
 
 	// Active Thoughts
-	if ( !ci.thoughts.isEmpty() )
+	if ( ImGui::CollapsingHeader( "Thoughts", ImGuiTreeNodeFlags_DefaultOpen ) )
 	{
-		if ( ImGui::CollapsingHeader( "Thoughts" ) )
+		ImGui::Indent( 8.0f );
+		if ( ci.thoughts.isEmpty() )
 		{
-			ImGui::Indent( 8.0f );
+			ImGui::TextDisabled( "No strong feelings right now" );
+		}
+		else
+		{
 			for ( const auto& thought : ci.thoughts )
 			{
 				ImVec4 tColor = thought.moodValue > 0 ?
-					ImVec4( 0.3f, 0.7f, 0.3f, 1.0f ) :
-					ImVec4( 0.7f, 0.3f, 0.3f, 1.0f );
+					ImVec4( 0.3f, 0.8f, 0.3f, 1.0f ) :
+					ImVec4( 0.8f, 0.3f, 0.3f, 1.0f );
 				ImGui::TextColored( tColor, "%+d", thought.moodValue );
 				ImGui::SameLine();
 				ImGui::Text( "%s", thought.text.toStdString().c_str() );
 			}
-			ImGui::Unindent( 8.0f );
 		}
+		ImGui::Unindent( 8.0f );
 	}
 
 	// Stats (collapsed by default)

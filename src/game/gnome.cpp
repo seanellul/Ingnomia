@@ -25,6 +25,7 @@
 #include "../base/gamestate.h"
 #include "../base/global.h"
 #include "../base/util.h"
+#include "../game/eventmanager.h"
 #include "../game/inventory.h"
 #include "../game/militarymanager.h"
 #include "../game/plant.h"
@@ -1049,19 +1050,73 @@ bool Gnome::evalNeeds( bool seasonChanged, bool dayChanged, bool hourChanged, bo
 			}
 		}
 
-		// Generate mood thoughts from needs
+		// =====================================================================
+		// Generate mood thoughts from various sources
+		// =====================================================================
+
+		// --- Needs-based thoughts ---
 		int hunger = m_needs.contains( "Hunger" ) ? m_needs["Hunger"].toInt() : 50;
 		int thirst = m_needs.contains( "Thirst" ) ? m_needs["Thirst"].toInt() : 50;
+		int sleepNeed = m_needs.contains( "Sleep" ) ? m_needs["Sleep"].toInt() : 50;
 		if ( hunger < 10 )
-			addThought( "VeryHungry", "Very hungry", -6, 600, 1 );
+			addThought( "VeryHungry", "Starving", -6, 600, 1 );
 		else if ( hunger < 30 )
-			addThought( "Hungry", "Getting hungry", -2, 300, 1 );
+			addThought( "Hungry", "Getting hungry", -3, 300, 1 );
+		else if ( hunger > 80 )
+			addThought( "WellFed", "Well fed", 2, 400, 1 );
 		if ( thirst < 10 )
-			addThought( "VeryThirsty", "Very thirsty", -6, 600, 1 );
+			addThought( "VeryThirsty", "Parched", -6, 600, 1 );
 		else if ( thirst < 30 )
-			addThought( "Thirsty", "Getting thirsty", -2, 300, 1 );
+			addThought( "Thirsty", "Getting thirsty", -3, 300, 1 );
+		else if ( thirst > 80 )
+			addThought( "Refreshed", "Had a good drink", 2, 400, 1 );
+		if ( sleepNeed < 15 )
+			addThought( "Exhausted", "Exhausted", -5, 400, 1 );
+		else if ( sleepNeed > 85 )
+			addThought( "WellRested", "Well rested", 3, 500, 1 );
 
-		// Social mood thoughts — check relationships with nearby gnomes
+		// --- Activity-based thoughts ---
+		if ( m_job )
+		{
+			QString skill = m_job->requiredSkill();
+			// Working thoughts
+			addThought( "Working", "Productive day", 1, 200, 1 );
+
+			// Passion bonus: if the gnome has high Industriousness or Creativity
+			// and is doing a matching skill, they enjoy it more
+			int industriousness = trait( "Industriousness" );
+			if ( industriousness > 20 )
+				addThought( "EnjoyWork", "Enjoying hard work", 2, 300, 1 );
+
+			int creativity = trait( "Creativity" );
+			if ( creativity > 20 && ( skill == "Stonecarving" || skill == "Woodcarving" ||
+				skill == "Pottery" || skill == "JewelryMaking" || skill == "Weaving" ) )
+				addThought( "CreativeWork", "Doing creative work", 3, 400, 1 );
+		}
+		else
+		{
+			// Idle — not inherently bad, but some gnomes dislike it
+			int industriousness = trait( "Industriousness" );
+			if ( industriousness > 25 )
+				addThought( "IdleFrustrated", "Nothing to do", -2, 200, 1 );
+		}
+
+		// --- Environment-based thoughts ---
+		// Sunlight
+		if ( g->w()->hasSunlight( m_position ) )
+			addThought( "Sunlight", "Enjoying the sunshine", 2, 300, 1 );
+
+		// Underground (z below ground level)
+		if ( m_position.z < GameState::groundLevel - 5 )
+		{
+			int curiosity = trait( "Curiosity" );
+			if ( curiosity > 20 )
+				addThought( "DeepExplorer", "Exploring the depths", 3, 400, 1 );
+			else if ( curiosity < -20 )
+				addThought( "DeepUnease", "Uneasy underground", -2, 300, 1 );
+		}
+
+		// --- Social mood thoughts ---
 		for ( auto other : g->gm()->gnomes() )
 		{
 			if ( other->id() == id() || other->isDead() ) continue;
@@ -1072,9 +1127,30 @@ bool Gnome::evalNeeds( bool seasonChanged, bool dayChanged, bool hourChanged, bo
 			int op = g->gm()->opinion( id(), other->id() );
 			if ( op > 30 )
 				addThought( "FriendNearby", "Near a close friend", 3, 200, 1 );
+			else if ( op > 10 )
+				addThought( "FriendlyNearby", "Pleasant company", 1, 200, 1 );
 			else if ( op < -30 )
-				addThought( "RivalNearby", "Near a rival", -2, 200, 1 );
+				addThought( "RivalNearby", "Near a rival", -3, 200, 1 );
 		}
+
+		// --- Sociability-based loneliness ---
+		int sociability = trait( "Sociability" );
+		bool anyoneNearby = false;
+		for ( auto other : g->gm()->gnomes() )
+		{
+			if ( other->id() == id() || other->isDead() ) continue;
+			Position otherPos = other->getPos();
+			int dist = abs( m_position.x - otherPos.x ) + abs( m_position.y - otherPos.y ) + abs( m_position.z - otherPos.z );
+			if ( dist <= 8 ) { anyoneNearby = true; break; }
+		}
+		if ( !anyoneNearby && sociability > 20 )
+			addThought( "Lonely", "Feeling lonely", -3, 300, 1 );
+		else if ( !anyoneNearby && sociability < -20 )
+			addThought( "Solitude", "Enjoying the solitude", 2, 300, 1 );
+
+		// --- Trapped thought ---
+		if ( m_isTrapped )
+			addThought( "Trapped", "Trapped!", -8, 100, 1 );
 	}
 
 	// Tick thoughts every tick (decrement timers, recalculate mood)
@@ -1329,10 +1405,11 @@ bool Gnome::attack( DamageType dt, AnatomyHeight da, int skill, int strength, Po
 	{
 		Global::logger().log( LogType::COMBAT, m_name + " took " + QString::number( strength ) + " damage.", m_id );
 		m_anatomy.damage( &m_equipment, dt, da, ds, strength );
+		g->em()->recordCombatEvent( true, false, true ); // gnome wounded
 	}
 	else
 	{
-		Global::logger().log( LogType::COMBAT, m_name + " dogded the attack. Skill:" + QString::number( skill ) + " Dodge: " + QString::number( dodge ), m_id );
+		Global::logger().log( LogType::COMBAT, m_name + " dodged the attack. Skill:" + QString::number( skill ) + " Dodge: " + QString::number( dodge ), m_id );
 	}
 
 	bool aeExists = false;
