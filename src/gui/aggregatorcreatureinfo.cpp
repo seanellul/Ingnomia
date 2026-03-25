@@ -227,7 +227,7 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 		{
 			m_info.name = monster->name();
 			m_info.id = id;
-			//m_info.profession = monster->profession();
+			m_info.profession = "";
 
 			m_info.str = monster->attribute( "Str" );
 			m_info.con = monster->attribute( "Con" );
@@ -236,12 +236,28 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 			m_info.wis = monster->attribute( "Wis" );
 			m_info.cha = monster->attribute( "Cha" );
 
-			m_info.hunger = 100; //monster->need( "Hunger" );
-			m_info.thirst = 100; //monster->need( "Thirst" );
-			m_info.sleep = 100; //monster->need( "Sleep" );
-			m_info.happiness = 100; //monster->need( "Happiness" );
-			
-			m_info.activity = "Doing something. tbi";
+			m_info.hunger = 100;
+			m_info.thirst = 100;
+			m_info.sleep = 100;
+			m_info.happiness = 100;
+
+			m_info.activity = "";
+
+			// Clear gnome-only personality data
+			m_info.mood = 50;
+			m_info.mentalBreak = false;
+			m_info.childhoodTitle.clear();
+			m_info.childhoodDesc.clear();
+			m_info.adulthoodTitle.clear();
+			m_info.adulthoodDesc.clear();
+			m_info.traits.clear();
+			m_info.thoughts.clear();
+			m_info.relationships.clear();
+			m_info.socialMemories.clear();
+			m_info.baseMood = 50;
+			m_info.thoughtSum = 0;
+			m_info.needsPenalty = 0;
+
 			emit signalCreatureUpdate( m_info );
 			return;
 		}
@@ -252,7 +268,7 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 			{
 				m_info.name = animal->name();
 				m_info.id = id;
-				//m_info.profession = animal->profession();
+				m_info.profession = "";
 
 				m_info.str = animal->attribute( "Str" );
 				m_info.con = animal->attribute( "Con" );
@@ -262,11 +278,27 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 				m_info.cha = animal->attribute( "Cha" );
 
 				m_info.hunger = animal->hunger();
-				m_info.thirst = 100; //animal->need( "Thirst" );
-				m_info.sleep = 100; //animal->need( "Sleep" );
-				m_info.happiness = 100; //animal->need( "Happiness" );
-			
-				m_info.activity = "Doing something. tbi";
+				m_info.thirst = 100;
+				m_info.sleep = 100;
+				m_info.happiness = 100;
+
+				m_info.activity = "";
+
+				// Clear gnome-only personality data
+				m_info.mood = 50;
+				m_info.mentalBreak = false;
+				m_info.childhoodTitle.clear();
+				m_info.childhoodDesc.clear();
+				m_info.adulthoodTitle.clear();
+				m_info.adulthoodDesc.clear();
+				m_info.traits.clear();
+				m_info.thoughts.clear();
+				m_info.relationships.clear();
+				m_info.socialMemories.clear();
+				m_info.baseMood = 50;
+				m_info.thoughtSum = 0;
+				m_info.needsPenalty = 0;
+
 				emit signalCreatureUpdate( m_info );
 				return;
 			}
