@@ -1051,106 +1051,445 @@ bool Gnome::evalNeeds( bool seasonChanged, bool dayChanged, bool hourChanged, bo
 		}
 
 		// =====================================================================
-		// Generate mood thoughts from various sources
+		// Generate mood thoughts from various sources (~120 distinct thoughts)
 		// =====================================================================
 
-		// --- Needs-based thoughts ---
 		int hunger = m_needs.contains( "Hunger" ) ? m_needs["Hunger"].toInt() : 50;
 		int thirst = m_needs.contains( "Thirst" ) ? m_needs["Thirst"].toInt() : 50;
 		int sleepNeed = m_needs.contains( "Sleep" ) ? m_needs["Sleep"].toInt() : 50;
-		if ( hunger < 10 )
-			addThought( "VeryHungry", "Starving", -6, 600, 1 );
-		else if ( hunger < 30 )
-			addThought( "Hungry", "Getting hungry", -3, 300, 1 );
-		else if ( hunger > 80 )
-			addThought( "WellFed", "Well fed", 2, 400, 1 );
-		if ( thirst < 10 )
-			addThought( "VeryThirsty", "Parched", -6, 600, 1 );
-		else if ( thirst < 30 )
-			addThought( "Thirsty", "Getting thirsty", -3, 300, 1 );
-		else if ( thirst > 80 )
-			addThought( "Refreshed", "Had a good drink", 2, 400, 1 );
-		if ( sleepNeed < 15 )
-			addThought( "Exhausted", "Exhausted", -5, 400, 1 );
-		else if ( sleepNeed > 85 )
-			addThought( "WellRested", "Well rested", 3, 500, 1 );
+		int bravery = trait( "Bravery" );
+		int sociability = trait( "Sociability" );
+		int industriousness = trait( "Industriousness" );
+		int appetite = trait( "Appetite" );
+		int temper = trait( "Temper" );
+		int creativity = trait( "Creativity" );
+		int greed = trait( "Greed" );
+		int curiosity = trait( "Curiosity" );
+		int empathy = trait( "Empathy" );
+		int stubbornness = trait( "Stubbornness" );
+		int optimism = trait( "Optimism" );
+		int nerve = trait( "Nerve" );
 
-		// --- Activity-based thoughts ---
+		// =================================================================
+		// 1. NEEDS-BASED THOUGHTS (12)
+		// =================================================================
+		if ( hunger < 5 )         addThought( "Starving", "Starving to death", -10, 600, 1 );
+		else if ( hunger < 15 )   addThought( "VeryHungry", "Desperately hungry", -6, 500, 1 );
+		else if ( hunger < 30 )   addThought( "Hungry", "Getting hungry", -3, 300, 1 );
+		else if ( hunger > 90 )   addThought( "Stuffed", "Pleasantly full", 3, 400, 1 );
+		else if ( hunger > 75 )   addThought( "WellFed", "Well fed", 2, 400, 1 );
+
+		if ( thirst < 5 )         addThought( "DyingOfThirst", "Dying of thirst", -10, 600, 1 );
+		else if ( thirst < 15 )   addThought( "VeryThirsty", "Parched", -6, 500, 1 );
+		else if ( thirst < 30 )   addThought( "Thirsty", "Getting thirsty", -3, 300, 1 );
+		else if ( thirst > 90 )   addThought( "WellHydrated", "Nicely hydrated", 3, 400, 1 );
+		else if ( thirst > 75 )   addThought( "Refreshed", "Had a good drink", 2, 400, 1 );
+
+		if ( sleepNeed < 10 )     addThought( "PassingOut", "About to collapse from exhaustion", -8, 400, 1 );
+		else if ( sleepNeed < 20 ) addThought( "Exhausted", "Exhausted", -5, 400, 1 );
+		else if ( sleepNeed < 35 ) addThought( "Tired", "Getting tired", -2, 300, 1 );
+		else if ( sleepNeed > 90 ) addThought( "WellRested", "Well rested and alert", 4, 500, 1 );
+		else if ( sleepNeed > 75 ) addThought( "Rested", "Feeling rested", 2, 400, 1 );
+
+		// =================================================================
+		// 2. ACTIVITY / WORK THOUGHTS (30)
+		// =================================================================
 		if ( m_job )
 		{
 			QString skill = m_job->requiredSkill();
-			// Working thoughts
+
+			// General work satisfaction
 			addThought( "Working", "Productive day", 1, 200, 1 );
 
-			// Passion bonus: if the gnome has high Industriousness or Creativity
-			// and is doing a matching skill, they enjoy it more
-			int industriousness = trait( "Industriousness" );
-			if ( industriousness > 20 )
-				addThought( "EnjoyWork", "Enjoying hard work", 2, 300, 1 );
+			// Industriousness-driven
+			if ( industriousness > 25 )
+				addThought( "LovesWork", "In the zone — nothing beats hard work", 3, 400, 1 );
+			else if ( industriousness > 10 )
+				addThought( "EnjoyWork", "Enjoying the work", 2, 300, 1 );
+			else if ( industriousness < -25 )
+				addThought( "GrudgingWork", "Would rather be napping", -2, 200, 1 );
 
-			int creativity = trait( "Creativity" );
-			if ( creativity > 20 && ( skill == "Stonecarving" || skill == "Woodcarving" ||
-				skill == "Pottery" || skill == "JewelryMaking" || skill == "Weaving" ) )
+			// Craft skill satisfaction
+			if ( creativity > 15 && ( skill == "Stonecarving" || skill == "Woodcarving" ||
+				skill == "Pottery" || skill == "JewelryMaking" || skill == "Weaving" ||
+				skill == "Tailoring" || skill == "GlassMaking" ) )
 				addThought( "CreativeWork", "Doing creative work", 3, 400, 1 );
+
+			// Combat training / military
+			if ( skill == "Melee" || skill == "Ranged" || skill == "Dodge" ||
+				skill == "Block" || skill == "Unarmed" || skill == "Crossbow" )
+			{
+				if ( bravery > 15 )
+					addThought( "EnjoysCombatTraining", "Enjoying combat training", 3, 400, 1 );
+				else if ( bravery < -15 )
+					addThought( "DreadsCombat", "Dreading this fighting", -3, 300, 1 );
+			}
+
+			// Mining
+			if ( skill == "Mining" )
+			{
+				if ( curiosity > 15 )
+					addThought( "MiningExcitement", "Wondering what's deeper down", 2, 300, 1 );
+				addThought( "MiningWork", "Swinging the pickaxe", 1, 200, 1 );
+			}
+
+			// Farming
+			if ( skill == "Farming" || skill == "Horticulture" )
+			{
+				addThought( "FarmingWork", "Working the soil", 1, 200, 1 );
+				if ( appetite > 15 )
+					addThought( "FarmerGourmand", "Growing ingredients for fine meals", 2, 300, 1 );
+			}
+
+			// Cooking / Brewing
+			if ( skill == "Cooking" )
+				addThought( "CookingWork", "Preparing a meal", 2, 300, 1 );
+			if ( skill == "Brewing" )
+				addThought( "BrewingWork", "Crafting a fine brew", 2, 300, 1 );
+
+			// Construction
+			if ( skill == "Construction" || skill == "Masonry" )
+				addThought( "BuildingWork", "Building something lasting", 2, 300, 1 );
+
+			// Engineering / Tinkering
+			if ( skill == "Tinkering" || skill == "Engineering" || skill == "Machining" )
+			{
+				if ( curiosity > 15 )
+					addThought( "TinkeringJoy", "Fascinated by the mechanism", 3, 400, 1 );
+				addThought( "EngineerWork", "Working with gears and levers", 1, 200, 1 );
+			}
+
+			// Smithing
+			if ( skill == "Blacksmithing" || skill == "Smelting" || skill == "WeaponCrafting" || skill == "ArmorCrafting" )
+				addThought( "SmithWork", "The heat of the forge", 2, 300, 1 );
+
+			// Woodcutting
+			if ( skill == "Woodcutting" )
+				addThought( "WoodcuttingWork", "Felling timber", 1, 200, 1 );
+
+			// Medical
+			if ( skill == "Medic" || skill == "Caretaking" )
+			{
+				if ( empathy > 15 )
+					addThought( "HealingOthers", "Helping someone in pain", 4, 400, 1 );
+				else
+					addThought( "MedicalDuty", "Tending to the wounded", 1, 200, 1 );
+			}
+
+			// Hauling (the boring job)
+			if ( skill == "Hauling" )
+			{
+				if ( industriousness > 20 )
+					addThought( "HaulingDiligent", "Keeping things organized", 1, 200, 1 );
+				else if ( industriousness < -10 )
+					addThought( "HaulingBoring", "Hauling is so tedious", -1, 200, 1 );
+			}
+
+			// Butchery
+			if ( skill == "Butchery" )
+			{
+				if ( empathy > 20 )
+					addThought( "ButcheryDiscomfort", "Unpleasant work at the butcher's block", -2, 300, 1 );
+			}
+
+			// Gemcutting / Jewelry
+			if ( skill == "Gemcutting" || skill == "JewelryMaking" )
+			{
+				if ( greed > 15 )
+					addThought( "GemGreed", "Admiring the sparkle of gems", 3, 400, 1 );
+			}
 		}
 		else
 		{
-			// Idle — not inherently bad, but some gnomes dislike it
-			int industriousness = trait( "Industriousness" );
+			// Idle thoughts
 			if ( industriousness > 25 )
-				addThought( "IdleFrustrated", "Nothing to do", -2, 200, 1 );
+				addThought( "IdleFrustrated", "Restless — nothing to do", -3, 200, 1 );
+			else if ( industriousness > 10 )
+				addThought( "IdleAntsy", "Looking for something useful to do", -1, 200, 1 );
+			else if ( industriousness < -25 )
+				addThought( "IdleHappy", "Enjoying a well-deserved break", 3, 300, 1 );
+			else if ( industriousness < -10 )
+				addThought( "IdleRelaxed", "Taking it easy", 1, 200, 1 );
 		}
 
-		// --- Environment-based thoughts ---
+		// =================================================================
+		// 3. ENVIRONMENT THOUGHTS (25)
+		// =================================================================
+		bool inSunlight = g->w()->hasSunlight( m_position );
+		bool underground = ( m_position.z < GameState::groundLevel - 3 );
+		bool deepUnderground = ( m_position.z < GameState::groundLevel - 15 );
+		TileFlag flags = g->w()->getTileFlag( m_position );
+
 		// Sunlight
-		if ( g->w()->hasSunlight( m_position ) )
+		if ( inSunlight )
+		{
 			addThought( "Sunlight", "Enjoying the sunshine", 2, 300, 1 );
+			if ( optimism > 15 )
+				addThought( "SunnyOptimist", "What a beautiful day", 2, 300, 1 );
+		}
 
-		// Underground (z below ground level)
-		if ( m_position.z < GameState::groundLevel - 5 )
+		// Underground depth
+		if ( deepUnderground )
 		{
-			int curiosity = trait( "Curiosity" );
 			if ( curiosity > 20 )
-				addThought( "DeepExplorer", "Exploring the depths", 3, 400, 1 );
+				addThought( "DeepExplorer", "Exploring the deep places of the world", 4, 500, 1 );
+			else if ( curiosity > 0 )
+				addThought( "DeepCurious", "Wondering what lies further down", 1, 300, 1 );
+			else if ( nerve < -15 )
+				addThought( "DeepFear", "The darkness presses in from all sides", -4, 400, 1 );
+			else if ( curiosity < -15 )
+				addThought( "DeepUnease", "Uneasy this far underground", -3, 300, 1 );
+		}
+		else if ( underground )
+		{
+			if ( curiosity > 20 )
+				addThought( "UndergroundExplorer", "Interesting geology down here", 2, 300, 1 );
 			else if ( curiosity < -20 )
-				addThought( "DeepUnease", "Uneasy underground", -2, 300, 1 );
+				addThought( "UndergroundDislike", "Miss the open sky", -2, 300, 1 );
 		}
 
-		// --- Social mood thoughts ---
-		for ( auto other : g->gm()->gnomes() )
+		// On the surface
+		if ( !underground && !inSunlight )
 		{
-			if ( other->id() == id() || other->isDead() ) continue;
-			Position otherPos = other->getPos();
-			int dist = abs( m_position.x - otherPos.x ) + abs( m_position.y - otherPos.y ) + abs( m_position.z - otherPos.z );
-			if ( dist > 5 ) continue;
-
-			int op = g->gm()->opinion( id(), other->id() );
-			if ( op > 30 )
-				addThought( "FriendNearby", "Near a close friend", 3, 200, 1 );
-			else if ( op > 10 )
-				addThought( "FriendlyNearby", "Pleasant company", 1, 200, 1 );
-			else if ( op < -30 )
-				addThought( "RivalNearby", "Near a rival", -3, 200, 1 );
+			// Overcast / night
+			if ( optimism < -15 )
+				addThought( "GloomyDay", "Another grey day", -1, 200, 1 );
 		}
 
-		// --- Sociability-based loneliness ---
-		int sociability = trait( "Sociability" );
+		// Near water (on a tile with fluid)
+		if ( flags & TileFlag::TF_WATER )
+			addThought( "NearWater", "The sound of flowing water is calming", 2, 300, 1 );
+
+		// In a stockpile (standing on stored goods)
+		if ( flags & TileFlag::TF_STOCKPILE )
+		{
+			if ( greed > 20 )
+				addThought( "SurroundedByGoods", "Surrounded by wealth", 2, 300, 1 );
+		}
+
+		// In a workshop
+		if ( flags & TileFlag::TF_WORKSHOP )
+		{
+			if ( creativity > 20 )
+				addThought( "WorkshopInspiration", "Inspired by the workshop", 1, 200, 1 );
+		}
+
+		// In a room (bedroom, dining hall, etc.)
+		if ( flags & TileFlag::TF_ROOM )
+		{
+			addThought( "Indoors", "Sheltered and comfortable", 1, 200, 1 );
+			if ( greed > 20 )
+				addThought( "NiceRoom", "Appreciating the room", 2, 300, 1 );
+		}
+
+		// On a farm
+		if ( flags & TileFlag::TF_FARM )
+		{
+			addThought( "OnFarm", "Fresh air and growing things", 1, 200, 1 );
+		}
+
+		// In a grove
+		if ( flags & TileFlag::TF_GROVE )
+		{
+			addThought( "InGrove", "Peaceful among the trees", 2, 300, 1 );
+		}
+
+		// =================================================================
+		// 4. SOCIAL THOUGHTS (20)
+		// =================================================================
 		bool anyoneNearby = false;
+		int nearbyGnomeCount = 0;
+		int nearbyFriends = 0;
+		int nearbyRivals = 0;
 		for ( auto other : g->gm()->gnomes() )
 		{
 			if ( other->id() == id() || other->isDead() ) continue;
 			Position otherPos = other->getPos();
 			int dist = abs( m_position.x - otherPos.x ) + abs( m_position.y - otherPos.y ) + abs( m_position.z - otherPos.z );
-			if ( dist <= 8 ) { anyoneNearby = true; break; }
-		}
-		if ( !anyoneNearby && sociability > 20 )
-			addThought( "Lonely", "Feeling lonely", -3, 300, 1 );
-		else if ( !anyoneNearby && sociability < -20 )
-			addThought( "Solitude", "Enjoying the solitude", 2, 300, 1 );
+			if ( dist > 8 ) continue;
 
-		// --- Trapped thought ---
+			anyoneNearby = true;
+			nearbyGnomeCount++;
+
+			if ( dist <= 5 )
+			{
+				int op = g->gm()->opinion( id(), other->id() );
+				if ( op > 50 )
+				{
+					addThought( "BestFriendNearby", "Near my best friend", 5, 250, 1 );
+					nearbyFriends++;
+				}
+				else if ( op > 30 )
+				{
+					addThought( "FriendNearby", "Near a close friend", 3, 200, 2 );
+					nearbyFriends++;
+				}
+				else if ( op > 10 )
+				{
+					addThought( "FriendlyNearby", "Pleasant company", 1, 200, 2 );
+				}
+				else if ( op < -50 )
+				{
+					addThought( "ArchRivalNearby", "Near someone I despise", -5, 250, 1 );
+					nearbyRivals++;
+				}
+				else if ( op < -30 )
+				{
+					addThought( "RivalNearby", "Near a rival", -3, 200, 2 );
+					nearbyRivals++;
+				}
+				else if ( op < -10 )
+				{
+					addThought( "DislikedNearby", "Near someone annoying", -1, 200, 2 );
+				}
+			}
+		}
+
+		// Crowd thoughts
+		if ( nearbyGnomeCount >= 5 )
+		{
+			if ( sociability > 15 )
+				addThought( "LovesCrowds", "Great to be around so many people", 3, 300, 1 );
+			else if ( sociability < -15 )
+				addThought( "Crowded", "Too many people around", -3, 300, 1 );
+		}
+
+		// Loneliness / solitude
+		if ( !anyoneNearby )
+		{
+			if ( sociability > 25 )
+				addThought( "VeryLonely", "So alone — need company", -4, 400, 1 );
+			else if ( sociability > 10 )
+				addThought( "Lonely", "Feeling lonely", -2, 300, 1 );
+			else if ( sociability < -25 )
+				addThought( "BlissfulSolitude", "Perfect peace and quiet", 4, 400, 1 );
+			else if ( sociability < -10 )
+				addThought( "Solitude", "Enjoying the solitude", 2, 300, 1 );
+		}
+
+		// Social satisfaction
+		if ( nearbyFriends >= 2 )
+			addThought( "AmongFriends", "Surrounded by friends", 4, 300, 1 );
+		if ( nearbyRivals >= 2 )
+			addThought( "TooManyRivals", "Too many enemies around", -4, 300, 1 );
+
+		// =================================================================
+		// 5. PERSONALITY-DRIVEN AMBIENT THOUGHTS (25)
+		// =================================================================
+
+		// Optimism / Pessimism (always-on baseline)
+		if ( optimism > 30 )
+			addThought( "NaturallyHappy", "Life is good", 3, 500, 1 );
+		else if ( optimism > 15 )
+			addThought( "OptimisticOutlook", "Things are looking up", 1, 400, 1 );
+		else if ( optimism < -30 )
+			addThought( "NaturallyGloomy", "Everything feels hopeless", -3, 500, 1 );
+		else if ( optimism < -15 )
+			addThought( "PessimisticOutlook", "Something bad will happen soon", -1, 400, 1 );
+
+		// Bravery-related ambient thoughts
+		if ( bravery > 30 )
+			addThought( "FeelingBrave", "Ready for anything", 2, 400, 1 );
+		else if ( bravery < -30 )
+			addThought( "FeelingAnxious", "Jumping at shadows", -2, 400, 1 );
+
+		// Greed-related
+		if ( greed > 30 && hunger > 50 && thirst > 50 && sleepNeed > 50 )
+			addThought( "WantsMore", "Need finer things in life", -1, 300, 1 );
+		else if ( greed < -20 && hunger > 40 && thirst > 40 )
+			addThought( "ContentSimple", "Simple life is the best life", 2, 400, 1 );
+
+		// Appetite-related
+		if ( appetite > 25 && hunger > 50 && hunger < 80 )
+			addThought( "CravingBetterFood", "Could really go for a proper meal", -1, 300, 1 );
+		else if ( appetite < -20 && hunger > 30 )
+			addThought( "FoodIsJustFuel", "Food is fuel, nothing more", 1, 300, 1 );
+
+		// Temper
+		if ( temper > 30 )
+			addThought( "SimmingAnger", "Irritated at the world", -2, 400, 1 );
+		else if ( temper < -25 )
+			addThought( "InnerPeace", "Feeling calm and centered", 2, 400, 1 );
+
+		// Stubbornness
+		if ( stubbornness > 30 )
+			addThought( "Determined", "Won't give up", 1, 300, 1 );
+		else if ( stubbornness < -25 )
+			addThought( "Adaptable", "Rolling with the punches", 1, 300, 1 );
+
+		// Empathy ambient
+		if ( empathy > 30 && g->gm()->numGnomes() > 0 )
+			addThought( "CaresAboutOthers", "Hoping everyone is doing well", 1, 300, 1 );
+		else if ( empathy < -25 )
+			addThought( "SelfFocused", "Looking out for number one", 0, 300, 1 );
+
+		// Nerve
+		if ( nerve > 25 )
+			addThought( "SteadyNerves", "Cool under pressure", 2, 400, 1 );
+		else if ( nerve < -25 )
+			addThought( "OnEdge", "On edge — something could go wrong", -2, 400, 1 );
+
+		// Curiosity ambient
+		if ( curiosity > 25 && !m_job )
+			addThought( "WantsToExplore", "Itching to discover something new", 1, 300, 1 );
+
+		// =================================================================
+		// 6. KINGDOM / SITUATION THOUGHTS (10)
+		// =================================================================
+		int gnomeCount = g->gm()->numGnomes();
+
+		// Colony size feelings
+		if ( gnomeCount == 1 )
+			addThought( "OnlyOne", "All alone in this kingdom", -4, 500, 1 );
+		else if ( gnomeCount <= 3 )
+			addThought( "SmallColony", "We're a tiny group — need more gnomads", -1, 400, 1 );
+		else if ( gnomeCount >= 15 )
+			addThought( "ThrivingColony", "The kingdom is thriving", 3, 500, 1 );
+		else if ( gnomeCount >= 8 )
+			addThought( "GrowingColony", "The colony is growing nicely", 1, 400, 1 );
+
+		// Season thoughts
+		if ( GameState::seasonString == "Spring" )
+			addThought( "SpringFeeling", "The world feels fresh and new", 2, 600, 1 );
+		else if ( GameState::seasonString == "Summer" )
+			addThought( "SummerWarmth", "Warm days and long evenings", 1, 600, 1 );
+		else if ( GameState::seasonString == "Autumn" )
+			addThought( "AutumnMelancholy", "The leaves are turning", 0, 600, 1 );
+		else if ( GameState::seasonString == "Winter" )
+		{
+			if ( optimism > 10 )
+				addThought( "WinterCozy", "Cozy season by the fire", 1, 600, 1 );
+			else
+				addThought( "WinterCold", "The cold seeps in", -1, 600, 1 );
+		}
+
+		// Time of day thoughts
+		if ( GameState::hour >= 22 || GameState::hour < 5 )
+		{
+			if ( sleepNeed < 50 )
+				addThought( "LateNight", "Should be sleeping", -2, 100, 1 );
+		}
+		else if ( GameState::hour >= 6 && GameState::hour < 9 )
+		{
+			if ( sleepNeed > 60 )
+				addThought( "MorningFresh", "Fresh start to the day", 2, 200, 1 );
+		}
+
+		// =================================================================
+		// 7. STATUS THOUGHTS (5)
+		// =================================================================
 		if ( m_isTrapped )
-			addThought( "Trapped", "Trapped!", -8, 100, 1 );
+			addThought( "Trapped", "Trapped! Can't reach anything!", -10, 100, 1 );
+
+		if ( GameState::lockdown )
+		{
+			if ( bravery > 15 )
+				addThought( "LockdownBrave", "We should be out there fighting", -1, 200, 1 );
+			else if ( nerve < -10 )
+				addThought( "LockdownScared", "Thank goodness for the lockdown", 2, 200, 1 );
+			else
+				addThought( "LockdownNeutral", "Confined during lockdown", -1, 200, 1 );
+		}
 	}
 
 	// Tick thoughts every tick (decrement timers, recalculate mood)
