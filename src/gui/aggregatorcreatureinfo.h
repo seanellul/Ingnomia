@@ -48,6 +48,10 @@ struct GuiCreatureInfo
 	QString name;
 	unsigned int id = 0;
 	QString profession;
+	QString species;       // e.g. "Wolf", "Goblin"
+	QString creatureType;  // "Gnome", "Animal", "Monster"
+	int healthPercent = 100; // blood / maxBlood as percentage
+	QString healthStatus;  // "Healthy", "Wounded", "Bleeding"
 	int str = 0;
 	int dex = 0;
 	int con = 0;

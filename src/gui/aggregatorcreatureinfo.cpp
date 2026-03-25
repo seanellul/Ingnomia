@@ -61,6 +61,10 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 		m_info.name = gnome->name();
 		m_info.id = id;
 		m_info.profession = gnome->profession();
+		m_info.creatureType = "Gnome";
+		m_info.species = "Gnome";
+		m_info.healthPercent = 100; // TODO: derive from anatomy
+		m_info.healthStatus = "Healthy";
 
 		m_info.str = gnome->attribute( "Str" );
 		m_info.con = gnome->attribute( "Con" );
@@ -222,29 +226,10 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 	}
 	else
 	{
-		auto monster = g->cm()->monster( id );
-		if( monster )
+		// Helper to clear gnome-only personality data
+		auto clearPersonality = [this]()
 		{
-			m_info.name = monster->name();
-			m_info.id = id;
-			m_info.profession = "";
-
-			m_info.str = monster->attribute( "Str" );
-			m_info.con = monster->attribute( "Con" );
-			m_info.dex = monster->attribute( "Dex" );
-			m_info.intel = monster->attribute( "Int" );
-			m_info.wis = monster->attribute( "Wis" );
-			m_info.cha = monster->attribute( "Cha" );
-
-			m_info.hunger = 100;
-			m_info.thirst = 100;
-			m_info.sleep = 100;
-			m_info.happiness = 100;
-
-			m_info.activity = "";
-
-			// Clear gnome-only personality data
-			m_info.mood = 50;
+			m_info.mood = 0;
 			m_info.mentalBreak = false;
 			m_info.childhoodTitle.clear();
 			m_info.childhoodDesc.clear();
@@ -254,10 +239,39 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 			m_info.thoughts.clear();
 			m_info.relationships.clear();
 			m_info.socialMemories.clear();
-			m_info.baseMood = 50;
+			m_info.baseMood = 0;
 			m_info.thoughtSum = 0;
 			m_info.needsPenalty = 0;
+			m_info.str = 0;
+			m_info.dex = 0;
+			m_info.con = 0;
+			m_info.intel = 0;
+			m_info.wis = 0;
+			m_info.cha = 0;
+		};
 
+		auto monster = g->cm()->monster( id );
+		if( monster )
+		{
+			m_info.name = monster->name();
+			m_info.id = id;
+			m_info.creatureType = "Monster";
+			m_info.species = S::s( "$CreatureName_" + monster->species() );
+			m_info.profession = m_info.species;
+			m_info.activity = "";
+
+			m_info.hunger = 100;
+			m_info.thirst = 100;
+			m_info.sleep = 100;
+			m_info.happiness = 100;
+
+			// Health from anatomy
+			auto status = monster->anatomyStatus();
+			m_info.healthStatus = ( status & AS_DEAD ) ? "Dead" :
+				( status & AS_WOUNDED ) ? "Wounded" : "Healthy";
+			m_info.healthPercent = qBound( 0, (int)( monster->anatomyBlood() * 100.0f / qMax( 1.0f, monster->anatomyMaxBlood() ) ), 100 );
+
+			clearPersonality();
 			emit signalCreatureUpdate( m_info );
 			return;
 		}
@@ -268,37 +282,23 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 			{
 				m_info.name = animal->name();
 				m_info.id = id;
-				m_info.profession = "";
+				m_info.creatureType = "Animal";
+				m_info.species = S::s( "$CreatureName_" + animal->species() );
+				m_info.profession = animal->isTame() ? "Tame" : "Wild";
+				m_info.activity = "";
 
-				m_info.str = animal->attribute( "Str" );
-				m_info.con = animal->attribute( "Con" );
-				m_info.dex = animal->attribute( "Dex" );
-				m_info.intel = animal->attribute( "Int" );
-				m_info.wis = animal->attribute( "Wis" );
-				m_info.cha = animal->attribute( "Cha" );
-
-				m_info.hunger = animal->hunger();
+				m_info.hunger = (int)animal->hunger();
 				m_info.thirst = 100;
 				m_info.sleep = 100;
 				m_info.happiness = 100;
 
-				m_info.activity = "";
+				// Health from anatomy
+				auto status = animal->anatomyStatus();
+				m_info.healthStatus = ( status & AS_DEAD ) ? "Dead" :
+					( status & AS_WOUNDED ) ? "Wounded" : "Healthy";
+				m_info.healthPercent = qBound( 0, (int)( animal->anatomyBlood() * 100.0f / qMax( 1.0f, animal->anatomyMaxBlood() ) ), 100 );
 
-				// Clear gnome-only personality data
-				m_info.mood = 50;
-				m_info.mentalBreak = false;
-				m_info.childhoodTitle.clear();
-				m_info.childhoodDesc.clear();
-				m_info.adulthoodTitle.clear();
-				m_info.adulthoodDesc.clear();
-				m_info.traits.clear();
-				m_info.thoughts.clear();
-				m_info.relationships.clear();
-				m_info.socialMemories.clear();
-				m_info.baseMood = 50;
-				m_info.thoughtSum = 0;
-				m_info.needsPenalty = 0;
-
+				clearPersonality();
 				emit signalCreatureUpdate( m_info );
 				return;
 			}
