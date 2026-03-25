@@ -137,64 +137,82 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 		bridge.spriteTexCache = new SpriteTextureCache();
 	}
 
+	float iconSize = 64.0f;
+
 	for ( const auto& item : bridge.buildItems )
 	{
 		ImGui::PushID( item.id.toStdString().c_str() );
 
 		ImGui::Separator();
 
-		// Show sprite icon from pre-generated buffer (populated by aggregator)
+		// Get sprite texture from pre-generated buffer
 		ImTextureID texID = (ImTextureID)0;
 		if ( !item.buffer.empty() && item.iconWidth > 0 && item.iconHeight > 0 )
 		{
-			// Use a hash of the item id as cache key
 			unsigned int cacheKey = qHash( item.id ) + 100000;
 			texID = bridge.spriteTexCache->getTextureFromBuffer( cacheKey, item.buffer.data(), item.iconWidth, item.iconHeight );
 		}
+
+		// Layout: square icon on left, title + dropdowns + buttons on right
+		ImVec2 startPos = ImGui::GetCursorPos();
+
+		// Draw icon (square)
 		if ( texID )
 		{
-			ImGui::Image( texID, ImVec2( 32, 64 ) );
-			ImGui::SameLine();
+			ImGui::Image( texID, ImVec2( iconSize, iconSize ) );
 		}
+		else
+		{
+			// Placeholder box if no icon
+			ImGui::Dummy( ImVec2( iconSize, iconSize ) );
+		}
+
+		// Position right column next to icon
+		float rightX = startPos.x + iconSize + 8;
+		float rightW = ImGui::GetContentRegionAvail().x - iconSize - 8;
+
+		// Title — aligned with top of icon
+		ImGui::SetCursorPos( ImVec2( rightX, startPos.y ) );
 		ImGui::Text( "%s", item.name.toStdString().c_str() );
 
-		// Material dropdowns per required item
+		// Material dropdowns — below title, aligned with icon
 		QStringList mats;
 		bool canBuild = true;
+		float dropdownW = qMax( 120.0f, rightW - 80 );
 
 		for ( int r = 0; r < item.requiredItems.size(); ++r )
 		{
 			const auto& req = item.requiredItems[r];
+			ImGui::SetCursorPosX( rightX );
+
 			if ( req.availableMats.isEmpty() )
 			{
 				canBuild = false;
 				QString unavailName = S::s( "$ItemName_" + req.itemID );
-				ImGui::TextDisabled( "  %d x %s (unavailable)", req.amount, unavailName.toStdString().c_str() );
+				ImGui::TextDisabled( "%d x %s (unavailable)", req.amount, unavailName.toStdString().c_str() );
 				mats.append( "" );
 				continue;
 			}
 
-			// Get or init selected index
 			int& selIdx = s_selectedMats[item.id][r];
 			if ( selIdx >= req.availableMats.size() ) selIdx = 0;
 
-			// Show required item type + count
+			// Compact: "N  item_name  [dropdown]"
 			QString itemName = S::s( "$ItemName_" + req.itemID );
-			ImGui::Text( "  %d x %s:", req.amount, itemName.toStdString().c_str() );
+			ImGui::Text( "%d", req.amount );
 			ImGui::SameLine();
+			ImGui::SetNextItemWidth( dropdownW );
 
-			// Material combo
 			QString comboLabel = "##mat" + QString::number( r );
 			QString matName = S::s( "$MaterialName_" + req.availableMats[selIdx].first );
-			QString preview = matName + " (" + QString::number( req.availableMats[selIdx].second ) + ")";
+			QString preview = matName + " " + itemName + " (" + QString::number( req.availableMats[selIdx].second ) + ")";
 
-			ImGui::SetNextItemWidth( 180 );
 			if ( ImGui::BeginCombo( comboLabel.toStdString().c_str(), preview.toStdString().c_str() ) )
 			{
 				for ( int m = 0; m < req.availableMats.size(); ++m )
 				{
 					QString mLabel = S::s( "$MaterialName_" + req.availableMats[m].first );
-					QString label = mLabel + " (" + QString::number( req.availableMats[m].second ) + ")";
+					QString label = mLabel + " " + itemName + " (" + QString::number( req.availableMats[m].second ) + ")";
 					if ( ImGui::Selectable( label.toStdString().c_str(), m == selIdx ) )
 					{
 						selIdx = m;
@@ -206,9 +224,10 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 			mats.append( req.availableMats[selIdx].first );
 		}
 
-		// Action buttons: Build (primary), then Fill Hole / Replace (secondary)
+		// Buttons — right-aligned below dropdowns
+		ImGui::SetCursorPosX( rightX );
 		if ( !canBuild ) ImGui::BeginDisabled();
-		if ( ImGui::Button( "Build" ) )
+		if ( ImGui::SmallButton( "Build" ) )
 		{
 			bridge.cmdBuild( item.biType, "", item.id, mats );
 		}
@@ -223,23 +242,25 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 			{
 				ImGui::SameLine();
 				if ( !canBuild ) ImGui::BeginDisabled();
-				if ( ImGui::Button( "Fill Hole" ) )
-				{
-					bridge.cmdBuild( item.biType, "FillHole", item.id, mats );
-				}
+				if ( ImGui::SmallButton( "Fill Hole" ) ) { bridge.cmdBuild( item.biType, "FillHole", item.id, mats ); }
 				if ( !canBuild ) ImGui::EndDisabled();
 			}
 			if ( isWall || isFloor )
 			{
 				ImGui::SameLine();
 				if ( !canBuild ) ImGui::BeginDisabled();
-				if ( ImGui::Button( "Replace" ) )
-				{
-					bridge.cmdBuild( item.biType, "Replace", item.id, mats );
-				}
+				if ( ImGui::SmallButton( "Replace" ) ) { bridge.cmdBuild( item.biType, "Replace", item.id, mats ); }
 				if ( !canBuild ) ImGui::EndDisabled();
 			}
 		}
+
+		// Ensure cursor is past the icon height
+		float endY = startPos.y + iconSize + ImGui::GetStyle().ItemSpacing.y;
+		if ( ImGui::GetCursorPosY() < endY )
+		{
+			ImGui::SetCursorPosY( endY );
+		}
+		ImGui::Dummy( ImVec2( 0, 0 ) ); // satisfy ImGui bounds check
 
 		ImGui::PopID();
 	}
@@ -524,13 +545,26 @@ void drawGameHUD( ImGuiBridge& bridge )
 			ImGui::Begin( "##buildsubcats", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar );
 
 			// Map subcategory labels to representative sprites for icons
-			static QMap<QString, QString> subcatSprites = {
-				{ "Wood", "Log" }, { "Soil", "RawSoil" }, { "Stone", "RawStone" },
-				{ "Metal", "Bar" }, { "Other", "RawStone" },
-				{ "Food", "Grain" }, { "Crafts", "Plank" }, { "Mechanics", "Axle" }, { "Misc", "Torch" },
-				{ "Chairs", "Chair" }, { "Tables", "Table" }, { "Beds", "Bed" }, { "Cabinets", "Cabinet" },
-				{ "Doors", "Door" }, { "Lights", "Torch" }, { "Farm", "Trough" },
-				{ "Mechanism", "Lever" }, { "Hydraulics", "Pump" }
+			struct SubcatSpriteInfo { QString itemSID; QString material; };
+			static QMap<QString, SubcatSpriteInfo> subcatSprites = {
+				{ "Wood",       { "Log", "Oak" } },
+				{ "Soil",       { "RawSoil", "Dirt" } },
+				{ "Stone",      { "RawStone", "Granite" } },
+				{ "Metal",      { "Bar", "Iron" } },
+				{ "Other",      { "RawStone", "Ite" } },
+				{ "Food",       { "Grain", "Wheat" } },
+				{ "Crafts",     { "Plank", "Oak" } },
+				{ "Mechanics",  { "Axle", "Oak" } },
+				{ "Misc",       { "Torch", "Oak" } },
+				{ "Chairs",     { "Chair", "Oak" } },
+				{ "Tables",     { "Table", "Oak" } },
+				{ "Beds",       { "Bed", "Oak" } },
+				{ "Cabinets",   { "Cabinet", "Oak" } },
+				{ "Doors",      { "Door", "Oak" } },
+				{ "Lights",     { "Torch", "Oak" } },
+				{ "Farm",       { "Trough", "Oak" } },
+				{ "Mechanism",  { "Lever", "Oak" } },
+				{ "Hydraulics", { "Pump", "Oak" } }
 			};
 
 			for ( int m = 0; m < sc->count; ++m )
@@ -541,8 +575,8 @@ void drawGameHUD( ImGuiBridge& bridge )
 				ImGui::PushID( m );
 
 				// Show sprite icon + text label as a styled ImageButton or fallback to text button
-				QString spriteName = subcatSprites.value( sc->subcats[m].label, "" );
-				ImTextureID icon = spriteName.isEmpty() ? (ImTextureID)0 : bridge.spriteTexCache->getTextureForItem( spriteName, { "None" } );
+				auto spriteInfo = subcatSprites.value( sc->subcats[m].label );
+				ImTextureID icon = spriteInfo.itemSID.isEmpty() ? (ImTextureID)0 : bridge.spriteTexCache->getTextureForItem( spriteInfo.itemSID, { spriteInfo.material } );
 
 				if ( icon )
 				{
