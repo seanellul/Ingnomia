@@ -4,6 +4,7 @@
 #include "../../base/gamestate.h"
 #include "../../base/logger.h"
 #include "../strings.h"
+#include "../spritetexturecache.h"
 
 #include <imgui.h>
 
@@ -130,11 +131,25 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 	ImGui::SetNextWindowSize( ImVec2( panelW, panelH ) );
 	ImGui::Begin( "##builditems", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove );
 
+	// Lazy-init sprite texture cache
+	if ( !bridge.spriteTexCache )
+	{
+		bridge.spriteTexCache = new SpriteTextureCache();
+	}
+
 	for ( const auto& item : bridge.buildItems )
 	{
 		ImGui::PushID( item.id.toStdString().c_str() );
 
 		ImGui::Separator();
+
+		// Show sprite icon if available
+		ImTextureID texID = bridge.spriteTexCache->getTextureForItem( item.id, { "None" } );
+		if ( texID )
+		{
+			ImGui::Image( texID, ImVec2( 32, 64 ) );
+			ImGui::SameLine();
+		}
 		ImGui::Text( "%s", item.name.toStdString().c_str() );
 
 		// Material dropdowns per required item

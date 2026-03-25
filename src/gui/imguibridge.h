@@ -76,6 +76,9 @@ public:
 
 	bool showDebugPanel = false;
 
+	// Sprite texture cache for rendering game sprites in ImGui
+	class SpriteTextureCache* spriteTexCache = nullptr;
+
 	// =========================================================================
 	// Game HUD data (from EventConnector / ProxyGameView signals)
 	// =========================================================================
