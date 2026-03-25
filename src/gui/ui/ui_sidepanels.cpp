@@ -217,7 +217,7 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 		if ( !anyCatChecked ) allCatChecked = false;
 
 		bool catChecked = allCatChecked;
-		bool catOpen = ImGui::TreeNodeEx( "##catTree", ( !searchStr.isEmpty() ? ImGuiTreeNodeFlags_DefaultOpen : 0 ) | ImGuiTreeNodeFlags_AllowOverlap );
+		bool catOpen = ImGui::TreeNodeEx( "##catTree", ( !searchStr.isEmpty() ? ImGuiTreeNodeFlags_DefaultOpen : 0 ) | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanAvailWidth );
 		ImGui::SameLine();
 		if ( ImGui::Checkbox( cat.toStdString().c_str(), &catChecked ) )
 		{
@@ -258,7 +258,7 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 				if ( !anyGroupChecked ) allGroupChecked = false;
 
 				bool groupChecked = allGroupChecked;
-				bool groupOpen = ImGui::TreeNodeEx( "##grpTree", ( !searchStr.isEmpty() ? ImGuiTreeNodeFlags_DefaultOpen : 0 ) | ImGuiTreeNodeFlags_AllowOverlap );
+				bool groupOpen = ImGui::TreeNodeEx( "##grpTree", ( !searchStr.isEmpty() ? ImGuiTreeNodeFlags_DefaultOpen : 0 ) | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanAvailWidth );
 				ImGui::SameLine();
 				if ( ImGui::Checkbox( group.toStdString().c_str(), &groupChecked ) )
 				{
@@ -301,7 +301,7 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 							if ( !anyItemChecked ) allItemChecked = false;
 
 							bool itemChecked = allItemChecked;
-							bool itemOpen = ImGui::TreeNodeEx( "##itemTree", ImGuiTreeNodeFlags_AllowOverlap );
+							bool itemOpen = ImGui::TreeNodeEx( "##itemTree", ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanAvailWidth );
 							ImGui::SameLine();
 							if ( ImGui::Checkbox( item.toStdString().c_str(), &itemChecked ) )
 							{
