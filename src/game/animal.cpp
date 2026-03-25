@@ -424,28 +424,33 @@ CreatureTickResult Animal::onTick( quint64 tickNumber, bool seasonChanged, bool 
 
 		// Hunger-driven aggression: carnivores/omnivores become dangerous when starving
 		bool canEatMeat = m_diet.contains( "Meat" );
-		if ( m_hunger <= 10.0 && canEatMeat && !m_tame && !m_starvingAggro )
+		if ( m_hunger <= 10.0 && canEatMeat && !m_tame )
 		{
-			m_starvingAggro = true;
-			Global::logger().log( LogType::WILDLIFE, "A starving " + S::s( "$CreatureName_" + m_species ) + " has become aggressive!", m_id, m_position.x, m_position.y, m_position.z );
+			if ( !m_starvingAggro )
+			{
+				m_starvingAggro = true;
+				Global::logger().log( LogType::WILDLIFE, "A starving " + S::s( "$CreatureName_" + m_species ) + " has become aggressive!", m_id, m_position.x, m_position.y, m_position.z );
 
-			// Populate aggro list with nearby gnomes so the animal actually attacks
+				// Switch to hunter behavior tree so GetTarget/AttackTarget nodes are available
+				if ( m_btName != "AnimalHunter" )
+				{
+					m_btName = "AnimalHunter";
+					loadBehaviorTree( m_btName );
+				}
+			}
+
+			// Continuously refresh aggro list while starving — every minute
+			// (actionGetTarget consumes entries, so they need replenishing)
+			m_aggroList.clear();
 			for ( auto gn : g->gm()->gnomes() )
 			{
 				if ( gn->isDead() ) continue;
 				Position gnPos = gn->getPos();
 				int dist = abs( m_position.x - gnPos.x ) + abs( m_position.y - gnPos.y ) + abs( m_position.z - gnPos.z );
-				if ( dist < 30 )
+				if ( dist < 40 )
 				{
-					addAggro( gn->id(), 50 );
+					addAggro( gn->id(), 100 );
 				}
-			}
-
-			// Switch to hunter behavior tree so GetTarget/AttackTarget nodes are available
-			if ( m_btName != "AnimalHunter" )
-			{
-				m_btName = "AnimalHunter";
-				loadBehaviorTree( m_btName );
 			}
 		}
 		else if ( m_hunger > 30.0 && m_starvingAggro )
