@@ -22,6 +22,9 @@ public:
 	// Get texture for a sprite by creating one from itemSID + materialSIDs
 	ImTextureID getTextureForItem( const QString& itemSID, const QStringList& materialSIDs );
 
+	// Create texture from raw RGBA buffer (e.g., from GuiBuildItem::buffer)
+	ImTextureID getTextureFromBuffer( unsigned int key, const unsigned char* data, int width, int height );
+
 	// Clear all cached textures
 	void clear();
 

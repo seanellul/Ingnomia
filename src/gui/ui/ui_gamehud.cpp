@@ -143,8 +143,14 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 
 		ImGui::Separator();
 
-		// Show sprite icon if available
-		ImTextureID texID = bridge.spriteTexCache->getTextureForItem( item.id, { "None" } );
+		// Show sprite icon from pre-generated buffer (populated by aggregator)
+		ImTextureID texID = (ImTextureID)0;
+		if ( !item.buffer.empty() && item.iconWidth > 0 && item.iconHeight > 0 )
+		{
+			// Use a hash of the item id as cache key
+			unsigned int cacheKey = qHash( item.id ) + 100000;
+			texID = bridge.spriteTexCache->getTextureFromBuffer( cacheKey, item.buffer.data(), item.iconWidth, item.iconHeight );
+		}
 		if ( texID )
 		{
 			ImGui::Image( texID, ImVec2( 32, 64 ) );

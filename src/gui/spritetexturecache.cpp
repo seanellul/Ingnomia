@@ -74,6 +74,40 @@ ImTextureID SpriteTextureCache::getTextureForItem( const QString& itemSID, const
 	return getTexture( sprite );
 }
 
+ImTextureID SpriteTextureCache::getTextureFromBuffer( unsigned int key, const unsigned char* data, int width, int height )
+{
+	if ( !data || width <= 0 || height <= 0 ) return (ImTextureID)0;
+
+	// Check cache
+	auto it = m_cache.find( key );
+	if ( it != m_cache.end() )
+	{
+		return (ImTextureID)(intptr_t)it.value();
+	}
+
+	// Get OpenGL functions
+	if ( !m_gl )
+	{
+		auto ctx = QOpenGLContext::currentContext();
+		if ( !ctx ) return (ImTextureID)0;
+		m_gl = ctx->functions();
+	}
+
+	// Create OpenGL texture from raw RGBA buffer
+	GLuint texID = 0;
+	m_gl->glGenTextures( 1, &texID );
+	m_gl->glBindTexture( GL_TEXTURE_2D, texID );
+	m_gl->glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+	m_gl->glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+	m_gl->glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+	m_gl->glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+	m_gl->glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data );
+	m_gl->glBindTexture( GL_TEXTURE_2D, 0 );
+
+	m_cache.insert( key, texID );
+	return (ImTextureID)(intptr_t)texID;
+}
+
 void SpriteTextureCache::clear()
 {
 	if ( m_gl && !m_cache.isEmpty() )
