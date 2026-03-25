@@ -29,6 +29,8 @@
 
 #include "../gfx/spritefactory.h"
 
+#include <algorithm>
+
 #include "../gui/strings.h"
 
 AggregatorCreatureInfo::AggregatorCreatureInfo( QObject* parent ) :
@@ -121,15 +123,40 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 			m_info.traits.append( gti );
 		}
 
-		// Thoughts
+		// Thoughts (sorted by absolute mood value, highest impact first)
 		m_info.thoughts.clear();
-		for ( const auto& t : gnome->thoughts() )
+		auto allThoughts = gnome->thoughts();
+		std::sort( allThoughts.begin(), allThoughts.end(), []( const Thought& a, const Thought& b ) {
+			return abs( a.moodValue ) > abs( b.moodValue );
+		} );
+		for ( const auto& t : allThoughts )
 		{
 			GuiCreatureThoughtInfo gti;
 			gti.text = t.text;
+			gti.cause = t.cause;
 			gti.moodValue = t.moodValue;
+			gti.ticksLeft = t.ticksLeft;
+			gti.initialDuration = t.initialDuration;
 			m_info.thoughts.append( gti );
 		}
+
+		// Social relationships
+		m_info.relationships.clear();
+		auto opinions = g->gm()->opinionsOf( gnome->id() );
+		for ( auto it = opinions.constBegin(); it != opinions.constEnd(); ++it )
+		{
+			int op = it.value();
+			if ( abs( op ) < 5 ) continue;
+			GuiCreatureInfo::Relationship rel;
+			Gnome* other = g->gm()->gnome( it.key() );
+			rel.name = other ? other->name() : "Unknown";
+			rel.opinion = op;
+			rel.label = g->gm()->relationshipLabel( gnome->id(), it.key() );
+			m_info.relationships.append( rel );
+		}
+
+		// Mood breakdown
+		gnome->moodBreakdown( m_info.baseMood, m_info.thoughtSum, m_info.needsPenalty );
 
 		if( gnome->roleID() )
 		{

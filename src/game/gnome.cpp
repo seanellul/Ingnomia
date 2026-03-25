@@ -102,8 +102,10 @@ Gnome::Gnome( QVariantMap& in, Game* game ) :
 			Thought t;
 			t.id = tm.value( "ID" ).toString();
 			t.text = tm.value( "Text" ).toString();
+			t.cause = tm.value( "Cause" ).toString();
 			t.moodValue = tm.value( "MoodValue" ).toInt();
 			t.ticksLeft = tm.value( "TicksLeft" ).toInt();
+			t.initialDuration = tm.value( "InitialDuration" ).toInt();
 			t.maxStacks = tm.value( "MaxStacks" ).toInt();
 			m_thoughts.append( t );
 		}
@@ -201,8 +203,10 @@ void Gnome::serialize( QVariantMap& out )
 		QVariantMap tm;
 		tm.insert( "ID", t.id );
 		tm.insert( "Text", t.text );
+		tm.insert( "Cause", t.cause );
 		tm.insert( "MoodValue", t.moodValue );
 		tm.insert( "TicksLeft", t.ticksLeft );
+		tm.insert( "InitialDuration", t.initialDuration );
 		tm.insert( "MaxStacks", t.maxStacks );
 		vThoughts.append( tm );
 	}
@@ -648,7 +652,7 @@ int Gnome::need( QString id )
 // Mood / Thought System (Milestone 2.1)
 // =============================================================================
 
-void Gnome::addThought( QString id, QString text, int moodValue, int durationTicks, int maxStacks )
+void Gnome::addThought( QString id, QString text, int moodValue, int durationTicks, int maxStacks, QString cause )
 {
 	// Check stack count
 	int stacks = 0;
@@ -660,33 +664,39 @@ void Gnome::addThought( QString id, QString text, int moodValue, int durationTic
 
 	// Apply trait modulation to mood value
 	int modulated = moodValue;
+	QString modSource;
 	if ( id.contains( "Death" ) || id.contains( "Died" ) )
 	{
-		// Empathy modulates death-related thoughts
 		int empathy = trait( "Empathy" );
-		modulated = moodValue + ( moodValue * empathy / 100 ); // empathy amplifies
+		modulated = moodValue + ( moodValue * empathy / 100 );
+		if ( empathy != 0 ) modSource = QString( " (Empathy %1%2)" ).arg( empathy > 0 ? "+" : "" ).arg( empathy );
 	}
-	else if ( id.contains( "Social" ) || id.contains( "Friend" ) || id.contains( "Rival" ) )
+	else if ( id.contains( "Social" ) || id.contains( "Friend" ) || id.contains( "Rival" ) || id.contains( "Lonely" ) || id.contains( "Crowd" ) )
 	{
 		int sociability = trait( "Sociability" );
 		modulated = moodValue + ( moodValue * sociability / 100 );
+		if ( sociability != 0 ) modSource = QString( " (Sociability %1%2)" ).arg( sociability > 0 ? "+" : "" ).arg( sociability );
 	}
-	else if ( id.contains( "Room" ) || id.contains( "Bed" ) )
+	else if ( id.contains( "Room" ) || id.contains( "Bed" ) || id.contains( "Nice" ) )
 	{
 		int greed = trait( "Greed" );
 		modulated = moodValue + ( moodValue * greed / 100 );
+		if ( greed != 0 ) modSource = QString( " (Greed %1%2)" ).arg( greed > 0 ? "+" : "" ).arg( greed );
 	}
-	else if ( id.contains( "Food" ) || id.contains( "Meal" ) )
+	else if ( id.contains( "Food" ) || id.contains( "Meal" ) || id.contains( "Hungry" ) || id.contains( "Fed" ) )
 	{
 		int appetite = trait( "Appetite" );
 		modulated = moodValue + ( moodValue * appetite / 100 );
+		if ( appetite != 0 ) modSource = QString( " (Appetite %1%2)" ).arg( appetite > 0 ? "+" : "" ).arg( appetite );
 	}
 
 	Thought thought;
 	thought.id = id;
 	thought.text = text;
+	thought.cause = cause.isEmpty() ? text + modSource : cause + modSource;
 	thought.moodValue = qBound( -30, modulated, 30 );
 	thought.ticksLeft = durationTicks;
+	thought.initialDuration = durationTicks;
 	thought.maxStacks = maxStacks;
 	m_thoughts.append( thought );
 }
@@ -743,6 +753,27 @@ int Gnome::calculateMood() const
 	if ( sleep < 20 ) needsPenalty -= ( 20 - sleep ) / 4;
 
 	return qBound( 0, baseMood + thoughtSum + needsPenalty, 100 );
+}
+
+void Gnome::moodBreakdown( int& outBase, int& outThoughtSum, int& outNeedsPenalty ) const
+{
+	int optimism = trait( "Optimism" );
+	outBase = 50 + ( optimism * 6 / 50 );
+
+	outThoughtSum = 0;
+	for ( const auto& t : m_thoughts )
+	{
+		outThoughtSum += t.moodValue;
+	}
+
+	int hunger = m_needs.contains( "Hunger" ) ? m_needs["Hunger"].toInt() : 50;
+	int thirst = m_needs.contains( "Thirst" ) ? m_needs["Thirst"].toInt() : 50;
+	int sleep = m_needs.contains( "Sleep" ) ? m_needs["Sleep"].toInt() : 50;
+
+	outNeedsPenalty = 0;
+	if ( hunger < 20 ) outNeedsPenalty -= ( 20 - hunger ) / 4;
+	if ( thirst < 20 ) outNeedsPenalty -= ( 20 - thirst ) / 4;
+	if ( sleep < 20 ) outNeedsPenalty -= ( 20 - sleep ) / 4;
 }
 
 float Gnome::moodWorkSpeedModifier() const

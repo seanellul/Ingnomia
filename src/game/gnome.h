@@ -31,11 +31,13 @@ struct Uniform;
 // Thought system for mood calculation (Milestone 2.1)
 struct Thought
 {
-	QString id;       // e.g. "AteGoodMeal", "FriendDied", "NiceRoom"
-	QString text;     // display text
-	int moodValue;    // -20 to +20
-	int ticksLeft;    // ticks until expiry
-	int maxStacks;    // max times this thought can stack
+	QString id;           // e.g. "AteGoodMeal", "FriendDied", "NiceRoom"
+	QString text;         // display text
+	QString cause;        // tooltip explainer: what triggered this thought
+	int moodValue;        // -20 to +20
+	int ticksLeft;        // ticks until expiry
+	int initialDuration;  // original duration (for showing remaining %)
+	int maxStacks;        // max times this thought can stack
 };
 
 class Gnome : public CanWork
@@ -66,11 +68,12 @@ public:
 	int need( QString id );
 
 	// Mood/Thought system (Milestone 2.1)
-	void addThought( QString id, QString text, int moodValue, int durationTicks, int maxStacks = 5 );
+	void addThought( QString id, QString text, int moodValue, int durationTicks, int maxStacks = 5, QString cause = "" );
 	void removeThought( QString id );
 	void tickThoughts();
 	int calculateMood() const;
 	int mood() const { return m_mood; }
+	void moodBreakdown( int& baseMood, int& thoughtSum, int& needsPenalty ) const;
 	float moodWorkSpeedModifier() const;
 	const QList<Thought>& thoughts() const { return m_thoughts; }
 	QString mentalBreakType() const;

@@ -37,7 +37,10 @@ struct GuiCreatureTraitInfo
 struct GuiCreatureThoughtInfo
 {
 	QString text;
+	QString cause;       // tooltip explainer
 	int moodValue;
+	int ticksLeft;
+	int initialDuration;
 };
 
 struct GuiCreatureInfo
@@ -72,6 +75,15 @@ struct GuiCreatureInfo
 	QString adulthoodDesc;
 	QList<GuiCreatureTraitInfo> traits;
 	QList<GuiCreatureThoughtInfo> thoughts;
+
+	// Social (Milestone 2.0b)
+	struct Relationship { QString name; int opinion; QString label; };
+	QList<Relationship> relationships;
+
+	// Mood breakdown
+	int baseMood = 50;      // from Optimism trait
+	int thoughtSum = 0;     // sum of all thought values
+	int needsPenalty = 0;   // penalty from low needs
 };
 Q_DECLARE_METATYPE( GuiCreatureInfo )
 

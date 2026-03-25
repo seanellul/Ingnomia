@@ -43,8 +43,8 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 {
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowPos( ImVec2( 5, 130 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 370, io.DisplaySize.y - 200 ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
 	ImGui::Begin( "Stockpile Management", &open, 0 );
@@ -718,13 +718,11 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 		return;
 
 	ImGuiIO& io = ImGui::GetIO();
-	float panelW = 500;
-	float panelH = io.DisplaySize.y - 110;
-	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - panelW - 5, 50 ) );
-	ImGui::SetNextWindowSize( ImVec2( panelW, panelH ) );
+	ImGui::SetNextWindowPos( ImVec2( 5, 130 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 400, io.DisplaySize.y - 200 ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Workshop", &open, 0 );
+	ImGui::Begin( "Workshop", &open );
 
 	if ( !open ) bridge.cmdCloseWorkshopWindow();
 
@@ -814,9 +812,10 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 					const char* modeLabel = "?";
 					switch ( job.mode )
 					{
-						case CraftMode::CraftNumber: modeLabel = "Craft"; break;
-						case CraftMode::CraftTo:     modeLabel = "Until"; break;
-						case CraftMode::Repeat:       modeLabel = "Repeat"; break;
+						case CraftMode::CraftNumber:      modeLabel = "Craft"; break;
+						case CraftMode::CraftTo:          modeLabel = "Until"; break;
+						case CraftMode::CraftUntilStock:  modeLabel = "Stock"; break;
+						case CraftMode::Repeat:           modeLabel = "Repeat"; break;
 					}
 
 					if ( job.mode == CraftMode::Repeat )
@@ -1040,6 +1039,13 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 			ImGui::TextColored( ImVec4( 1.0f, 0.2f, 0.2f, 1.0f ), "!!!" );
 		else
 			ImGui::Text( "%d%%", ci.mood );
+
+		// Mood breakdown tooltip on hover
+		if ( ImGui::IsItemHovered() )
+		{
+			ImGui::SetTooltip( "Mood breakdown:\n  Base (Optimism): %d\n  Thoughts: %+d\n  Needs penalty: %+d\n  ────────\n  Total: %d",
+				ci.baseMood, ci.thoughtSum, ci.needsPenalty, ci.mood );
+		}
 	}
 
 	// Needs bars
@@ -1124,7 +1130,7 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 		}
 	}
 
-	// Active Thoughts
+	// Active Thoughts (sorted by impact, highest first)
 	if ( ImGui::CollapsingHeader( "Thoughts", ImGuiTreeNodeFlags_DefaultOpen ) )
 	{
 		ImGui::Indent( 8.0f );
@@ -1139,12 +1145,55 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 				ImVec4 tColor = thought.moodValue > 0 ?
 					ImVec4( 0.3f, 0.8f, 0.3f, 1.0f ) :
 					ImVec4( 0.8f, 0.3f, 0.3f, 1.0f );
+
+				// Fade color as thought expires
+				float remaining = ( thought.initialDuration > 0 ) ?
+					(float)thought.ticksLeft / thought.initialDuration : 1.0f;
+				tColor.w = 0.5f + 0.5f * remaining; // alpha fades from 1.0 to 0.5
+
 				ImGui::TextColored( tColor, "%+d", thought.moodValue );
 				ImGui::SameLine();
 				ImGui::Text( "%s", thought.text.toStdString().c_str() );
+
+				// Tooltip: cause + time remaining
+				if ( ImGui::IsItemHovered() )
+				{
+					int secsLeft = thought.ticksLeft * 50 / 1000; // rough: 50ms per tick
+					int minsLeft = secsLeft / 60;
+					int pctLeft = ( thought.initialDuration > 0 ) ?
+						( thought.ticksLeft * 100 / thought.initialDuration ) : 100;
+					QString tip = thought.cause.isEmpty() ? thought.text : thought.cause;
+					if ( minsLeft > 0 )
+						ImGui::SetTooltip( "%s\nFading: %d%% (%d min left)", tip.toStdString().c_str(), pctLeft, minsLeft );
+					else
+						ImGui::SetTooltip( "%s\nFading: %d%% (%d sec left)", tip.toStdString().c_str(), pctLeft, secsLeft );
+				}
 			}
 		}
 		ImGui::Unindent( 8.0f );
+	}
+
+	// Social relationships
+	if ( !ci.relationships.isEmpty() )
+	{
+		if ( ImGui::CollapsingHeader( "Relationships" ) )
+		{
+			ImGui::Indent( 8.0f );
+			for ( const auto& rel : ci.relationships )
+			{
+				ImVec4 relColor;
+				if ( rel.opinion > 20 )
+					relColor = ImVec4( 0.3f, 0.7f, 0.3f, 1.0f );
+				else if ( rel.opinion < -20 )
+					relColor = ImVec4( 0.8f, 0.2f, 0.2f, 1.0f );
+				else
+					relColor = ImVec4( 0.7f, 0.7f, 0.3f, 1.0f );
+				ImGui::TextColored( relColor, "%s", rel.label.toStdString().c_str() );
+				ImGui::SameLine();
+				ImGui::Text( "%s (%+d)", rel.name.toStdString().c_str(), rel.opinion );
+			}
+			ImGui::Unindent( 8.0f );
+		}
 	}
 
 	// Stats (collapsed by default)
