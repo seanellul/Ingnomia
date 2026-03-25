@@ -19,8 +19,11 @@
 #include "game.h"
 
 #include "../base/db.h"
+#include "../base/gamestate.h"
 #include "../base/global.h"
+#include "../base/logger.h"
 #include "../base/regionmap.h"
+#include "../base/util.h"
 #include "../game/world.h"
 #include "../game/creaturefactory.h"
 #include "../game/farmingmanager.h"
@@ -56,6 +59,7 @@ void CreatureManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayCh
 	}
 	int oldStartIndex = m_startIndex;
 	QList<unsigned int> toDestroy;
+	QList<unsigned int> toDead;
 	for ( int i = m_startIndex; i < m_creatures.size(); ++i )
 	{
 		Creature* creature = m_creatures[i];
@@ -68,18 +72,50 @@ void CreatureManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayCh
 				toDestroy.append( creature->id() );
 				break;
 			case CreatureTickResult::DEAD:
+			{
+				// Keep dead creatures as corpses (like gnomes) instead of destroying immediately
+				creature->setExpires( GameState::tick + Global::util->ticksPerDay * 3 ); // 3 days to rot
 				if( creature->type() == CreatureType::ANIMAL )
 				{
 					auto a = dynamic_cast<Animal*>( creature );
 					g->inv()->createItem( a->getPos(), "AnimalCorpse", { a->species() } );
 				}
-				toDestroy.append( creature->id() );
+				toDead.append( creature->id() );
+				Global::logger().log( LogType::DEATH, creature->name() + " (" + creature->species() + ") has died.", creature->id() );
 				break;
+			}
 		}
 
 		m_startIndex = i + 1;
 		if ( timer.elapsed() > 2 )
 			break;
+	}
+
+	// Move dead creatures to corpse list (preserve for inspection + rot)
+	for ( auto did : toDead )
+	{
+		for ( int i = 0; i < m_creatures.size(); ++i )
+		{
+			if ( did == m_creatures[i]->id() )
+			{
+				m_deadCreatures.append( m_creatures[i] );
+				m_creatures.removeAt( i );
+				m_dirty = true;
+				break;
+			}
+		}
+	}
+
+	// Process corpse rot — remove expired corpses
+	for ( int i = m_deadCreatures.size() - 1; i >= 0; --i )
+	{
+		if ( m_deadCreatures[i]->expires() > 0 && m_deadCreatures[i]->expires() < GameState::tick )
+		{
+			g->m_world->addToUpdateList( m_deadCreatures[i]->getPos() );
+			m_creaturesByID.remove( m_deadCreatures[i]->id() );
+			delete m_deadCreatures[i];
+			m_deadCreatures.removeAt( i );
+		}
 	}
 
 	if ( toDestroy.size() )

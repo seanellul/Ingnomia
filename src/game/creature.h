@@ -233,6 +233,7 @@ public:
 	float anatomyBlood() const { return m_anatomy.blood(); }
 	float anatomyMaxBlood() const { return 5000.0f; }
 	const Anatomy& anatomy() const { return m_anatomy; }
+	void setExpires( quint64 tick ) { m_expires = tick; }
 
 	QString thoughtBubble() const;
 	void setThoughtBubble( QString thought );
