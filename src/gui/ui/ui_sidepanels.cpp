@@ -174,6 +174,9 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 
 	ImGui::BeginChild( "FilterTree", ImVec2( 0, 0 ), false );
 
+	// Match tree node row height to checkbox height
+	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( ImGui::GetStyle().FramePadding.x, 6 ) );
+
 	// Render filter tree: Category (checkbox) → Group (checkbox) → Item (checkbox) → Material (checkbox)
 	auto& filter = bridge.stockpileInfo.filter;
 	for ( const auto& cat : filter.categories() )
@@ -348,6 +351,7 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 		ImGui::PopID();
 	}
 
+	ImGui::PopStyleVar(); // FramePadding
 	ImGui::EndChild();
 
 	ImGui::EndTabItem();
