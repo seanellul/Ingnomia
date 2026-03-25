@@ -6,6 +6,41 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-25] Milestone 0.4 — Game Loop Parallelization
+
+**Milestone**: 0.4 — Parallelization
+**Files changed**: `src/game/game.cpp`, `src/base/pathfinder.h`, `src/base/pathfinder.cpp`, `src/game/creaturemanager.cpp`, `src/game/gnomemanager.cpp`, `src/base/regionmap.cpp`
+
+### Changes
+
+**Creature position spatial index:**
+- `creaturesAtPosition()`, `animalsAtPosition()`, `monstersAtPosition()` changed from O(creatures) linear scan to O(1) lookup via existing `World::m_creaturePositions` index. The index was already maintained on every creature move but **never used** by the lookup functions.
+- `gnomesAtPosition()` similarly refactored to use the world position index + `m_gnomesByID` hash instead of scanning all gnome lists.
+
+**Phase 1 — Non-blocking pathfinding:**
+- Split `findPaths()` into `dispatchPaths()` (launches async workers, non-blocking) and `collectPaths()` (waits for results).
+- Game loop now collects previous tick's path results at the START of each tick, and dispatches new requests at the END. Path workers run in parallel with the next tick's game logic.
+- Added `m_activeTasks` vector to PathFinder to track outstanding futures between ticks.
+
+**Phase 2 — Parallel natural world:**
+- `processGrass()`, `processWater()`, and `processPlants()` now run concurrently via `std::async`. They touch independent tile fields (vegetation vs fluid vs plant map).
+- Water moved from end-of-tick to parallel block at start-of-tick.
+
+**Phase 3 — Parallel passive systems:**
+- Rooms, mechanisms, fluids, neighbors, and sound now run in a background `std::async` task while the main thread handles events and item history.
+- Main thread pipeline: creatures → gnomes → jobs → stockpiles → farming → workshops → events
+- Background pipeline: rooms → mechanisms → fluids → neighbors → sound
+
+**Bug fix:**
+- Fixed `RegionMap::checkSplitFlood()` — allocated `m_dimX * m_dimX` instead of `m_dimX * m_dimY` for visited array. Would cause out-of-bounds on non-square maps.
+
+### Technical Details
+- PathFinder: `dispatchPaths()` at line 109, `collectPaths()` at line 168, `findPaths()` preserved as legacy wrapper
+- Game loop: `collectPaths` → parallel(grass, water, plants) → creatures → gnomes → jobs → stockpiles → farming → workshops → parallel(rooms, mechanisms, fluids, neighbors, sound) + events → `dispatchPaths`
+- RegionMap fix: `regionmap.cpp:615` — `m_dimX * m_dimX` → `m_dimX * m_dimY`
+
+---
+
 ## [2026-03-24] Milestone 0.3 — Performance: Algorithmic Bottlenecks
 
 **Milestone**: 0.3 — Performance Bottlenecks
