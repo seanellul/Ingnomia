@@ -436,61 +436,61 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 			}
 			else
 			{
-				ImGui::Columns( 26 );
-				ImGui::SetColumnWidth( 0, 120.0f );
-				for ( int col = 1; col <= 25; ++col )
-					ImGui::SetColumnWidth( col, 28.0f );
-				ImGui::Text( "Name" ); ImGui::NextColumn();
-				for ( int h = 0; h < 24; ++h )
+				if ( ImGui::BeginTable( "ScheduleTable", 25, ImGuiTableFlags_ScrollX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit ) )
 				{
-					ImGui::Text( "%02d", h ); ImGui::NextColumn();
-				}
-				ImGui::Text( "" ); ImGui::NextColumn();
-				ImGui::Separator();
-
-				for ( const auto& gnome : bridge.scheduleInfo.schedules )
-				{
-					ImGui::Text( "%s", gnome.name.toStdString().c_str() ); ImGui::NextColumn();
+					ImGui::TableSetupColumn( "Name", 0, 120.0f );
 					for ( int h = 0; h < 24; ++h )
 					{
-						ImGui::PushID( gnome.id * 100 + h );
-						const char* label = "W";
-						ImVec4 col( 0.3f, 0.3f, 0.3f, 1.0f );
-						if ( h < gnome.schedule.size() )
+						char hdr[4];
+						snprintf( hdr, sizeof( hdr ), "%02d", h );
+						ImGui::TableSetupColumn( hdr, 0, 28.0f );
+					}
+					ImGui::TableHeadersRow();
+
+					for ( const auto& gnome : bridge.scheduleInfo.schedules )
+					{
+						ImGui::TableNextRow();
+						ImGui::TableNextColumn();
+						ImGui::Text( "%s", gnome.name.toStdString().c_str() );
+
+						for ( int h = 0; h < 24; ++h )
 						{
-							switch ( gnome.schedule[h] )
-							{
-								case ScheduleActivity::None: label = "W"; col = ImVec4( 0.2f, 0.5f, 0.2f, 1.0f ); break;
-								case ScheduleActivity::Eat: label = "E"; col = ImVec4( 0.7f, 0.4f, 0.0f, 1.0f ); break;
-								case ScheduleActivity::Sleep: label = "S"; col = ImVec4( 0.0f, 0.3f, 0.7f, 1.0f ); break;
-								case ScheduleActivity::Training: label = "T"; col = ImVec4( 0.7f, 0.0f, 0.0f, 1.0f ); break;
-							}
-						}
-						ImGui::PushStyleColor( ImGuiCol_Button, col );
-						if ( ImGui::SmallButton( label ) )
-						{
-							// Cycle through activities
-							ScheduleActivity next = ScheduleActivity::None;
+							ImGui::TableNextColumn();
+							ImGui::PushID( gnome.id * 100 + h );
+							const char* label = "W";
+							ImVec4 btnCol( 0.3f, 0.3f, 0.3f, 1.0f );
 							if ( h < gnome.schedule.size() )
 							{
 								switch ( gnome.schedule[h] )
 								{
-									case ScheduleActivity::None: next = ScheduleActivity::Eat; break;
-									case ScheduleActivity::Eat: next = ScheduleActivity::Sleep; break;
-									case ScheduleActivity::Sleep: next = ScheduleActivity::Training; break;
-									default: next = ScheduleActivity::None; break;
+									case ScheduleActivity::None: label = "W"; btnCol = ImVec4( 0.2f, 0.5f, 0.2f, 1.0f ); break;
+									case ScheduleActivity::Eat: label = "E"; btnCol = ImVec4( 0.7f, 0.4f, 0.0f, 1.0f ); break;
+									case ScheduleActivity::Sleep: label = "S"; btnCol = ImVec4( 0.0f, 0.3f, 0.7f, 1.0f ); break;
+									case ScheduleActivity::Training: label = "T"; btnCol = ImVec4( 0.7f, 0.0f, 0.0f, 1.0f ); break;
 								}
 							}
-							bridge.cmdSetSchedule( gnome.id, h, next );
+							ImGui::PushStyleColor( ImGuiCol_Button, btnCol );
+							if ( ImGui::SmallButton( label ) )
+							{
+								ScheduleActivity next = ScheduleActivity::None;
+								if ( h < gnome.schedule.size() )
+								{
+									switch ( gnome.schedule[h] )
+									{
+										case ScheduleActivity::None: next = ScheduleActivity::Eat; break;
+										case ScheduleActivity::Eat: next = ScheduleActivity::Sleep; break;
+										case ScheduleActivity::Sleep: next = ScheduleActivity::Training; break;
+										default: next = ScheduleActivity::None; break;
+									}
+								}
+								bridge.cmdSetSchedule( gnome.id, h, next );
+							}
+							ImGui::PopStyleColor();
+							ImGui::PopID();
 						}
-						ImGui::PopStyleColor();
-						ImGui::PopID();
-						ImGui::NextColumn();
 					}
-					ImGui::Text( "" ); ImGui::NextColumn();
+					ImGui::EndTable();
 				}
-
-				ImGui::Columns( 1 );
 			}
 
 			ImGui::EndTabItem();
@@ -1437,16 +1437,72 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 	}
 
 	auto& ci = bridge.creatureInfo;
+	bool isGnome = ( ci.creatureType == "Gnome" );
 
-	// Name and profession
+	// Name and type
 	ImGui::TextColored( ImVec4( 1.0f, 0.9f, 0.6f, 1.0f ), "%s", ci.name.toStdString().c_str() );
-	ImGui::Text( "%s", ci.profession.toStdString().c_str() );
-	if ( !ci.activity.isEmpty() )
+	if ( isGnome )
 	{
-		ImGui::TextColored( ImVec4( 0.6f, 0.8f, 0.6f, 1.0f ), "%s", ci.activity.toStdString().c_str() );
+		ImGui::Text( "%s", ci.profession.toStdString().c_str() );
+		if ( !ci.activity.isEmpty() )
+			ImGui::TextColored( ImVec4( 0.6f, 0.8f, 0.6f, 1.0f ), "%s", ci.activity.toStdString().c_str() );
+	}
+	else
+	{
+		// Animal/Monster: show species and tame/wild status
+		ImGui::TextColored( ImVec4( 0.7f, 0.7f, 0.9f, 1.0f ), "%s", ci.species.toStdString().c_str() );
+		if ( !ci.profession.isEmpty() )
+			ImGui::Text( "(%s)", ci.profession.toStdString().c_str() );
+
+		// Health bar
+		ImVec4 healthColor;
+		if ( ci.healthPercent > 70 )
+			healthColor = ImVec4( 0.2f, 0.7f, 0.3f, 1.0f );
+		else if ( ci.healthPercent > 30 )
+			healthColor = ImVec4( 0.7f, 0.6f, 0.1f, 1.0f );
+		else
+			healthColor = ImVec4( 0.8f, 0.2f, 0.2f, 1.0f );
+
+		ImGui::Text( "Health" );
+		ImGui::SameLine( 80 );
+		ImGui::PushStyleColor( ImGuiCol_PlotHistogram, healthColor );
+		ImGui::ProgressBar( ci.healthPercent / 100.0f, ImVec2( -50, 0 ), "" );
+		ImGui::PopStyleColor();
+		ImGui::SameLine();
+		ImGui::Text( "%d%%", ci.healthPercent );
+
+		if ( ci.healthStatus != "Healthy" )
+			ImGui::TextColored( ImVec4( 0.8f, 0.3f, 0.3f, 1.0f ), "%s", ci.healthStatus.toStdString().c_str() );
 	}
 
 	ImGui::Separator();
+
+	// Animal/Monster: show hunger only, then end early
+	if ( !isGnome )
+	{
+		if ( ci.creatureType == "Animal" )
+		{
+			auto needBar = []( const char* label, int value ) {
+				ImVec4 col;
+				if ( value > 60 ) col = ImVec4( 0.2f, 0.6f, 0.3f, 1.0f );
+				else if ( value > 30 ) col = ImVec4( 0.7f, 0.6f, 0.1f, 1.0f );
+				else col = ImVec4( 0.8f, 0.2f, 0.2f, 1.0f );
+				ImGui::Text( "%s", label );
+				ImGui::SameLine( 80 );
+				ImGui::PushStyleColor( ImGuiCol_PlotHistogram, col );
+				ImGui::ProgressBar( qBound( 0.0f, value / 100.0f, 1.0f ), ImVec2( -50, 0 ), "" );
+				ImGui::PopStyleColor();
+				ImGui::SameLine();
+				ImGui::Text( "%d%%", qBound( 0, value, 100 ) );
+			};
+			needBar( "Hunger", ci.hunger );
+		}
+
+		ImGui::End();
+		return;
+	}
+
+	// ===== Everything below is GNOME-ONLY =====
 
 	// Mood bar (prominent, at the top)
 	{

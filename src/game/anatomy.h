@@ -67,6 +67,8 @@ public:
 
 	AnatomyHeight randomAttackHeight() const;
 
+	float blood() const { return m_blood; }
+
 private:
 	QString m_type;
 

@@ -228,6 +228,11 @@ public:
 	bool kill( bool nocorpse );
 	virtual bool attack( DamageType dt, AnatomyHeight da, int skill, int strength, Position sourcePos, unsigned int attackerID ) = 0;
 
+	// Anatomy accessors for UI
+	AnatomyStatus anatomyStatus() { return m_anatomy.status(); }
+	float anatomyBlood() const { return m_anatomy.blood(); }
+	float anatomyMaxBlood() const { return 5000.0f; } // TODO: read from DB per species
+
 	QString thoughtBubble() const;
 	void setThoughtBubble( QString thought );
 
