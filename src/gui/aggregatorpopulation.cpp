@@ -75,12 +75,47 @@ void AggregatorPopulation::onRequestPopulationUpdate()
 			for( auto skill : m_skillIds )
 			{
 				GuiSkillInfo gsi = skill;
-				
+
 				gsi.level = gnome->getSkillLevel( skill.sid );
 				gsi.active = gnome->getSkillActive( skill.sid );
 				gsi.xpValue = gnome->getSkillXP( skill.sid );
 
 				ggi.skills.append( gsi );
+			}
+
+			// Populate personality traits
+			for ( auto it = gnome->traits().constBegin(); it != gnome->traits().constEnd(); ++it )
+			{
+				GuiTraitInfo gti;
+				gti.id = it.key();
+				gti.value = it.value().toInt();
+				auto traitRow = DB::selectRow( "Traits", gti.id );
+				gti.category = traitRow.value( "Category" ).toString();
+				if ( gti.value < -25 )
+				{
+					gti.label = traitRow.value( "LowLabel" ).toString();
+					gti.description = traitRow.value( "LowDesc" ).toString();
+				}
+				else if ( gti.value > 25 )
+				{
+					gti.label = traitRow.value( "HighLabel" ).toString();
+					gti.description = traitRow.value( "HighDesc" ).toString();
+				}
+				ggi.traits.append( gti );
+			}
+
+			// Populate backstories
+			if ( !gnome->childhoodBackstory().isEmpty() )
+			{
+				auto row = DB::selectRow( "Backstories", gnome->childhoodBackstory() );
+				ggi.childhood.title = row.value( "Title" ).toString();
+				ggi.childhood.description = row.value( "Description" ).toString();
+			}
+			if ( !gnome->adulthoodBackstory().isEmpty() )
+			{
+				auto row = DB::selectRow( "Backstories", gnome->adulthoodBackstory() );
+				ggi.adulthood.title = row.value( "Title" ).toString();
+				ggi.adulthood.description = row.value( "Description" ).toString();
 			}
 
 			m_populationInfo.gnomes.append( ggi );

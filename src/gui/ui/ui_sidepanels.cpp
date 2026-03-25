@@ -318,6 +318,83 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 			ImGui::EndTabItem();
 		}
 
+		if ( ImGui::BeginTabItem( "Personality" ) )
+		{
+			for ( const auto& gnome : bridge.populationInfo.gnomes )
+			{
+				if ( ImGui::TreeNode( gnome.name.toStdString().c_str() ) )
+				{
+					// Backstory section
+					if ( !gnome.childhood.title.isEmpty() || !gnome.adulthood.title.isEmpty() )
+					{
+						ImGui::TextColored( ImVec4( 0.7f, 0.85f, 1.0f, 1.0f ), "Backstory" );
+						ImGui::Indent( 10.0f );
+						if ( !gnome.childhood.title.isEmpty() )
+						{
+							ImGui::Text( "Youth: %s", gnome.childhood.title.toStdString().c_str() );
+							if ( ImGui::IsItemHovered() && !gnome.childhood.description.isEmpty() )
+							{
+								ImGui::SetTooltip( "%s", gnome.childhood.description.toStdString().c_str() );
+							}
+						}
+						if ( !gnome.adulthood.title.isEmpty() )
+						{
+							ImGui::Text( "Before: %s", gnome.adulthood.title.toStdString().c_str() );
+							if ( ImGui::IsItemHovered() && !gnome.adulthood.description.isEmpty() )
+							{
+								ImGui::SetTooltip( "%s", gnome.adulthood.description.toStdString().c_str() );
+							}
+						}
+						ImGui::Unindent( 10.0f );
+						ImGui::Spacing();
+					}
+
+					// Traits section — only show notable traits (|value| > 25)
+					ImGui::TextColored( ImVec4( 0.7f, 0.85f, 1.0f, 1.0f ), "Personality Traits" );
+					ImGui::Indent( 10.0f );
+					bool hasNotable = false;
+					for ( const auto& trait : gnome.traits )
+					{
+						if ( trait.label.isEmpty() )
+							continue; // not extreme enough to show
+
+						hasNotable = true;
+						// Color based on positive/negative
+						float barFrac = ( trait.value + 50.0f ) / 100.0f;
+						ImVec4 barColor;
+						if ( trait.value > 0 )
+							barColor = ImVec4( 0.2f, 0.6f, 0.3f, 1.0f );
+						else
+							barColor = ImVec4( 0.7f, 0.3f, 0.2f, 1.0f );
+
+						ImGui::PushStyleColor( ImGuiCol_PlotHistogram, barColor );
+						ImGui::ProgressBar( barFrac, ImVec2( 120, 14 ), "" );
+						ImGui::PopStyleColor();
+						ImGui::SameLine();
+						ImGui::Text( "%s", trait.label.toStdString().c_str() );
+						if ( ImGui::IsItemHovered() && !trait.description.isEmpty() )
+						{
+							ImGui::SetTooltip( "[%s] %s (%+d)", trait.id.toStdString().c_str(),
+								trait.description.toStdString().c_str(), trait.value );
+						}
+					}
+					if ( !hasNotable )
+					{
+						ImGui::TextDisabled( "Unremarkable personality" );
+					}
+					ImGui::Unindent( 10.0f );
+
+					ImGui::TreePop();
+					ImGui::Separator();
+				}
+			}
+			if ( bridge.populationInfo.gnomes.isEmpty() )
+			{
+				ImGui::TextDisabled( "No gnomes" );
+			}
+			ImGui::EndTabItem();
+		}
+
 		if ( ImGui::BeginTabItem( "Professions" ) )
 		{
 			if ( bridge.professionList.isEmpty() )
@@ -911,5 +988,78 @@ void drawDebugPanel( ImGuiBridge& bridge )
 		bridge.cmdSpawnCreature( creatureType );
 	}
 
+	ImGui::End();
+}
+
+// =============================================================================
+// Event Log panel
+// =============================================================================
+void drawEventLogPanel( ImGuiBridge& bridge )
+{
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui::SetNextWindowPos( ImVec2( 5, 50 ) );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x - 10, io.DisplaySize.y - 110 ) );
+
+	bool open = true;
+	ImGui::Begin( "Event Log", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+
+	if ( !open ) bridge.activeSidePanel = ImGuiBridge::SidePanel::None;
+
+	// Filter buttons
+	static bool showInfo = true, showWarning = true, showCombat = true, showDeath = true, showJobs = false, showDebug = false;
+	ImGui::Checkbox( "Info", &showInfo ); ImGui::SameLine();
+	ImGui::Checkbox( "Warning", &showWarning ); ImGui::SameLine();
+	ImGui::Checkbox( "Combat", &showCombat ); ImGui::SameLine();
+	ImGui::Checkbox( "Death", &showDeath ); ImGui::SameLine();
+	ImGui::Checkbox( "Jobs", &showJobs ); ImGui::SameLine();
+	ImGui::Checkbox( "Debug", &showDebug );
+	ImGui::Separator();
+
+	// Scrollable log
+	ImGui::BeginChild( "LogScroll", ImVec2( 0, 0 ), false, ImGuiWindowFlags_HorizontalScrollbar );
+
+	auto& messages = Global::logger().messages();
+	for ( int i = (int)messages.size() - 1; i >= 0; --i )
+	{
+		auto& lm = messages[i];
+
+		// Filter
+		bool show = false;
+		switch ( lm.type )
+		{
+			case LogType::INFO:
+			case LogType::MIGRATION: show = showInfo; break;
+			case LogType::WARNING:   show = showWarning; break;
+			case LogType::COMBAT:    show = showCombat; break;
+			case LogType::DEATH:     show = showDeath; break;
+			case LogType::JOB:
+			case LogType::CRAFT:     show = showJobs; break;
+			case LogType::DEBUG:     show = showDebug; break;
+			default:                 show = true; break;
+		}
+		if ( !show ) continue;
+
+		// Color by type
+		ImVec4 color;
+		switch ( lm.type )
+		{
+			case LogType::DEATH:     color = ImVec4( 1.0f, 0.2f, 0.2f, 1.0f ); break;
+			case LogType::DANGER:    color = ImVec4( 1.0f, 0.5f, 0.0f, 1.0f ); break;
+			case LogType::WARNING:   color = ImVec4( 1.0f, 0.8f, 0.0f, 1.0f ); break;
+			case LogType::COMBAT:    color = ImVec4( 0.9f, 0.4f, 0.4f, 1.0f ); break;
+			case LogType::MIGRATION: color = ImVec4( 0.4f, 0.8f, 0.4f, 1.0f ); break;
+			case LogType::INFO:      color = ImVec4( 0.7f, 0.7f, 1.0f, 1.0f ); break;
+			case LogType::JOB:
+			case LogType::CRAFT:     color = ImVec4( 0.6f, 0.6f, 0.6f, 1.0f ); break;
+			default:                 color = ImVec4( 0.5f, 0.5f, 0.5f, 1.0f ); break;
+		}
+
+		ImGui::PushStyleColor( ImGuiCol_Text, color );
+		QString line = "[" + lm.dateTime + "] " + lm.message;
+		ImGui::TextWrapped( "%s", line.toStdString().c_str() );
+		ImGui::PopStyleColor();
+	}
+
+	ImGui::EndChild();
 	ImGui::End();
 }

@@ -110,10 +110,84 @@ Gnome* GnomeFactory::createGnome( Position& pos )
 		gnome->setSkillActive( skillID, true );
 	}
 
+	generateTraits( gnome );
+	assignBackstory( gnome );
+
 	gnome->updateMoveSpeed();
 	gnome->updateAttackValues();
 
 	return gnome;
+}
+
+void GnomeFactory::generateTraits( Gnome* gnome )
+{
+	auto traitDefs = DB::selectRows( "Traits" );
+	for ( const auto& row : traitDefs )
+	{
+		QString traitID = row.value( "ID" ).toString();
+		// Bell curve via sum of 3 uniform randoms: range ~-50 to +50, centered ~0
+		int value = ( rand() % 34 + rand() % 34 + rand() % 34 ) - 50;
+		value = qBound( -50, value, 50 );
+		gnome->addTrait( traitID, value );
+	}
+}
+
+void GnomeFactory::assignBackstory( Gnome* gnome )
+{
+	auto childhoods = DB::selectRows( "Backstories", "Type", "Childhood" );
+	auto adulthoods = DB::selectRows( "Backstories", "Type", "Adulthood" );
+
+	if ( !childhoods.isEmpty() )
+	{
+		auto childhood = childhoods[rand() % childhoods.size()];
+		gnome->setChildhoodBackstory( childhood.value( "ID" ).toString() );
+		applyBackstoryModifiers( gnome, childhood );
+		applyBackstoryTraitBiases( gnome, childhood );
+	}
+	if ( !adulthoods.isEmpty() )
+	{
+		auto adulthood = adulthoods[rand() % adulthoods.size()];
+		gnome->setAdulthoodBackstory( adulthood.value( "ID" ).toString() );
+		applyBackstoryModifiers( gnome, adulthood );
+		applyBackstoryTraitBiases( gnome, adulthood );
+	}
+}
+
+void GnomeFactory::applyBackstoryModifiers( Gnome* gnome, const QVariantMap& backstory )
+{
+	QString mods = backstory.value( "SkillModifiers" ).toString();
+	if ( mods.isEmpty() ) return;
+
+	for ( const auto& entry : mods.split( '|' ) )
+	{
+		auto parts = entry.split( ':' );
+		if ( parts.size() == 2 )
+		{
+			QString skillID = parts[0];
+			int bonus = parts[1].toInt();
+			// Add bonus XP (skills are stored as XP values, not levels)
+			int current = gnome->getSkillXP( skillID );
+			gnome->setSkillLevel( skillID, current + bonus * 500 );
+		}
+	}
+}
+
+void GnomeFactory::applyBackstoryTraitBiases( Gnome* gnome, const QVariantMap& backstory )
+{
+	QString biases = backstory.value( "TraitBiases" ).toString();
+	if ( biases.isEmpty() ) return;
+
+	for ( const auto& entry : biases.split( '|' ) )
+	{
+		auto parts = entry.split( ':' );
+		if ( parts.size() == 2 )
+		{
+			QString traitID = parts[0];
+			int bias = parts[1].toInt();
+			int current = gnome->trait( traitID );
+			gnome->addTrait( traitID, current + bias );
+		}
+	}
 }
 
 GnomeTrader* GnomeFactory::createGnomeTrader( Position& pos )

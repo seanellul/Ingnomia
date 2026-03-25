@@ -16681,5 +16681,89 @@ INSERT INTO "Sounds" ("ID","Material","SoundFile") VALUES ('PlantFarm',NULL,'san
 INSERT INTO "Sounds" ("ID","Material","SoundFile") VALUES ('PlantFarm','Plant','sand1.wav');
 INSERT INTO "Sounds" ("ID","Material","SoundFile") VALUES ('Till',NULL,'sand2.wav');
 
+-- ============================================================================
+-- Personality Traits (Milestone 2.0)
+-- ============================================================================
+DROP TABLE IF EXISTS "Traits";
+CREATE TABLE IF NOT EXISTS "Traits" (
+	"ID"        VARCHAR(30),
+	"LowLabel"  VARCHAR(50),
+	"HighLabel" VARCHAR(50),
+	"LowDesc"   VARCHAR(200),
+	"HighDesc"  VARCHAR(200),
+	"Category"  VARCHAR(30)
+);
+
+INSERT INTO "Traits" VALUES ('Bravery','Coward','Fearless','Flees from combat at the first sign of danger','Charges into battle without hesitation','Combat');
+INSERT INTO "Traits" VALUES ('Sociability','Loner','Gregarious','Prefers solitude and avoids conversation','Thrives in company and seeks out others','Social');
+INSERT INTO "Traits" VALUES ('Industriousness','Lazy','Driven','Works slowly and takes frequent breaks','Works tirelessly with relentless focus','Work');
+INSERT INTO "Traits" VALUES ('Appetite','Ascetic','Gourmand','Content with simple food and bare rooms','Demands fine meals and comfortable surroundings','Social');
+INSERT INTO "Traits" VALUES ('Temper','Calm','Volatile','Slow to anger even under great stress','Quick to rage at the slightest provocation','Mental');
+INSERT INTO "Traits" VALUES ('Creativity','Practical','Artistic','Cares nothing for beauty or decoration','Deeply moved by art and fine craftsmanship','Work');
+INSERT INTO "Traits" VALUES ('Greed','Generous','Greedy','Indifferent to personal wealth and luxury','Obsessed with accumulating fine possessions','Social');
+INSERT INTO "Traits" VALUES ('Curiosity','Incurious','Explorer','Content with routine and familiar surroundings','Driven to discover new places and learn new things','Mental');
+INSERT INTO "Traits" VALUES ('Empathy','Cold','Compassionate','Unmoved by the suffering of others','Deeply affected by the pain and joy of those around them','Social');
+INSERT INTO "Traits" VALUES ('Stubbornness','Flexible','Stubborn','Adapts easily to new tasks and changing plans','Resists reassignment and clings to established routines','Mental');
+INSERT INTO "Traits" VALUES ('Optimism','Pessimist','Optimist','Expects the worst and dwells on misfortune','Maintains hope and sees the bright side of things','Mental');
+INSERT INTO "Traits" VALUES ('Nerve','Nervous','Iron-Willed','Cracks under pressure and panics easily','Stays composed even in dire circumstances','Combat');
+
+-- ============================================================================
+-- Backstories (Milestone 2.0)
+-- ============================================================================
+DROP TABLE IF EXISTS "Backstories";
+CREATE TABLE IF NOT EXISTS "Backstories" (
+	"ID"              VARCHAR(50),
+	"Type"            VARCHAR(10),
+	"Title"           VARCHAR(50),
+	"Description"     VARCHAR(500),
+	"SkillModifiers"  VARCHAR(200),
+	"TraitBiases"     VARCHAR(200),
+	"BlockedWork"     VARCHAR(50)
+);
+
+-- Childhood backstories (15)
+INSERT INTO "Backstories" VALUES ('ChildMinersKid','Childhood','Miner''s Child','Grew up in the dim tunnels beneath a mountain hold, watching their parent chip away at rock faces by lantern light.','Mining:2|Masonry:1','Curiosity:15|Bravery:-10','');
+INSERT INTO "Backstories" VALUES ('ChildFarmKid','Childhood','Farm Kid','Spent every summer tending crops and chasing chickens across sun-baked fields on the family homestead.','Farming:2|Cooking:1','Industriousness:10|Optimism:10','');
+INSERT INTO "Backstories" VALUES ('ChildStreetUrchin','Childhood','Street Urchin','Survived on the streets of a crowded market town, learning to be quick with hands and feet alike.','Hauling:2|Dodge:1','Bravery:-15|Stubbornness:20|Curiosity:10','');
+INSERT INTO "Backstories" VALUES ('ChildNoblesHeir','Childhood','Noble''s Heir','Raised in a manor house with tutors, servants, and expectations that weighed heavier than any crown.','','Greed:20|Appetite:15|Industriousness:-15','');
+INSERT INTO "Backstories" VALUES ('ChildTinkersApprentice','Childhood','Tinker''s Apprentice','Spent childhood surrounded by gears, springs, and half-finished contraptions in a cluttered workshop.','Tinkering:2|Engineering:1','Curiosity:20|Creativity:10','');
+INSERT INTO "Backstories" VALUES ('ChildSoldiersBrat','Childhood','Soldier''s Brat','Grew up in military camps, watching drills and learning to march before learning to read.','Melee:1|Dodge:1','Bravery:15|Nerve:10','');
+INSERT INTO "Backstories" VALUES ('ChildHerbalGatherer','Childhood','Herb Gatherer','Spent years roaming meadows and forests with a wise elder, learning which plants heal and which kill.','Horticulture:2|Medic:1','Empathy:15|Curiosity:10','');
+INSERT INTO "Backstories" VALUES ('ChildShepherdsKid','Childhood','Shepherd''s Kid','Watched over flocks on windswept hills, learning patience and the ways of animals.','AnimalHusbandry:2|Ranged:1','Empathy:10|Sociability:-10','');
+INSERT INTO "Backstories" VALUES ('ChildWoodlandChild','Childhood','Woodland Child','Grew up at the edge of an ancient forest, climbing trees and whittling sticks into toys.','Woodcutting:1|Carpentry:2','Creativity:10|Bravery:10','');
+INSERT INTO "Backstories" VALUES ('ChildBlacksmithsHelper','Childhood','Blacksmith''s Helper','Pumped bellows and sorted scrap metal in a sweltering forge from the age of five.','Smelting:1|Blacksmithing:1','Industriousness:15|Nerve:10','');
+INSERT INTO "Backstories" VALUES ('ChildLibraryChild','Childhood','Library Child','Spent every waking hour in a dusty archive, reading everything from histories to fairy tales.','','Curiosity:25|Sociability:-15|Creativity:10','');
+INSERT INTO "Backstories" VALUES ('ChildOrphan','Childhood','Orphan','Lost both parents young and was raised by a rotating cast of reluctant relatives and strangers.','Hauling:1|Cooking:1','Empathy:-10|Stubbornness:15|Nerve:-10','');
+INSERT INTO "Backstories" VALUES ('ChildFishersChild','Childhood','Fisher''s Child','Grew up on the banks of a great river, learning to bait hooks and read the water.','Fishing:2','Optimism:10|Sociability:10','');
+INSERT INTO "Backstories" VALUES ('ChildStonemasonKid','Childhood','Stonemason''s Kid','Played among quarried blocks and learned to tell granite from limestone by touch.','Masonry:2|Stonecarving:1','Industriousness:10|Creativity:10','');
+INSERT INTO "Backstories" VALUES ('ChildCooksHelper','Childhood','Cook''s Helper','Spent childhood peeling, chopping, and stirring in a busy kitchen that fed fifty mouths a day.','Cooking:2|Brewing:1','Appetite:15|Sociability:10','');
+
+-- Adulthood backstories (25)
+INSERT INTO "Backstories" VALUES ('AdultWanderingTrader','Adulthood','Wandering Trader','Traveled between settlements hauling goods and striking deals, learning the value of everything.','Hauling:2','Sociability:15|Greed:10|Curiosity:10','');
+INSERT INTO "Backstories" VALUES ('AdultDisgracedSoldier','Adulthood','Disgraced Soldier','Once served in a royal guard before a scandal drove them to seek a fresh start far from home.','Melee:3|Armor:1','Bravery:20|Optimism:-15','');
+INSERT INTO "Backstories" VALUES ('AdultMasterBrewer','Adulthood','Master Brewer','Perfected the art of fermentation over decades, producing ales and wines sought after across the land.','Brewing:3|Farming:1','Appetite:10|Creativity:10','');
+INSERT INTO "Backstories" VALUES ('AdultFailedAlchemist','Adulthood','Failed Alchemist','Spent years chasing impossible transmutations before accepting that honest work has its own rewards.','MagicNature:1|Cooking:1','Curiosity:20|Optimism:-10','');
+INSERT INTO "Backstories" VALUES ('AdultRefugee','Adulthood','Refugee','Fled a goblin raid on a neighboring kingdom with nothing but the clothes on their back.','Construction:2|Hauling:1','Bravery:-10|Empathy:15|Nerve:-10','');
+INSERT INTO "Backstories" VALUES ('AdultPitFighter','Adulthood','Pit Fighter','Survived underground fighting rings through raw toughness and a refusal to stay down.','Unarmed:3|Dodge:1','Bravery:25|Temper:15|Nerve:15','');
+INSERT INTO "Backstories" VALUES ('AdultMonasteryScholar','Adulthood','Monastery Scholar','Spent years in quiet study, transcribing texts and contemplating the nature of the world.','Medic:1','Empathy:10|Sociability:-15|Creativity:10','');
+INSERT INTO "Backstories" VALUES ('AdultVeteranMiner','Adulthood','Veteran Miner','Decades underground left them with an instinct for ore veins and a permanent stoop.','Mining:3|Prospecting:2','Curiosity:10|Industriousness:15','');
+INSERT INTO "Backstories" VALUES ('AdultTravelingHealer','Adulthood','Traveling Healer','Wandered from village to village treating the sick, never staying long enough to put down roots.','Medic:3|Caretaking:1','Empathy:20|Sociability:10','');
+INSERT INTO "Backstories" VALUES ('AdultDesertedScout','Adulthood','Deserted Scout','Abandoned a military posting after witnessing one too many burned villages, and disappeared into the wilds.','Ranged:2|Dodge:1','Bravery:-10|Empathy:15|Stubbornness:10','');
+INSERT INTO "Backstories" VALUES ('AdultMasterCarpenter','Adulthood','Master Carpenter','Built everything from cradles to coffins with the same quiet care and attention to grain.','Carpentry:3|Woodcarving:1','Creativity:15|Industriousness:10','');
+INSERT INTO "Backstories" VALUES ('AdultBanditTurnedHonest','Adulthood','Reformed Bandit','After years of highway robbery, a crisis of conscience led to a new life of honest labor.','Melee:2|Ranged:1','Bravery:10|Empathy:10|Greed:-15','');
+INSERT INTO "Backstories" VALUES ('AdultClockmaker','Adulthood','Clockmaker','Assembled intricate mechanisms with steady hands, finding peace in the precise dance of tiny gears.','Tinkering:3|Engineering:1','Creativity:15|Nerve:15|Sociability:-10','');
+INSERT INTO "Backstories" VALUES ('AdultStonecutter','Adulthood','Master Stonecutter','Shaped raw rock into pillars and statues that would stand for centuries after their maker was gone.','Stonecarving:3|Masonry:1','Creativity:15|Industriousness:10','');
+INSERT INTO "Backstories" VALUES ('AdultShipwreck','Adulthood','Shipwreck Survivor','Washed ashore as the sole survivor of a merchant vessel, carrying nothing but determination.','Fishing:1|Construction:1','Nerve:20|Optimism:-10|Stubbornness:15','');
+INSERT INTO "Backstories" VALUES ('AdultBlacksmith','Adulthood','Journeyman Blacksmith','Traveled between forges learning different techniques, always seeking to improve their craft.','Blacksmithing:2|WeaponCrafting:1','Industriousness:15|Curiosity:10','');
+INSERT INTO "Backstories" VALUES ('AdultHerbalist','Adulthood','Village Herbalist','Kept a whole settlement healthy with poultices and tinctures brewed from garden herbs.','Horticulture:2|Medic:1','Empathy:15|Creativity:10','');
+INSERT INTO "Backstories" VALUES ('AdultMercenary','Adulthood','Retired Mercenary','Sold their sword for years before deciding that gold was not worth the nightmares.','Melee:2|Ranged:1|Armor:1','Bravery:15|Temper:10|Empathy:-10','');
+INSERT INTO "Backstories" VALUES ('AdultWeaver','Adulthood','Guild Weaver','Rose through a weavers'' guild to master the loom, producing cloth that was prized across kingdoms.','Weaving:3|Tailoring:1','Creativity:15|Sociability:10','');
+INSERT INTO "Backstories" VALUES ('AdultGemcutter','Adulthood','Apprentice Gemcutter','Spent years squinting at raw stones under lamplight, learning to find the fire hidden within.','Gemcutting:2|JewelryMaking:1','Creativity:15|Greed:10','');
+INSERT INTO "Backstories" VALUES ('AdultFarmer','Adulthood','Homestead Farmer','Built a farm from bare soil through backbreaking work and stubborn determination.','Farming:3|Horticulture:1','Industriousness:20|Stubbornness:10|Optimism:10','');
+INSERT INTO "Backstories" VALUES ('AdultGuard','Adulthood','Town Guard','Walked the same walls for years, keeping watch against threats that rarely came.','Block:2|Melee:1','Nerve:10|Bravery:10|Curiosity:-10','');
+INSERT INTO "Backstories" VALUES ('AdultPotter','Adulthood','Traveling Potter','Carried a portable wheel from market to market, shaping clay into vessels both useful and beautiful.','Pottery:3|Leatherworking:1','Creativity:10|Sociability:10','');
+INSERT INTO "Backstories" VALUES ('AdultAnimalTrainer','Adulthood','Animal Trainer','Earned a living taming wild beasts and breeding livestock for settlements across the frontier.','AnimalHusbandry:3|Butchery:1','Empathy:10|Bravery:10','');
+INSERT INTO "Backstories" VALUES ('AdultConstructionForeman','Adulthood','Construction Foreman','Directed crews building walls, roads, and bridges across an expanding kingdom.','Construction:3|Masonry:1','Industriousness:15|Sociability:10|Stubbornness:10','');
+
 
 COMMIT;

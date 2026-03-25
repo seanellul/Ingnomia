@@ -191,6 +191,15 @@ public:
 	void setSkillLevel( QString id, int level );
 	int getSkillXP( QString id ) const;
 
+	// Personality traits (Milestone 2.0)
+	void addTrait( QString id, int value );
+	int trait( QString id ) const;
+	const QVariantMap& traits() const { return m_traits; }
+	void setChildhoodBackstory( QString id ) { m_childhoodBackstory = id; }
+	void setAdulthoodBackstory( QString id ) { m_adulthoodBackstory = id; }
+	QString childhoodBackstory() const { return m_childhoodBackstory; }
+	QString adulthoodBackstory() const { return m_adulthoodBackstory; }
+
 	virtual void updateMoveSpeed() = 0;
 	int moveSpeed() const;
 
@@ -342,6 +351,11 @@ protected:
 	QVariantMap m_skillActive;
 	QStringList m_skillPriorities;
 	QVariantMap m_needs;
+
+	// Personality traits (-50 to +50 scale, Milestone 2.0)
+	QVariantMap m_traits;
+	QString m_childhoodBackstory;
+	QString m_adulthoodBackstory;
 
 	Equipment m_equipment;
 	unsigned int m_roleID = 0;

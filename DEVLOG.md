@@ -6,6 +6,48 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-25] Milestone 2.0 — Character Traits & Backstories
+
+**Milestone**: 2.0 — Gnome Depth
+**Files changed**: `content/db/ingnomia.db.sql`, `src/game/creature.h`, `src/game/creature.cpp`, `src/game/gnomefactory.h`, `src/game/gnomefactory.cpp`, `src/gui/aggregatorpopulation.h`, `src/gui/aggregatorpopulation.cpp`, `src/gui/ui/ui_sidepanels.cpp`
+
+### Changes
+
+- **12 personality traits** added on a -50 to +50 scale: Bravery, Sociability, Industriousness, Appetite, Temper, Creativity, Greed, Curiosity, Empathy, Stubbornness, Optimism, Nerve. Generated with a bell curve centered on 0 — most gnomes are average in most traits, distinctive in 2-4.
+- **40 backstories** (15 childhood + 25 adulthood): each gnome gets a random childhood + adulthood pair. Backstories provide skill modifiers (±1-3 levels) and trait biases that nudge personality. All DB-defined for moddability.
+- **Personality tab** in the Population panel: shows backstory (Youth/Before labels with tooltip for full text) and notable traits (|value| > 25) as colored progress bars with tooltips.
+- **Backward-compatible**: old saves load without crash — gnomes simply have empty traits/backstories.
+
+### Technical Details
+- Traits stored as `QVariantMap m_traits` in `Creature` class, serialized/deserialized alongside existing attributes/skills
+- `GnomeFactory::createGnome()` now calls `generateTraits()` and `assignBackstory()` after skill assignment
+- Backstory skill modifiers and trait biases use pipe-delimited format in DB (`"Mining:2|Masonry:1"`) parsed at gnome creation
+- Trait descriptions only appear for extreme values (|value| > 25), fetched from DB `Traits` table via `DB::selectRow()`
+- This is data-only — traits don't affect gameplay yet. Mood (2.1) and Social (2.0b) will wire them up.
+
+---
+
+## [2026-03-25] Milestone 1.1 — Event & Notification Log
+
+**Milestone**: 1.1 — Event & Notification Log
+**Files changed**: `src/base/logger.h`, `src/base/logger.cpp`, `src/gui/imguibridge.h`, `src/gui/ui/ui_gamehud.cpp`, `src/gui/ui/ui_sidepanels.h`, `src/gui/ui/ui_sidepanels.cpp`, `src/gui/mainwindow.cpp`, `src/game/eventmanager.cpp`, `src/game/gnome.cpp`
+
+### Changes
+- **Extended LogType enum** — Added INFO, MIGRATION, DEATH, DANGER types alongside existing DEBUG/JOB/CRAFT/COMBAT/WARNING
+- **Log timestamps** — Each log message now includes formatted game time (Year/Season/Day/Hour:Minute)
+- **Log cap at 1000 entries** — Prevents unbounded memory growth
+- **Toast notification system** — Critical events (WARNING, DANGER, COMBAT, DEATH, MIGRATION) appear as fading overlays in the top-right corner, color-coded by severity, auto-dismiss after ~5 game-minutes
+- **Event Log side panel** — New "Log" button in toolbar opens a full-screen scrollable event log with filter checkboxes (Info, Warning, Combat, Death, Jobs, Debug). Entries color-coded: red=death, orange=danger, yellow=warning, pink=combat, green=migration, blue=info, grey=jobs
+- **Migration event logging** — EventManager now logs migration/trader events to the event log
+- **Death type logging** — Gnome deaths use LogType::DEATH for distinct color and filtering
+
+### Technical Details
+- Toast generation checks `Global::logger().messages().size()` against `bridge.lastLogCount` to detect new entries
+- Event log renders newest-first with `ImGui::BeginChild` scroll region
+- SidePanel::EventLog added to enum and dispatched in `mainwindow.cpp` switch
+
+---
+
 ## [2026-03-25] Milestone 0.4 — Game Loop Parallelization
 
 **Milestone**: 0.4 — Parallelization

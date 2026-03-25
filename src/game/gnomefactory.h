@@ -40,4 +40,9 @@ public:
 
 private:
     QPointer<Game> g;
+
+	void generateTraits( Gnome* gnome );
+	void assignBackstory( Gnome* gnome );
+	void applyBackstoryModifiers( Gnome* gnome, const QVariantMap& backstory );
+	void applyBackstoryTraitBiases( Gnome* gnome, const QVariantMap& backstory );
 };

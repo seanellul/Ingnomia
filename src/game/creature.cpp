@@ -159,6 +159,20 @@ Creature::Creature( QVariantMap in, Game* game ) :
 	{
 		g->w()->addLight( m_id, m_position, m_lightIntensity );
 	}
+
+	// Load personality traits and backstories (backward-compatible: old saves have no keys)
+	if ( in.contains( "Traits" ) )
+	{
+		m_traits = in.value( "Traits" ).toMap();
+	}
+	if ( in.contains( "ChildhoodBackstory" ) )
+	{
+		m_childhoodBackstory = in.value( "ChildhoodBackstory" ).toString();
+	}
+	if ( in.contains( "AdulthoodBackstory" ) )
+	{
+		m_adulthoodBackstory = in.value( "AdulthoodBackstory" ).toString();
+	}
 }
 
 void Creature::serialize( QVariantMap& out ) const
@@ -176,6 +190,18 @@ void Creature::serialize( QVariantMap& out ) const
 	}
 	out.insert( "Attributes", m_attributes );
 	out.insert( "Skills", m_skills );
+	if ( !m_traits.isEmpty() )
+	{
+		out.insert( "Traits", m_traits );
+	}
+	if ( !m_childhoodBackstory.isEmpty() )
+	{
+		out.insert( "ChildhoodBackstory", m_childhoodBackstory );
+	}
+	if ( !m_adulthoodBackstory.isEmpty() )
+	{
+		out.insert( "AdulthoodBackstory", m_adulthoodBackstory );
+	}
 
 	out.insert( "BTBlackBoard", m_btBlackBoard );
 
@@ -321,6 +347,20 @@ int Creature::attribute( QString id ) const
 	if ( m_attributes.contains( id ) )
 	{
 		return m_attributes[id].toInt();
+	}
+	return 0;
+}
+
+void Creature::addTrait( QString id, int value )
+{
+	m_traits.insert( id, qBound( -50, value, 50 ) );
+}
+
+int Creature::trait( QString id ) const
+{
+	if ( m_traits.contains( id ) )
+	{
+		return m_traits[id].toInt();
 	}
 	return 0;
 }

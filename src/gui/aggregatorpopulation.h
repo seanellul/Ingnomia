@@ -36,12 +36,32 @@ struct GuiSkillInfo
 Q_DECLARE_METATYPE( GuiSkillInfo )
 
 
+struct GuiTraitInfo
+{
+	QString id;
+	int value;          // -50 to +50
+	QString label;      // "Fearless", "Coward", or empty if not extreme
+	QString description; // tooltip text
+	QString category;
+};
+Q_DECLARE_METATYPE( GuiTraitInfo )
+
+struct GuiBackstoryInfo
+{
+	QString title;
+	QString description;
+};
+Q_DECLARE_METATYPE( GuiBackstoryInfo )
+
 struct GuiGnomeInfo
 {
 	QString name;
 	unsigned int id;
 	QList<GuiSkillInfo> skills;
 	QString profession;
+	QList<GuiTraitInfo> traits;
+	GuiBackstoryInfo childhood;
+	GuiBackstoryInfo adulthood;
 };
 Q_DECLARE_METATYPE( GuiGnomeInfo )
 
