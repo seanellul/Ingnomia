@@ -3,6 +3,7 @@
 #include "../../base/global.h"
 #include "../../base/gamestate.h"
 #include "../../base/logger.h"
+#include "../strings.h"
 
 #include <imgui.h>
 
@@ -97,7 +98,7 @@ const BuildCategorySubcats* getSubcatsFor( BuildSelection sel )
 
 // Mine actions
 const char* mineActions[] = { "Mine", "ExplorativeMine", "RemoveFloor", "DigStairsDown", "MineStairsUp", "DigRampDown", "DigHole" };
-const char* mineLabels[] = { "Mine", "Explorative Mine", "Remove floor", "Stairs down", "Stairs up", "Ramp", "Hole" };
+const char* mineLabels[] = { "Mine", "Mine Vein", "Remove floor", "Stairs down", "Stairs up", "Ramp", "Hole" };
 
 // Agriculture actions
 const char* agriActions[] = { "FellTree", "", "HarvestTree", "Forage", "RemovePlant" };
@@ -146,7 +147,8 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 			if ( req.availableMats.isEmpty() )
 			{
 				canBuild = false;
-				ImGui::TextDisabled( "  %d x %s (unavailable)", req.amount, req.itemID.toStdString().c_str() );
+				QString unavailName = S::s( "$ItemName_" + req.itemID );
+				ImGui::TextDisabled( "  %d x %s (unavailable)", req.amount, unavailName.toStdString().c_str() );
 				mats.append( "" );
 				continue;
 			}
@@ -155,19 +157,23 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 			int& selIdx = s_selectedMats[item.id][r];
 			if ( selIdx >= req.availableMats.size() ) selIdx = 0;
 
-			ImGui::Text( "  %d", req.amount );
+			// Show required item type + count
+			QString itemName = S::s( "$ItemName_" + req.itemID );
+			ImGui::Text( "  %d x %s:", req.amount, itemName.toStdString().c_str() );
 			ImGui::SameLine();
 
 			// Material combo
 			QString comboLabel = "##mat" + QString::number( r );
-			QString preview = req.availableMats[selIdx].first + " (" + QString::number( req.availableMats[selIdx].second ) + ")";
+			QString matName = S::s( "$MaterialName_" + req.availableMats[selIdx].first );
+			QString preview = matName + " (" + QString::number( req.availableMats[selIdx].second ) + ")";
 
 			ImGui::SetNextItemWidth( 180 );
 			if ( ImGui::BeginCombo( comboLabel.toStdString().c_str(), preview.toStdString().c_str() ) )
 			{
 				for ( int m = 0; m < req.availableMats.size(); ++m )
 				{
-					QString label = req.availableMats[m].first + " (" + QString::number( req.availableMats[m].second ) + ")";
+					QString mLabel = S::s( "$MaterialName_" + req.availableMats[m].first );
+					QString label = mLabel + " (" + QString::number( req.availableMats[m].second ) + ")";
 					if ( ImGui::Selectable( label.toStdString().c_str(), m == selIdx ) )
 					{
 						selIdx = m;

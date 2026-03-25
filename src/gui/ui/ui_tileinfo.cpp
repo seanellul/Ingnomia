@@ -97,7 +97,33 @@ void drawTileInfo( ImGuiBridge& bridge )
 		{
 			for ( const auto& item : ti.items )
 			{
-				ImGui::Text( "%s", item.text.toStdString().c_str() );
+				if ( item.isContainer )
+				{
+					// Container display with capacity and contents
+					ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.6f, 0.8f, 1.0f, 1.0f ) );
+					QString containerText = item.text + " [" + QString::number( item.containerUsed ) + "/" + QString::number( item.containerCap ) + "]";
+					bool open = ImGui::TreeNode( containerText.toStdString().c_str() );
+					ImGui::PopStyleColor();
+					if ( open )
+					{
+						if ( item.containedItemNames.isEmpty() )
+						{
+							ImGui::TextDisabled( "  Empty" );
+						}
+						else
+						{
+							for ( const auto& cName : item.containedItemNames )
+							{
+								ImGui::Text( "  %s", cName.toStdString().c_str() );
+							}
+						}
+						ImGui::TreePop();
+					}
+				}
+				else
+				{
+					ImGui::Text( "%s", item.text.toStdString().c_str() );
+				}
 			}
 			if ( ti.items.isEmpty() )
 			{

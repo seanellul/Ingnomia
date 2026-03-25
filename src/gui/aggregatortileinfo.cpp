@@ -146,7 +146,7 @@ void AggregatorTileInfo::onUpdateTileInfo( unsigned int tileID )
 			{
 				QString itext = "";
 				QString info = S::s( "$MaterialName_" + g->inv()->materialSID( item ) ) + " " + S::s( "$ItemName_" + g->inv()->itemSID( item ) );
-				
+
 				if( g->inv()->isConstructed( item ) )
 				{
 					if( g->mcm()->hasMechanism( pos ) )
@@ -163,6 +163,26 @@ void AggregatorTileInfo::onUpdateTileInfo( unsigned int tileID )
 					{
 						m_tileInfo.mechInfo.itemID = 0;
 					}
+
+					// Check if this constructed item is a container (crate, barrel, etc.)
+					if ( g->inv()->isContainer( item ) )
+					{
+						GuiItemInfo git;
+						git.text = info;
+						git.id = item;
+						git.isContainer = true;
+						git.containerCap = g->inv()->capacity( item );
+						auto& contained = g->inv()->itemsInContainer( item );
+						git.containerUsed = contained.size();
+						for ( auto cid : contained )
+						{
+							QString cName = S::s( "$MaterialName_" + g->inv()->materialSID( cid ) ) + " " + S::s( "$ItemName_" + g->inv()->itemSID( cid ) );
+							git.containedItemNames.append( cName );
+						}
+						m_tileInfo.items.append( git );
+						continue;
+					}
+
 					itext += "b";
 				}
 				if( g->inv()->isInStockpile( item ) )
