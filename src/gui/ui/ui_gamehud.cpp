@@ -248,23 +248,22 @@ void drawGameHUD( ImGuiBridge& bridge )
 	ImGuiIO& io = ImGui::GetIO();
 
 	// =========================================================================
-	// Top bar: Kingdom name + resources + time + speed (full width)
+	// Top-left: Kingdom info + resources (compact, 2 lines)
 	// =========================================================================
-	float topBarHeight = 26;
+	float topBarHeight = 40;
 	ImGui::SetNextWindowPos( ImVec2( 0, 0 ) );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x, topBarHeight ) );
-	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 10, 4 ) );
-	ImGui::Begin( "##topbar", nullptr,
+	ImGui::SetNextWindowSize( ImVec2( 380, topBarHeight ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 8, 2 ) );
+	ImGui::Begin( "##topleft", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
 
-	// Kingdom name
+	// Line 1: Kingdom name
 	ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.9f, 0.85f, 0.6f, 1.0f ) );
 	ImGui::Text( "%s", bridge.kingdomName.toStdString().c_str() );
 	ImGui::PopStyleColor();
-	ImGui::SameLine( 0, 30 );
 
-	// Resource counters (color-coded)
+	// Line 2: Resources
 	auto colorForCount = []( int count ) -> ImVec4 {
 		if ( count > 50 ) return ImVec4( 0.3f, 0.8f, 0.3f, 1.0f );
 		if ( count > 10 ) return ImVec4( 0.9f, 0.8f, 0.2f, 1.0f );
@@ -274,28 +273,37 @@ void drawGameHUD( ImGuiBridge& bridge )
 	ImGui::PushStyleColor( ImGuiCol_Text, colorForCount( bridge.stockFood ) );
 	ImGui::Text( "Food: %d", bridge.stockFood );
 	ImGui::PopStyleColor();
-	ImGui::SameLine( 0, 15 );
+	ImGui::SameLine( 0, 10 );
 
 	ImGui::PushStyleColor( ImGuiCol_Text, colorForCount( bridge.stockDrink ) );
 	ImGui::Text( "Drink: %d", bridge.stockDrink );
 	ImGui::PopStyleColor();
-	ImGui::SameLine( 0, 15 );
+	ImGui::SameLine( 0, 10 );
 
-	ImGui::Text( "Gnomes: %d", bridge.stockGnomes );
-	ImGui::SameLine( 0, 15 );
-	ImGui::Text( "Items: %d", bridge.stockItems );
+	ImGui::Text( "Gnomes: %d  Items: %d", bridge.stockGnomes, bridge.stockItems );
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+
+	// =========================================================================
+	// Top-right: Time, Z-level, speed controls (compact, 2 lines)
+	// =========================================================================
+	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 260, 0 ) );
+	ImGui::SetNextWindowSize( ImVec2( 260, topBarHeight ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 8, 2 ) );
+	ImGui::Begin( "##topright", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
+
+	// Line 1: Date + Z-level
+	ImGui::Text( "Day %d %s  Y%d", bridge.day, bridge.season.toStdString().c_str(), bridge.year );
 	ImGui::SameLine( 0, 15 );
 	ImGui::TextDisabled( "Z:%d", bridge.viewLevel );
 
-	// Right-aligned: time, date, speed controls
-	float rightSection = io.DisplaySize.x - 350;
-	ImGui::SameLine( rightSection );
-	ImGui::Text( "Day %d %s Y%d", bridge.day, bridge.season.toStdString().c_str(), bridge.year );
-	ImGui::SameLine( 0, 10 );
+	// Line 2: Time + speed controls + lockdown
 	ImGui::Text( "%02d:%02d", bridge.hour, bridge.minute );
 	ImGui::SameLine( 0, 10 );
 
-	// Speed controls
 	if ( ImGui::SmallButton( bridge.paused ? ">" : "||" ) )
 	{
 		bridge.cmdSetPaused( !bridge.paused );
@@ -310,44 +318,55 @@ void drawGameHUD( ImGuiBridge& bridge )
 	if ( isFast ) ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.2f, 0.6f, 0.2f, 1.0f ) );
 	if ( ImGui::SmallButton( ">>>" ) ) { bridge.cmdSetPaused( false ); bridge.cmdSetGameSpeed( GameSpeed::Fast ); }
 	if ( isFast ) ImGui::PopStyleColor();
+	ImGui::SameLine( 0, 10 );
 
-	ImGui::End();
-	ImGui::PopStyleVar();
-
-	// =========================================================================
-	// Top-right: Lockdown + render overlays (below top bar)
-	// =========================================================================
-	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 180, topBarHeight + 5 ) );
-	ImGui::SetNextWindowSize( ImVec2( 175, 0 ) );
-	ImGui::Begin( "##overlays", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground );
-
-	// Lockdown button
+	// Lockdown button (compact, next to speed)
 	if ( GameState::lockdown )
 	{
 		ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.8f, 0.1f, 0.1f, 1.0f ) );
-		if ( ImGui::SmallButton( "LOCKDOWN ACTIVE" ) )
+		if ( ImGui::SmallButton( "!!!" ) )
 		{
 			GameState::lockdown = false;
 			Global::logger().log( LogType::INFO, "Lockdown lifted — civilians may move freely.", 0 );
 		}
 		ImGui::PopStyleColor();
+		if ( ImGui::IsItemHovered() ) ImGui::SetTooltip( "LOCKDOWN ACTIVE\nClick to lift" );
 	}
 	else
 	{
-		if ( ImGui::SmallButton( "Lockdown" ) )
+		if ( ImGui::SmallButton( "L" ) )
 		{
 			GameState::lockdown = true;
 			Global::logger().log( LogType::DANGER, "LOCKDOWN! Civilians confined to safe areas.", 0 );
 		}
+		if ( ImGui::IsItemHovered() ) ImGui::SetTooltip( "Lockdown\nConfine civilians to safe rooms" );
 	}
 
-	// Render overlay toggles with proper labels
+	ImGui::End();
+	ImGui::PopStyleVar();
+
+	// =========================================================================
+	// Below top-left: DJWA overlay filter checkboxes (single row)
+	// =========================================================================
+	ImGui::SetNextWindowPos( ImVec2( 0, topBarHeight ) );
+	ImGui::SetNextWindowSize( ImVec2( 0, 0 ) );
+	ImGui::Begin( "##overlays", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground );
+
 	bool d = bridge.renderDesignations, j = bridge.renderJobs, w = bridge.renderWalls, a = bridge.renderAxles;
 	bool changed = false;
-	if ( ImGui::Checkbox( "Designations", &d ) ) { bridge.renderDesignations = d; changed = true; }
-	if ( ImGui::Checkbox( "Jobs", &j ) ) { bridge.renderJobs = j; changed = true; }
-	if ( ImGui::Checkbox( "Lower Walls", &w ) ) { bridge.renderWalls = w; changed = true; }
-	if ( ImGui::Checkbox( "Axles", &a ) ) { bridge.renderAxles = a; changed = true; }
+	if ( ImGui::Checkbox( "D", &d ) ) { bridge.renderDesignations = d; changed = true; }
+	if ( ImGui::IsItemHovered() ) ImGui::SetTooltip( "Show Designations" );
+	ImGui::SameLine();
+	if ( ImGui::Checkbox( "J", &j ) ) { bridge.renderJobs = j; changed = true; }
+	if ( ImGui::IsItemHovered() ) ImGui::SetTooltip( "Show Jobs" );
+	ImGui::SameLine();
+	if ( ImGui::Checkbox( "W", &w ) ) { bridge.renderWalls = w; changed = true; }
+	if ( ImGui::IsItemHovered() ) ImGui::SetTooltip( "Lower Walls" );
+	ImGui::SameLine();
+	if ( ImGui::Checkbox( "A", &a ) ) { bridge.renderAxles = a; changed = true; }
+	if ( ImGui::IsItemHovered() ) ImGui::SetTooltip( "Show Axles" );
 	if ( changed ) bridge.cmdSetRenderOptions( d, j, w, a );
 
 	ImGui::End();
