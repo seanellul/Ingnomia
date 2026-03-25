@@ -6,6 +6,61 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-25] Agriculture Panel UI Overhaul
+
+**Milestone**: 1.4 — HUD & UI Improvements
+**Commits**: Part of `eec1d91`, `efb7a76`
+**Files changed**: `src/gui/ui/ui_sidepanels.cpp`, `src/gui/imguibridge.h`, `src/gui/imguibridge.cpp`
+
+### Changes
+- **Crop selector dropdown** — farms now have a combo box listing all plantable crops from `globalPlants`. Selecting a crop calls the existing `Farm::setPlantType()` backend. Previously there was no way to choose what to plant from the UI.
+- **Grove management view** — tree type selector dropdown, Plant trees/Pick fruit/Fell trees checkboxes, plot and tree count display
+- **Pasture management view** — animal type selector, male/female population sliders, harvest/hay toggles, food settings with per-item checkboxes, animal list with butcher toggles
+- **Type-aware panel** — `AgriType currentAgriType` added to `ImGuiBridge`. Panel auto-detects Farm/Grove/Pasture from which info struct is populated and renders the correct view.
+- **Fixed hardcoded AgriType::Farm** — `cmdAgriSetOptions`, `cmdAgriSetHarvestOptions`, `cmdAgriSelectProduct` now pass `currentAgriType` instead of always Farm
+- **Global list loading** — plant/tree/animal lists requested on panel open if not yet loaded
+- **Rename UX** — type new name + Enter saves immediately without closing panel (uses `ImGuiInputTextFlags_EnterReturnsTrue`)
+- **Panel sizing** — positioned at (5, 130), 280px wide, matching screenshot reference layout
+
+### Technical Details
+- Zero new game logic — all backend functions (`AggregatorAgri::onSelectProduct`, `Farm::setPlantType`, `Pasture::setAnimalType`, grove options) were fully wired but never called from UI
+- `drawAgriculturePanel()` expanded from 40-line farm-only stub to ~280 lines across 4 functions (`drawFarmView`, `drawGroveView`, `drawPastureView`, dispatcher)
+
+---
+
+## [2026-03-25] Game Design Research Library & Roadmap Expansion
+
+**Milestone**: Planning & Documentation
+**Commits**: Part of `b6461ad`, `a0750af`
+**Files changed**: `docs/research/**/*.md`, `docs/research/feature_reference_library.md`, `docs/updates/development_roadmap.md`
+
+### Changes
+- **Research library** (8 documents, ~250KB) compiled from RimWorld wiki, Dwarf Fortress wiki, Gnomoria wiki, Reddit/Steam community feedback, and art resource searches
+  - `docs/research/rimworld/core-mechanics.md` — 73 traits, 150+ mood thoughts, mental breaks, events, social, medical, skills
+  - `docs/research/rimworld/extended-systems.md` — animals, enemies, biomes, backstories, factions, diseases, weapons, ideology
+  - `docs/research/dwarf-fortress/core-mechanics.md` — 50 personality facets, emotions, strange moods, combat anatomy, medical, social, needs
+  - `docs/research/dwarf-fortress/extended-systems.md` — creatures, megabeasts, world history generation, underground biomes, artifacts, nobles, trade
+  - `docs/research/gnomoria/wiki-mechanics.md` — game systems, progression, what worked
+  - `docs/research/gnomoria/community-feedback.md` — player love, wishlists, pain points (filtered for gameplay, not dev-abandonment)
+  - `docs/research/art-resources/art-technical-spec.md` — 32x36 isometric sprite system, all 26 tilesheets, pipeline for adding new art
+  - `docs/research/art-resources/isometric-art-search.md` — MagicaVoxel pipeline, free isometric assets, AI sprite tools
+- **Feature reference library** expanded with 3 new sections:
+  - §2.0 Character Traits & Backstories — 12-15 trait scales, childhood+adulthood backstory system, DF history integration
+  - §2.0b Social System — opinion scores, 5 interaction types, trait compatibility, relationship labels, dining hall as social hub
+  - §4.3 Magic & Religion marked as STRETCH GOAL (expansion scope, no visual/mechanical foundations exist)
+- **Development roadmap** expanded:
+  - Milestones 2-5 fully detailed with specific checklists from feature library
+  - Milestone 2 dependency chain documented (Traits → Social → Mood)
+  - All milestones cross-reference feature library with `**Design reference:**` links
+  - Guiding Principle 5 added: "Systems must talk to each other"
+
+### Technical Details
+- Research sourced from wiki pages via web fetch/search across 8 parallel research agents
+- Art research identified that free tilesets (16x16/32x32 top-down) don't match Ingnomia's 32x36 isometric projection — MagicaVoxel voxel-to-sprite pipeline is the most viable path for new art
+- Feature reference library serves as the design spec; roadmap is the implementation checklist. Both tell the same story at different zoom levels.
+
+---
+
 ## [2026-03-25] Improve Build UX, Tile Info, and Container Display
 
 **Commit**: `d555196`
