@@ -1481,25 +1481,59 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 
 	ImGui::Separator();
 
-	// Animal/Monster: show hunger only, then end early
+	// Animal/Monster: show relevant info, then end early
 	if ( !isGnome )
 	{
 		if ( ci.creatureType == "Animal" )
 		{
-			auto needBar = []( const char* label, int value ) {
+			// Hunger bar
+			{
+				int val = ci.hunger;
 				ImVec4 col;
-				if ( value > 60 ) col = ImVec4( 0.2f, 0.6f, 0.3f, 1.0f );
-				else if ( value > 30 ) col = ImVec4( 0.7f, 0.6f, 0.1f, 1.0f );
+				if ( val > 60 ) col = ImVec4( 0.2f, 0.6f, 0.3f, 1.0f );
+				else if ( val > 30 ) col = ImVec4( 0.7f, 0.6f, 0.1f, 1.0f );
 				else col = ImVec4( 0.8f, 0.2f, 0.2f, 1.0f );
-				ImGui::Text( "%s", label );
+				ImGui::Text( "Hunger" );
 				ImGui::SameLine( 80 );
 				ImGui::PushStyleColor( ImGuiCol_PlotHistogram, col );
-				ImGui::ProgressBar( qBound( 0.0f, value / 100.0f, 1.0f ), ImVec2( -50, 0 ), "" );
+				ImGui::ProgressBar( qBound( 0.0f, val / 100.0f, 1.0f ), ImVec2( -50, 0 ), "" );
 				ImGui::PopStyleColor();
 				ImGui::SameLine();
-				ImGui::Text( "%d%%", qBound( 0, value, 100 ) );
-			};
-			needBar( "Hunger", ci.hunger );
+				ImGui::Text( "%d%%", qBound( 0, val, 100 ) );
+			}
+
+			ImGui::Separator();
+
+			// Diet
+			if ( !ci.diet.isEmpty() )
+			{
+				ImGui::Text( "Diet:" );
+				ImGui::SameLine();
+				ImGui::TextColored( ImVec4( 0.7f, 0.8f, 0.6f, 1.0f ), "%s", ci.diet.toStdString().c_str() );
+			}
+
+			// Temperament
+			if ( ci.isAggressive )
+				ImGui::TextColored( ImVec4( 0.9f, 0.3f, 0.3f, 1.0f ), "Aggressive" );
+			else
+				ImGui::TextColored( ImVec4( 0.5f, 0.7f, 0.5f, 1.0f ), "Passive" );
+
+			// Combat stats
+			if ( ci.attackValue > 0 || ci.damageValue > 0 )
+			{
+				ImGui::Text( "Attack: %d  Damage: %d", ci.attackValue, ci.damageValue );
+			}
+
+			// Butcher drops
+			if ( !ci.butcherDrops.isEmpty() )
+			{
+				ImGui::Separator();
+				ImGui::TextColored( ImVec4( 0.6f, 0.6f, 0.8f, 1.0f ), "Butcher yields:" );
+				for ( const auto& drop : ci.butcherDrops )
+				{
+					ImGui::Text( "  %s", drop.toStdString().c_str() );
+				}
+			}
 		}
 
 		ImGui::End();

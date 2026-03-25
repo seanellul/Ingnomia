@@ -248,6 +248,11 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 			m_info.intel = 0;
 			m_info.wis = 0;
 			m_info.cha = 0;
+			m_info.diet.clear();
+			m_info.isAggressive = false;
+			m_info.attackValue = 0;
+			m_info.damageValue = 0;
+			m_info.butcherDrops.clear();
 		};
 
 		auto monster = g->cm()->monster( id );
@@ -297,6 +302,30 @@ void AggregatorCreatureInfo::onRequestCreatureUpdate( unsigned int id )
 				m_info.healthStatus = ( status & AS_DEAD ) ? "Dead" :
 					( status & AS_WOUNDED ) ? "Wounded" : "Healthy";
 				m_info.healthPercent = qBound( 0, (int)( animal->anatomyBlood() * 100.0f / qMax( 1.0f, animal->anatomyMaxBlood() ) ), 100 );
+
+				// Animal-specific: diet, combat stats, butcher drops
+				auto animalRow = DB::selectRow( "Animals", animal->species() );
+				m_info.diet = animalRow.value( "Food" ).toString();
+				m_info.isAggressive = animal->isAggro();
+
+				// Get attack/damage from current state
+				auto stateRows = DB::selectRows( "Animals_States", "ID", animal->species() );
+				if ( !stateRows.isEmpty() )
+				{
+					auto lastState = stateRows.last(); // adult state
+					m_info.attackValue = lastState.value( "Attack" ).toInt();
+					m_info.damageValue = lastState.value( "Damage" ).toInt();
+				}
+
+				// Butcher drops
+				m_info.butcherDrops.clear();
+				auto butcherRows = DB::selectRows( "Animals_OnButcher", "ID", animal->species() );
+				for ( const auto& row : butcherRows )
+				{
+					int amount = row.value( "Amount" ).toInt();
+					QString item = S::s( "$ItemName_" + row.value( "ItemID" ).toString() );
+					m_info.butcherDrops.append( QString::number( amount ) + "x " + item );
+				}
 
 				clearPersonality();
 				emit signalCreatureUpdate( m_info );

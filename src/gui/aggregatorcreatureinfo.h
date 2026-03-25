@@ -52,6 +52,13 @@ struct GuiCreatureInfo
 	QString creatureType;  // "Gnome", "Animal", "Monster"
 	int healthPercent = 100; // blood / maxBlood as percentage
 	QString healthStatus;  // "Healthy", "Wounded", "Bleeding"
+
+	// Animal/Monster specific
+	QString diet;          // "Meat", "Vegetable", "Fruit", "Meat|Fruit"
+	bool isAggressive = false;
+	int attackValue = 0;
+	int damageValue = 0;
+	QStringList butcherDrops; // "6x Meat", "1x Bone"
 	int str = 0;
 	int dex = 0;
 	int con = 0;
