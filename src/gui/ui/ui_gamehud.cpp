@@ -234,47 +234,52 @@ void drawGameHUD( ImGuiBridge& bridge )
 	ImGuiIO& io = ImGui::GetIO();
 
 	// =========================================================================
-	// Top-left: Kingdom info + render toggles
+	// Top bar: Kingdom name + resources + time + speed (full width)
 	// =========================================================================
-	ImGui::SetNextWindowPos( ImVec2( 5, 5 ) );
-	ImGui::SetNextWindowSize( ImVec2( 250, 0 ) );
-	ImGui::Begin( "##kingdom", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground );
+	float topBarHeight = 26;
+	ImGui::SetNextWindowPos( ImVec2( 0, 0 ) );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x, topBarHeight ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 10, 4 ) );
+	ImGui::Begin( "##topbar", nullptr,
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
 
+	// Kingdom name
+	ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.9f, 0.85f, 0.6f, 1.0f ) );
 	ImGui::Text( "%s", bridge.kingdomName.toStdString().c_str() );
-	ImGui::Text( "%s", bridge.kingdomInfo1.toStdString().c_str() );
-	ImGui::Text( "%s", bridge.kingdomInfo2.toStdString().c_str() );
-	ImGui::Text( "%s", bridge.kingdomInfo3.toStdString().c_str() );
-	ImGui::Text( "Level: %d", bridge.viewLevel );
+	ImGui::PopStyleColor();
+	ImGui::SameLine( 0, 30 );
 
-	// DJWA toggles
-	bool d = bridge.renderDesignations, j = bridge.renderJobs, w = bridge.renderWalls, a = bridge.renderAxles;
-	bool changed = false;
-	ImGui::PushStyleVar( ImGuiStyleVar_FrameRounding, 3.0f );
-	if ( ImGui::Checkbox( "D", &d ) ) { bridge.renderDesignations = d; changed = true; }
-	ImGui::SameLine();
-	if ( ImGui::Checkbox( "J", &j ) ) { bridge.renderJobs = j; changed = true; }
-	ImGui::SameLine();
-	if ( ImGui::Checkbox( "W", &w ) ) { bridge.renderWalls = w; changed = true; }
-	ImGui::SameLine();
-	if ( ImGui::Checkbox( "A", &a ) ) { bridge.renderAxles = a; changed = true; }
-	ImGui::PopStyleVar();
+	// Resource counters (color-coded)
+	auto colorForCount = []( int count ) -> ImVec4 {
+		if ( count > 50 ) return ImVec4( 0.3f, 0.8f, 0.3f, 1.0f );
+		if ( count > 10 ) return ImVec4( 0.9f, 0.8f, 0.2f, 1.0f );
+		return ImVec4( 0.9f, 0.2f, 0.2f, 1.0f );
+	};
 
-	if ( changed )
-	{
-		bridge.cmdSetRenderOptions( d, j, w, a );
-	}
+	ImGui::PushStyleColor( ImGuiCol_Text, colorForCount( bridge.stockFood ) );
+	ImGui::Text( "Food: %d", bridge.stockFood );
+	ImGui::PopStyleColor();
+	ImGui::SameLine( 0, 15 );
 
-	ImGui::End();
+	ImGui::PushStyleColor( ImGuiCol_Text, colorForCount( bridge.stockDrink ) );
+	ImGui::Text( "Drink: %d", bridge.stockDrink );
+	ImGui::PopStyleColor();
+	ImGui::SameLine( 0, 15 );
 
-	// =========================================================================
-	// Top-right: Time + speed controls
-	// =========================================================================
-	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 200, 5 ) );
-	ImGui::SetNextWindowSize( ImVec2( 195, 0 ) );
-	ImGui::Begin( "##time", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground );
+	ImGui::Text( "Gnomes: %d", bridge.stockGnomes );
+	ImGui::SameLine( 0, 15 );
+	ImGui::Text( "Items: %d", bridge.stockItems );
+	ImGui::SameLine( 0, 15 );
+	ImGui::TextDisabled( "Z:%d", bridge.viewLevel );
 
-	ImGui::Text( "Day %d of %s", bridge.day, bridge.season.toStdString().c_str() );
-	ImGui::Text( "Year %d   %02d:%02d", bridge.year, bridge.hour, bridge.minute );
+	// Right-aligned: time, date, speed controls
+	float rightSection = io.DisplaySize.x - 350;
+	ImGui::SameLine( rightSection );
+	ImGui::Text( "Day %d %s Y%d", bridge.day, bridge.season.toStdString().c_str(), bridge.year );
+	ImGui::SameLine( 0, 10 );
+	ImGui::Text( "%02d:%02d", bridge.hour, bridge.minute );
+	ImGui::SameLine( 0, 10 );
 
 	// Speed controls
 	if ( ImGui::SmallButton( bridge.paused ? ">" : "||" ) )
@@ -285,23 +290,24 @@ void drawGameHUD( ImGuiBridge& bridge )
 	bool isNormal = ( bridge.gameSpeed == GameSpeed::Normal && !bridge.paused );
 	bool isFast = ( bridge.gameSpeed == GameSpeed::Fast && !bridge.paused );
 	if ( isNormal ) ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.2f, 0.6f, 0.2f, 1.0f ) );
-	if ( ImGui::SmallButton( ">>" ) )
-	{
-		bridge.cmdSetPaused( false );
-		bridge.cmdSetGameSpeed( GameSpeed::Normal );
-	}
+	if ( ImGui::SmallButton( ">>" ) ) { bridge.cmdSetPaused( false ); bridge.cmdSetGameSpeed( GameSpeed::Normal ); }
 	if ( isNormal ) ImGui::PopStyleColor();
 	ImGui::SameLine();
 	if ( isFast ) ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.2f, 0.6f, 0.2f, 1.0f ) );
-	if ( ImGui::SmallButton( ">>>" ) )
-	{
-		bridge.cmdSetPaused( false );
-		bridge.cmdSetGameSpeed( GameSpeed::Fast );
-	}
+	if ( ImGui::SmallButton( ">>>" ) ) { bridge.cmdSetPaused( false ); bridge.cmdSetGameSpeed( GameSpeed::Fast ); }
 	if ( isFast ) ImGui::PopStyleColor();
 
-	// Lockdown button (Milestone 2.2)
-	ImGui::Separator();
+	ImGui::End();
+	ImGui::PopStyleVar();
+
+	// =========================================================================
+	// Top-right: Lockdown + render overlays (below top bar)
+	// =========================================================================
+	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 180, topBarHeight + 5 ) );
+	ImGui::SetNextWindowSize( ImVec2( 175, 0 ) );
+	ImGui::Begin( "##overlays", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground );
+
+	// Lockdown button
 	if ( GameState::lockdown )
 	{
 		ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.8f, 0.1f, 0.1f, 1.0f ) );
@@ -321,46 +327,16 @@ void drawGameHUD( ImGuiBridge& bridge )
 		}
 	}
 
+	// Render overlay toggles with proper labels
+	bool d = bridge.renderDesignations, j = bridge.renderJobs, w = bridge.renderWalls, a = bridge.renderAxles;
+	bool changed = false;
+	if ( ImGui::Checkbox( "Designations", &d ) ) { bridge.renderDesignations = d; changed = true; }
+	if ( ImGui::Checkbox( "Jobs", &j ) ) { bridge.renderJobs = j; changed = true; }
+	if ( ImGui::Checkbox( "Lower Walls", &w ) ) { bridge.renderWalls = w; changed = true; }
+	if ( ImGui::Checkbox( "Axles", &a ) ) { bridge.renderAxles = a; changed = true; }
+	if ( changed ) bridge.cmdSetRenderOptions( d, j, w, a );
+
 	ImGui::End();
-
-	// =========================================================================
-	// Resource bar (stock counters)
-	// =========================================================================
-	{
-		float barHeight = 22;
-		ImGui::SetNextWindowPos( ImVec2( 0, io.DisplaySize.y - 50 - barHeight - 2 ) );
-		ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x, barHeight ) );
-		ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 8, 2 ) );
-		ImGui::Begin( "##resourcebar", nullptr,
-			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
-
-		auto colorForCount = []( int count ) -> ImVec4 {
-			if ( count > 50 ) return ImVec4( 0.3f, 0.8f, 0.3f, 1.0f ); // green
-			if ( count > 10 ) return ImVec4( 0.9f, 0.8f, 0.2f, 1.0f ); // yellow
-			return ImVec4( 0.9f, 0.2f, 0.2f, 1.0f ); // red
-		};
-
-		int foodCount = bridge.stockFood;
-		int drinkCount = bridge.stockDrink;
-
-		ImGui::PushStyleColor( ImGuiCol_Text, colorForCount( foodCount ) );
-		ImGui::Text( "Food: %d", foodCount );
-		ImGui::PopStyleColor();
-		ImGui::SameLine( 0, 20 );
-
-		ImGui::PushStyleColor( ImGuiCol_Text, colorForCount( drinkCount ) );
-		ImGui::Text( "Drink: %d", drinkCount );
-		ImGui::PopStyleColor();
-		ImGui::SameLine( 0, 20 );
-
-		ImGui::Text( "Gnomes: %d", bridge.stockGnomes );
-		ImGui::SameLine( 0, 20 );
-		ImGui::Text( "Items: %d", bridge.stockItems );
-
-		ImGui::End();
-		ImGui::PopStyleVar();
-	}
 
 	// =========================================================================
 	// Bottom toolbar
