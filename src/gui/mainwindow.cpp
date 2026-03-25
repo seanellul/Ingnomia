@@ -85,6 +85,11 @@
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include "imgui_impl_qt5.h"
+#include "imguibridge.h"
+#include "ui/ui_mainmenu.h"
+#include "ui/ui_gamehud.h"
+#include "ui/ui_tileinfo.h"
+#include "ui/ui_sidepanels.h"
 
 #include <string>
 
@@ -142,6 +147,23 @@ MainWindow& MainWindow::getInstance()
 void MainWindow::onExit()
 {
 	this->close();
+}
+
+void MainWindow::takeScreenshot()
+{
+	static int counter = 0;
+	QString dir = QCoreApplication::applicationDirPath() + "/../docs/updates/gui";
+	QDir().mkpath( dir );
+	QString path = dir + "/screenshot_" + QString::number( counter++ ).rightJustified( 3, '0' ) + ".png";
+	QImage img = this->grabFramebuffer();
+	if ( img.save( path ) )
+	{
+		qDebug() << "Screenshot saved:" << path;
+	}
+	else
+	{
+		qDebug() << "Screenshot failed:" << path;
+	}
 }
 
 void MainWindow::toggleFullScreen()
@@ -279,6 +301,9 @@ void MainWindow::keyPressEvent( QKeyEvent* event )
 				keyboardMove();
 				m_keyboardMove += KeyboardMove::Right;
 				redraw();
+				break;
+			case Qt::Key_F12:
+				takeScreenshot();
 				break;
 		}
 		emit signalRenderParams( width(), height(), m_renderer->moveX(), m_renderer->moveY(), m_renderer->scale(), m_renderer->rotation() );
@@ -429,7 +454,10 @@ void MainWindow::mousePressEvent( QMouseEvent* event )
 {
 	ImGuiQt5::ProcessMouseEvent( event );
 	if ( ImGui::GetIO().WantCaptureMouse )
+	{
+		redraw();
 		return;
+	}
 
 	//qDebug() << "mousePressEvent";
 	auto gp = this->mapFromGlobal( event->globalPos() );
@@ -476,7 +504,10 @@ void MainWindow::mouseReleaseEvent( QMouseEvent* event )
 {
 	ImGuiQt5::ProcessMouseEvent( event );
 	if ( ImGui::GetIO().WantCaptureMouse )
+	{
+		redraw();
 		return;
+	}
 
 	//qDebug() << "mouseReleaseEvent";
 	if ( event->button() & Qt::LeftButton )
@@ -688,12 +719,15 @@ void MainWindow::imguiInit()
 {
 	ImGuiQt5::Init( this );
 	ImGui_ImplOpenGL3_Init( "#version 410" );
+	m_bridge = new ImGuiBridge( this );
 }
 
 void MainWindow::imguiShutdown()
 {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGuiQt5::Shutdown();
+	delete m_bridge;
+	m_bridge = nullptr;
 }
 
 void MainWindow::drawImGui()
@@ -705,6 +739,72 @@ void MainWindow::drawImGui()
 	if ( m_showImGuiDemo )
 	{
 		ImGui::ShowDemoWindow( &m_showImGuiDemo );
+	}
+
+	if ( m_bridge )
+	{
+		switch ( m_bridge->appState )
+		{
+			case ImGuiBridge::AppState::MainMenu:
+				drawMainMenu( *m_bridge );
+				break;
+			case ImGuiBridge::AppState::NewGame:
+				drawNewGame( *m_bridge );
+				break;
+			case ImGuiBridge::AppState::LoadGame:
+				drawLoadGame( *m_bridge );
+				break;
+			case ImGuiBridge::AppState::Settings:
+				drawSettings( *m_bridge );
+				break;
+			case ImGuiBridge::AppState::WaitingForLoad:
+				drawWaitScreen( *m_bridge );
+				break;
+			case ImGuiBridge::AppState::InGameMenu:
+				drawGameHUD( *m_bridge );
+				drawInGameMenu( *m_bridge );
+				break;
+			case ImGuiBridge::AppState::GameRunning:
+				drawGameHUD( *m_bridge );
+				drawTileInfo( *m_bridge );
+
+				switch ( m_bridge->activeSidePanel )
+				{
+					case ImGuiBridge::SidePanel::Kingdom:
+						drawKingdomPanel( *m_bridge );
+						break;
+					case ImGuiBridge::SidePanel::Stockpile:
+						drawStockpilePanel( *m_bridge );
+						break;
+					case ImGuiBridge::SidePanel::Military:
+						drawMilitaryPanel( *m_bridge );
+						break;
+					case ImGuiBridge::SidePanel::Population:
+						drawPopulationPanel( *m_bridge );
+						break;
+					case ImGuiBridge::SidePanel::Missions:
+						drawNeighborsPanel( *m_bridge );
+						break;
+					case ImGuiBridge::SidePanel::Workshop:
+						drawWorkshopPanel( *m_bridge );
+						break;
+					case ImGuiBridge::SidePanel::Agriculture:
+						drawAgriculturePanel( *m_bridge );
+						break;
+					case ImGuiBridge::SidePanel::CreatureInfo:
+						drawCreatureInfoPanel( *m_bridge );
+						break;
+					default:
+						break;
+				}
+
+				if ( m_bridge->showDebugPanel )
+				{
+					drawDebugPanel( *m_bridge );
+				}
+
+				break;
+		}
 	}
 
 	ImGui::Render();

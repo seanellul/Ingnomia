@@ -108,8 +108,10 @@ private:
 	void registerComponents();
 
 	void toggleFullScreen();
+	void takeScreenshot();
 	bool m_isFullScreen = false;
-	bool m_showImGuiDemo = true;
+	bool m_showImGuiDemo = false;
+	class ImGuiBridge* m_bridge = nullptr;
 
 	void onExit();
 

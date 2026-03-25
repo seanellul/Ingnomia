@@ -1,0 +1,134 @@
+#include "ui_tileinfo.h"
+#include "../imguibridge.h"
+#include <imgui.h>
+
+void drawTileInfo( ImGuiBridge& bridge )
+{
+	if ( !bridge.showTileInfo )
+		return;
+
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 310, 100 ) );
+	ImGui::SetNextWindowSize( ImVec2( 300, 400 ) );
+
+	ImGui::Begin( "Tile Info", &bridge.showTileInfo, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+
+	const auto& ti = bridge.tileInfo;
+
+	if ( ImGui::BeginTabBar( "TileInfoTabs" ) )
+	{
+		if ( ImGui::BeginTabItem( "Terrain" ) )
+		{
+			if ( !ti.floor.isEmpty() )
+			{
+				ImGui::Text( "Floor: %s", ti.floor.toStdString().c_str() );
+				ImGui::SameLine();
+				if ( ImGui::SmallButton( "Remove##floor" ) )
+				{
+					bridge.cmdTerrainCommand( bridge.selectedTileID, "RemoveFloor" );
+				}
+				ImGui::SameLine();
+				if ( ImGui::SmallButton( "Replace##floor" ) )
+				{
+					bridge.cmdTerrainCommand( bridge.selectedTileID, "ReplaceFloor" );
+				}
+			}
+
+			if ( !ti.wall.isEmpty() )
+			{
+				ImGui::Text( "Wall: %s", ti.wall.toStdString().c_str() );
+				ImGui::SameLine();
+				if ( ImGui::SmallButton( "Remove##wall" ) )
+				{
+					bridge.cmdTerrainCommand( bridge.selectedTileID, "Mine" );
+				}
+			}
+
+			if ( !ti.embedded.isEmpty() )
+				ImGui::Text( "Embedded: %s", ti.embedded.toStdString().c_str() );
+
+			if ( !ti.plant.isEmpty() )
+			{
+				ImGui::Text( "Plant: %s", ti.plant.toStdString().c_str() );
+				ImGui::SameLine();
+				if ( ti.plantIsTree )
+				{
+					if ( ImGui::SmallButton( "Fell" ) )
+						bridge.cmdTerrainCommand( bridge.selectedTileID, "FellTree" );
+				}
+				if ( ti.plantIsHarvestable )
+				{
+					ImGui::SameLine();
+					if ( ImGui::SmallButton( "Harvest" ) )
+						bridge.cmdTerrainCommand( bridge.selectedTileID, "HarvestTree" );
+				}
+			}
+
+			if ( !ti.water.isEmpty() )
+				ImGui::Text( "Water: %s", ti.water.toStdString().c_str() );
+
+			if ( !ti.constructed.isEmpty() )
+				ImGui::Text( "Built: %s", ti.constructed.toStdString().c_str() );
+
+			ImGui::Separator();
+
+			if ( !ti.designationName.isEmpty() )
+			{
+				ImGui::Text( "%s", ti.designationName.toStdString().c_str() );
+				if ( ImGui::Button( "Manage" ) )
+				{
+					bridge.cmdManageCommand( bridge.selectedTileID );
+				}
+			}
+
+			if ( !ti.jobName.isEmpty() )
+			{
+				ImGui::Separator();
+				ImGui::Text( "Job: %s", ti.jobName.toStdString().c_str() );
+				if ( !ti.jobWorker.isEmpty() )
+					ImGui::Text( "Worker: %s", ti.jobWorker.toStdString().c_str() );
+				ImGui::Text( "Priority: %s", ti.jobPriority.toStdString().c_str() );
+			}
+
+			ImGui::EndTabItem();
+		}
+
+		if ( ImGui::BeginTabItem( "Items" ) )
+		{
+			for ( const auto& item : ti.items )
+			{
+				ImGui::Text( "%s", item.text.toStdString().c_str() );
+			}
+			if ( ti.items.isEmpty() )
+			{
+				ImGui::TextDisabled( "No items" );
+			}
+			ImGui::EndTabItem();
+		}
+
+		if ( ImGui::BeginTabItem( "Creatures" ) )
+		{
+			for ( const auto& creature : ti.creatures )
+			{
+				ImGui::Text( "%s", creature.text.toStdString().c_str() );
+				ImGui::SameLine();
+				ImGui::PushID( creature.id );
+				if ( ImGui::SmallButton( "Info" ) )
+				{
+					bridge.cmdRequestCreatureUpdate( creature.id );
+					bridge.activeSidePanel = ImGuiBridge::SidePanel::CreatureInfo;
+				}
+				ImGui::PopID();
+			}
+			if ( ti.creatures.isEmpty() )
+			{
+				ImGui::TextDisabled( "No creatures" );
+			}
+			ImGui::EndTabItem();
+		}
+
+		ImGui::EndTabBar();
+	}
+
+	ImGui::End();
+}
