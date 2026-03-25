@@ -70,10 +70,16 @@ void populateAnatomy( GuiCreatureInfo& info, const Creature* creature )
 	info.anatomyStatus = (unsigned int)anat.status();
 
 	info.bodyParts.clear();
+	// Skip cosmetic/placeholder parts
+	auto shouldSkip = []( CreaturePart id ) {
+		return id == KCP_NONE || id == CP_HAIR || id == CP_FACIAL_HAIR ||
+			   id == CP_CLOTHING || id == CP_BOOTS || id == CP_HAT || id == CP_BACK;
+	};
+
 	// External parts first, then internal
 	for ( const auto& part : anat.parts() )
 	{
-		if ( part.isInside ) continue;
+		if ( part.isInside || shouldSkip( part.id ) ) continue;
 		GuiCreatureInfo::BodyPartInfo bp;
 		bp.name = bodyPartName( part.id );
 		bp.hp = part.hp;
@@ -84,7 +90,7 @@ void populateAnatomy( GuiCreatureInfo& info, const Creature* creature )
 	}
 	for ( const auto& part : anat.parts() )
 	{
-		if ( !part.isInside ) continue;
+		if ( !part.isInside || shouldSkip( part.id ) ) continue;
 		GuiCreatureInfo::BodyPartInfo bp;
 		bp.name = "  " + bodyPartName( part.id );
 		bp.hp = part.hp;
