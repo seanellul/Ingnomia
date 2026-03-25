@@ -508,22 +508,63 @@ void drawGameHUD( ImGuiBridge& bridge )
 		const BuildCategorySubcats* sc = getSubcatsFor( bridge.currentBuildCategory );
 		if ( sc && sc->count > 0 )
 		{
-			float subcatH = sc->count * 32.0f + 10.0f;
+			// Lazy-init sprite cache
+			if ( !bridge.spriteTexCache ) bridge.spriteTexCache = new SpriteTextureCache();
+
+			float subcatBtnH = 70.0f;
+			float subcatH = sc->count * ( subcatBtnH + 5 ) + 10.0f;
 			ImGui::SetNextWindowPos( ImVec2( 130, io.DisplaySize.y - toolbarHeight - subcatH - 10 ) );
 			ImGui::SetNextWindowSize( ImVec2( 100, subcatH ) );
 			ImGui::Begin( "##buildsubcats", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar );
+
+			// Map subcategory labels to representative sprites for icons
+			static QMap<QString, QString> subcatSprites = {
+				{ "Wood", "Log" }, { "Soil", "RawSoil" }, { "Stone", "RawStone" },
+				{ "Metal", "Bar" }, { "Other", "RawStone" },
+				{ "Food", "Grain" }, { "Crafts", "Plank" }, { "Mechanics", "Axle" }, { "Misc", "Torch" },
+				{ "Chairs", "Chair" }, { "Tables", "Table" }, { "Beds", "Bed" }, { "Cabinets", "Cabinet" },
+				{ "Doors", "Door" }, { "Lights", "Torch" }, { "Farm", "Trough" },
+				{ "Mechanism", "Lever" }, { "Hydraulics", "Pump" }
+			};
 
 			for ( int m = 0; m < sc->count; ++m )
 			{
 				bool matActive = ( bridge.currentBuildMaterial == sc->subcats[m].dbKey );
 				if ( matActive ) ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.3f, 0.5f, 0.7f, 1.0f ) );
-				if ( ImGui::Button( sc->subcats[m].label, ImVec2( 85, 25 ) ) )
+
+				ImGui::PushID( m );
+
+				// Try to show sprite icon above text
+				QString spriteName = subcatSprites.value( sc->subcats[m].label, "" );
+				ImTextureID icon = spriteName.isEmpty() ? (ImTextureID)0 : bridge.spriteTexCache->getTextureForItem( spriteName, { "None" } );
+
+				// Button with icon + label stacked
+				ImVec2 btnSize( 85, subcatBtnH );
+				ImVec2 cursor = ImGui::GetCursorPos();
+
+				if ( ImGui::Button( "##subcatBtn", btnSize ) )
 				{
 					bridge.currentBuildMaterial = sc->subcats[m].dbKey;
 					bridge.buildItems.clear();
 					s_selectedMats.clear();
 					bridge.cmdRequestBuildItems( bridge.currentBuildCategory, bridge.currentBuildMaterial );
 				}
+
+				// Overlay: icon centered, text below
+				if ( icon )
+				{
+					ImGui::SetCursorPos( ImVec2( cursor.x + ( btnSize.x - 32 ) * 0.5f, cursor.y + 2 ) );
+					ImGui::Image( icon, ImVec2( 32, 40 ) );
+				}
+				ImGui::SetCursorPos( ImVec2( cursor.x, cursor.y + ( icon ? 42 : btnSize.y * 0.3f ) ) );
+				float textW = ImGui::CalcTextSize( sc->subcats[m].label ).x;
+				ImGui::SetCursorPosX( cursor.x + ( btnSize.x - textW ) * 0.5f );
+				ImGui::TextUnformatted( sc->subcats[m].label );
+
+				// Reset cursor to after the button
+				ImGui::SetCursorPos( ImVec2( cursor.x, cursor.y + btnSize.y + ImGui::GetStyle().ItemSpacing.y ) );
+
+				ImGui::PopID();
 				if ( matActive ) ImGui::PopStyleColor();
 			}
 
