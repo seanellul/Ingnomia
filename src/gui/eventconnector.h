@@ -167,6 +167,7 @@ public slots:
 
 	void onTerrainCommand( unsigned int tileID, QString cmd );
 	void onManageCommand( unsigned int tileID );
+	void onTileClickAutoOpen( unsigned int tileID );
 
 	void onSetRenderOptions( bool designations, bool jobs, bool walls, bool axles );
 	void onUpdateRenderOptions();

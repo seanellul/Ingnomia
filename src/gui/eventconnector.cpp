@@ -68,6 +68,7 @@ EventConnector::EventConnector( GameManager* parent ) :
 	m_soundAggregator	 = new AggregatorSound( this );
 
 	connect( m_selectionAggregator, &AggregatorSelection::signalSelectTile, m_tiAggregator, &AggregatorTileInfo::onShowTileInfo );
+	connect( m_selectionAggregator, &AggregatorSelection::signalSelectTile, this, &EventConnector::onTileClickAutoOpen );
 	connect( gm, &GameManager::signalLoadStatus, this, &EventConnector::signalLoadStatus );
 }
 
@@ -137,7 +138,12 @@ void EventConnector::onKeyPress( int key )
 
 void EventConnector::onTogglePause()
 {
-	emit signalUpdatePause( !gm->paused() );
+	if ( gm && gm->game() )
+	{
+		bool newPaused = !gm->paused();
+		gm->setPaused( newPaused );
+		emit signalUpdatePause( newPaused );
+	}
 }
 
 void EventConnector::onPropagateEscape()
@@ -207,6 +213,19 @@ void EventConnector::onManageCommand( unsigned int tileID )
 	}
 }
 
+
+void EventConnector::onTileClickAutoOpen( unsigned int tileID )
+{
+	if ( !gm || !gm->game() || !gm->game()->world() ) return;
+
+	Tile& tile = gm->game()->world()->getTile( tileID );
+
+	// Auto-open management panel for stockpiles, workshops, farms
+	if ( tile.flags & ( TileFlag::TF_STOCKPILE + TileFlag::TF_WORKSHOP + TileFlag::TF_GROVE + TileFlag::TF_FARM + TileFlag::TF_PASTURE ) )
+	{
+		onManageCommand( tileID );
+	}
+}
 
 void EventConnector::onSetRenderOptions( bool designations, bool jobs, bool walls, bool axles )
 {

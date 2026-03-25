@@ -171,6 +171,7 @@ public:
 	// =========================================================================
 	unsigned int activeAgriID = 0;
 	bool showAgriWindow = false;
+	AgriType currentAgriType = AgriType::Farm;
 	GuiFarmInfo farmInfo;
 	GuiPastureInfo pastureInfo;
 	GuiGroveInfo groveInfo;

@@ -309,6 +309,22 @@ void ImGuiBridge::onShowAgri( unsigned int id )
 	activeAgriID = id;
 	showAgriWindow = true;
 	activeSidePanel = SidePanel::Agriculture;
+
+	// Determine type from which info struct was just updated
+	if ( farmInfo.ID != 0 )
+		currentAgriType = AgriType::Farm;
+	else if ( pastureInfo.ID != 0 )
+		currentAgriType = AgriType::Pasture;
+	else if ( groveInfo.ID != 0 )
+		currentAgriType = AgriType::Grove;
+
+	// Request global lists if not yet loaded
+	if ( globalPlants.isEmpty() )
+		Global::eventConnector->aggregatorAgri()->onRequestGlobalPlantInfo();
+	if ( globalTrees.isEmpty() )
+		Global::eventConnector->aggregatorAgri()->onRequestGlobalTreeInfo();
+	if ( globalAnimals.isEmpty() )
+		Global::eventConnector->aggregatorAgri()->onRequestGlobalAnimalInfo();
 }
 
 void ImGuiBridge::onUpdateFarm( const GuiFarmInfo& info ) { farmInfo = info; }
@@ -475,12 +491,12 @@ void ImGuiBridge::cmdCloseWorkshopWindow()
 // Agriculture commands
 void ImGuiBridge::cmdAgriSetOptions( unsigned int id, const QString& name, int priority, bool suspended )
 {
-	Global::eventConnector->aggregatorAgri()->onSetBasicOptions( AgriType::Farm, id, name, priority, suspended );
+	Global::eventConnector->aggregatorAgri()->onSetBasicOptions( currentAgriType, id, name, priority, suspended );
 }
 
 void ImGuiBridge::cmdAgriSetHarvestOptions( unsigned int id, bool harvest, bool hay, bool tame )
 {
-	Global::eventConnector->aggregatorAgri()->onSetHarvestOptions( AgriType::Farm, id, harvest, hay, tame );
+	Global::eventConnector->aggregatorAgri()->onSetHarvestOptions( currentAgriType, id, harvest, hay, tame );
 }
 
 void ImGuiBridge::cmdAgriSetGroveOptions( unsigned int id, bool pickFruits, bool plantTrees, bool fellTrees )
@@ -490,7 +506,7 @@ void ImGuiBridge::cmdAgriSetGroveOptions( unsigned int id, bool pickFruits, bool
 
 void ImGuiBridge::cmdAgriSelectProduct( unsigned int id, const QString& product )
 {
-	Global::eventConnector->aggregatorAgri()->onSelectProduct( AgriType::Farm, id, product );
+	Global::eventConnector->aggregatorAgri()->onSelectProduct( currentAgriType, id, product );
 }
 
 void ImGuiBridge::cmdAgriSetMaxMale( unsigned int id, int max )
