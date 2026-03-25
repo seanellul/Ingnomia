@@ -105,6 +105,10 @@ enum class TileFlag : quint64
 	TF_DEAQUIFIER        = 0x20000000,
 	TF_TRANSPARENT       = 0x40000000,
 	TF_OVERSIZE          = 0x80000000,
+	// Zone system (Milestone 2.2)
+	TF_ZONE_MILITARY     = 0x100000000,  // only military gnomes may enter
+	TF_ZONE_CIVILIAN     = 0x200000000,  // only civilian gnomes may enter
+	TF_ZONE_RESTRICTED   = 0x400000000,  // all gnomes avoid unless no alternative
 };
 
 bool operator|( const TileFlag& a, const TileFlag& b ) = delete;

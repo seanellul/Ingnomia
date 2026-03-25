@@ -90,6 +90,10 @@ public:
 	static QString saveFolderName; // unique per game — "<KingdomName>_<timestamp>" to prevent save collisions
 
 	static bool peaceful;
+	static bool lockdown;  // Milestone 2.2: civilians confined to safe areas during emergencies
+	static int difficulty;       // Difficulty enum value (0=Peaceful..4=Brutal, 5=Custom)
+	static float temperature;    // 0-100 scale, varies by season + weather events
+	static QString activeWeather; // Current weather event ("", "Storm", "HeatWave", "ColdSnap")
 
 	static quint64 tick;
 

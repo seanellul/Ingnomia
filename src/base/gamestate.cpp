@@ -70,6 +70,10 @@ QString GameState::saveFolderName = "";
 unsigned int GameState::nextID = 1;
 
 bool GameState::peaceful = false;
+bool GameState::lockdown = false;
+int GameState::difficulty = 2; // Normal
+float GameState::temperature = 50.0f;
+QString GameState::activeWeather = "";
 
 quint64 GameState::tick = 1;
 
@@ -163,6 +167,9 @@ void GameState::serialize( QVariantMap& out )
 	out.insert( "saveFolderName", saveFolderName );
 
 	out.insert( "peaceful", peaceful );
+	out.insert( "difficulty", difficulty );
+	out.insert( "temperature", (double)temperature );
+	out.insert( "activeWeather", activeWeather );
 
 	out.insert( "tick", tick );
 
@@ -319,6 +326,9 @@ void GameState::load( QVariantMap& vals )
 	saveFolderName = tmp.value( "saveFolderName" ).toString();
 
 	peaceful = tmp.value( "peaceful" ).toBool();
+	difficulty = tmp.contains( "difficulty" ) ? tmp.value( "difficulty" ).toInt() : 2; // default Normal
+	temperature = tmp.contains( "temperature" ) ? tmp.value( "temperature" ).toFloat() : 50.0f;
+	activeWeather = tmp.value( "activeWeather" ).toString();
 
 	tick = tmp.value( "tick" ).value<quint64>();
 

@@ -186,9 +186,11 @@ The needs map exists (`creature.h:m_needs`) with Hunger/Thirst/Sleep. Automatons
 "No pass designation" was added in v0.4.7 with a checkbox to let gnomes ignore it (v0.4.8). But the community wanted a fuller zone system.
 
 - [x] ~~Basic no-pass zone~~ — done in v0.4.7
-- [ ] Zone types: civilian allowed, military only, forbidden (expand beyond simple no-pass)
+- [x] Zone tile flags: TF_ZONE_MILITARY, TF_ZONE_CIVILIAN, TF_ZONE_RESTRICTED added to TileFlag enum
+- [ ] Zone painting tool (click-drag to designate zones on map) — needs dedicated UI
 - [ ] Per-gnome zone permissions (beyond the single "ignore no pass" checkbox)
-- [ ] Emergency lockdown button — confine civilians to safe area, military operates freely
+- [x] Emergency lockdown button — toggle in HUD, logged to event log
+- [ ] Lockdown behavior tree integration (actually blocking civilian movement) — needs BT work
 - [ ] Emergency override when gnome is trapped
 
 ### 2.3 — Medical System Improvements (#31, #37)

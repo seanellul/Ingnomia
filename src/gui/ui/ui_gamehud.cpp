@@ -2,6 +2,7 @@
 #include "../imguibridge.h"
 #include "../../base/global.h"
 #include "../../base/gamestate.h"
+#include "../../base/logger.h"
 
 #include <imgui.h>
 
@@ -293,7 +294,67 @@ void drawGameHUD( ImGuiBridge& bridge )
 	}
 	if ( isFast ) ImGui::PopStyleColor();
 
+	// Lockdown button (Milestone 2.2)
+	ImGui::Separator();
+	if ( GameState::lockdown )
+	{
+		ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.8f, 0.1f, 0.1f, 1.0f ) );
+		if ( ImGui::SmallButton( "LOCKDOWN ACTIVE" ) )
+		{
+			GameState::lockdown = false;
+			Global::logger().log( LogType::INFO, "Lockdown lifted — civilians may move freely.", 0 );
+		}
+		ImGui::PopStyleColor();
+	}
+	else
+	{
+		if ( ImGui::SmallButton( "Lockdown" ) )
+		{
+			GameState::lockdown = true;
+			Global::logger().log( LogType::DANGER, "LOCKDOWN! Civilians confined to safe areas.", 0 );
+		}
+	}
+
 	ImGui::End();
+
+	// =========================================================================
+	// Resource bar (stock counters)
+	// =========================================================================
+	{
+		float barHeight = 22;
+		ImGui::SetNextWindowPos( ImVec2( 0, io.DisplaySize.y - 50 - barHeight - 2 ) );
+		ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x, barHeight ) );
+		ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 8, 2 ) );
+		ImGui::Begin( "##resourcebar", nullptr,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
+
+		auto colorForCount = []( int count ) -> ImVec4 {
+			if ( count > 50 ) return ImVec4( 0.3f, 0.8f, 0.3f, 1.0f ); // green
+			if ( count > 10 ) return ImVec4( 0.9f, 0.8f, 0.2f, 1.0f ); // yellow
+			return ImVec4( 0.9f, 0.2f, 0.2f, 1.0f ); // red
+		};
+
+		int foodCount = bridge.stockFood;
+		int drinkCount = bridge.stockDrink;
+
+		ImGui::PushStyleColor( ImGuiCol_Text, colorForCount( foodCount ) );
+		ImGui::Text( "Food: %d", foodCount );
+		ImGui::PopStyleColor();
+		ImGui::SameLine( 0, 20 );
+
+		ImGui::PushStyleColor( ImGuiCol_Text, colorForCount( drinkCount ) );
+		ImGui::Text( "Drink: %d", drinkCount );
+		ImGui::PopStyleColor();
+		ImGui::SameLine( 0, 20 );
+
+		ImGui::Text( "Gnomes: %d", bridge.stockGnomes );
+		ImGui::SameLine( 0, 20 );
+		ImGui::Text( "Items: %d", bridge.stockItems );
+
+		ImGui::End();
+		ImGui::PopStyleVar();
+	}
 
 	// =========================================================================
 	// Bottom toolbar
@@ -339,7 +400,7 @@ void drawGameHUD( ImGuiBridge& bridge )
 
 	// Right side: management panels
 	float rightStart = padding + leftWidth + gap;
-	float rightButtonW = ( rightWidth - spacing * 4 ) / 5.0f;
+	float rightButtonW = ( rightWidth - spacing * 5 ) / 6.0f;
 	ImGui::SameLine( rightStart );
 	if ( ImGui::Button( "Kingdom", ImVec2( rightButtonW, 30 ) ) )
 	{
@@ -372,6 +433,11 @@ void drawGameHUD( ImGuiBridge& bridge )
 		bridge.activeSidePanel = bridge.activeSidePanel == ImGuiBridge::SidePanel::Missions ? ImGuiBridge::SidePanel::None : ImGuiBridge::SidePanel::Missions;
 		if ( bridge.activeSidePanel == ImGuiBridge::SidePanel::Missions )
 			bridge.cmdRequestNeighborsUpdate();
+	}
+	ImGui::SameLine();
+	if ( ImGui::Button( "Log", ImVec2( rightButtonW, 30 ) ) )
+	{
+		bridge.activeSidePanel = bridge.activeSidePanel == ImGuiBridge::SidePanel::EventLog ? ImGuiBridge::SidePanel::None : ImGuiBridge::SidePanel::EventLog;
 	}
 
 	ImGui::End();
@@ -520,6 +586,81 @@ void drawGameHUD( ImGuiBridge& bridge )
 		}
 
 		ImGui::End();
+	}
+
+	// =========================================================================
+	// Toast notifications (top-right, fading)
+	// =========================================================================
+	{
+		// Generate toasts from new log entries
+		auto& logMessages = Global::logger().messages();
+		if ( logMessages.size() > bridge.lastLogCount )
+		{
+			for ( size_t i = bridge.lastLogCount; i < logMessages.size(); ++i )
+			{
+				auto& lm = logMessages[i];
+				// Only toast for important messages
+				if ( lm.type == LogType::WARNING || lm.type == LogType::DANGER ||
+					 lm.type == LogType::COMBAT || lm.type == LogType::DEATH ||
+					 lm.type == LogType::MIGRATION )
+				{
+					ImGuiBridge::ToastNotification toast;
+					toast.text = lm.message;
+					toast.severity = lm.type;
+					toast.createdTick = GameState::tick;
+					toast.alpha = 1.0f;
+					bridge.activeToasts.append( toast );
+				}
+			}
+			bridge.lastLogCount = logMessages.size();
+		}
+
+		// Render and fade toasts
+		float toastY = 100.0f;
+		for ( int i = bridge.activeToasts.size() - 1; i >= 0; --i )
+		{
+			auto& toast = bridge.activeToasts[i];
+			quint64 age = GameState::tick - toast.createdTick;
+			float fadeStart = 3000; // start fading after ~5 minutes game time
+			float fadeDuration = 1500;
+
+			if ( age > fadeStart )
+			{
+				toast.alpha = qMax( 0.0f, 1.0f - (float)( age - fadeStart ) / fadeDuration );
+			}
+
+			if ( toast.alpha <= 0.0f )
+			{
+				bridge.activeToasts.removeAt( i );
+				continue;
+			}
+
+			// Color by severity
+			ImVec4 color;
+			switch ( toast.severity )
+			{
+				case LogType::DEATH:   color = ImVec4( 1.0f, 0.2f, 0.2f, toast.alpha ); break;
+				case LogType::DANGER:  color = ImVec4( 1.0f, 0.4f, 0.0f, toast.alpha ); break;
+				case LogType::WARNING: color = ImVec4( 1.0f, 0.8f, 0.0f, toast.alpha ); break;
+				case LogType::COMBAT:  color = ImVec4( 0.8f, 0.3f, 0.3f, toast.alpha ); break;
+				default:               color = ImVec4( 0.7f, 0.7f, 0.7f, toast.alpha ); break;
+			}
+
+			ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 310, toastY ) );
+			ImGui::SetNextWindowSize( ImVec2( 300, 0 ) );
+			ImGui::SetNextWindowBgAlpha( 0.7f * toast.alpha );
+			QString winId = "##toast" + QString::number( i );
+			ImGui::Begin( winId.toStdString().c_str(), nullptr,
+				ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoInputs );
+			ImGui::PushStyleColor( ImGuiCol_Text, color );
+			ImGui::TextWrapped( "%s", toast.text.toStdString().c_str() );
+			ImGui::PopStyleColor();
+			ImGui::End();
+
+			toastY += 30.0f;
+			if ( toastY > io.DisplaySize.y * 0.5f ) break; // don't fill the screen
+		}
 	}
 
 	// =========================================================================

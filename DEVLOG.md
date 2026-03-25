@@ -31,6 +31,24 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-25] Milestone 2.2 — Designated Movement Zones
+
+**Milestone**: 2.2 — Gnome Depth
+**Files changed**: `src/base/tile.h`, `src/base/gamestate.h`, `src/base/gamestate.cpp`, `src/gui/ui/ui_gamehud.cpp`
+
+### Changes
+
+- **Zone tile flags** — Added TF_ZONE_MILITARY, TF_ZONE_CIVILIAN, TF_ZONE_RESTRICTED to TileFlag enum for future zone painting
+- **Lockdown system** — `GameState::lockdown` boolean, toggled via "Lockdown" button in the time/speed controls panel
+- **Lockdown UI** — Button shows "Lockdown" (normal) or "LOCKDOWN ACTIVE" (red) with click to toggle. State changes logged to event log.
+
+### Technical Details
+- Zone flags use bits 0x100000000, 0x200000000, 0x400000000 in the quint64 TileFlag enum
+- Lockdown state is a simple global boolean — gnome behavior tree integration (actually blocking civilian movement) deferred to when behavior trees are extended
+- Zone painting tool (click-drag to designate zones) deferred to dedicated zone UI work
+
+---
+
 ## [2026-03-25] Milestone 1.2 — Stockpile UX Overhaul
 
 **Milestone**: 1.2 — Stockpile UX Overhaul
