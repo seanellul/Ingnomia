@@ -17,6 +17,8 @@
 */
 #include "mainwindowrenderer.h"
 
+#include <cstring>
+
 #include "../game/game.h" //TODO only temporary
 
 #include "../base/config.h"
@@ -642,6 +644,11 @@ void MainWindowRenderer::paintTiles()
 
 void MainWindowRenderer::paintSelection()
 {
+	if ( m_selectionData.isEmpty() )
+	{
+		return;
+	}
+
 	// TODO this is a workaround until some transparency solution is implemented
 	if( m_selectionNoDepthTest )
 	{
@@ -657,10 +664,10 @@ void MainWindowRenderer::paintSelection()
 		m_selectionShader->setUniformValue( texNum.toStdString().c_str(), i );
 	}
 
+	GLint tileLoc = m_selectionShader->uniformLocation( "tile" );
 	for ( const auto& sd : m_selectionData )
 	{
-		GLint tile = m_axleShader->uniformLocation( "tile" );
-		glUniform3ui( tile, sd.pos.x, sd.pos.y, sd.pos.z );
+		glUniform3ui( tileLoc, sd.pos.x, sd.pos.y, sd.pos.z );
 		m_selectionShader->setUniformValue( "uSpriteID", sd.spriteID );
 		m_selectionShader->setUniformValue( "uRotation", sd.localRot );
 		m_selectionShader->setUniformValue( "uValid", sd.valid );
@@ -807,9 +814,26 @@ void MainWindowRenderer::updateWorld()
 	if ( !m_pendingUpdates.empty() )
 	{
 		DebugScope s( "update world" );
-		for ( const auto& update : m_pendingUpdates )
+
+		// Count total updates to choose upload strategy
+		int totalUpdates = 0;
+		for ( const auto& batch : m_pendingUpdates )
 		{
-			uploadTileData( update );
+			totalUpdates += batch.size();
+		}
+
+		if ( totalUpdates > 10000 )
+		{
+			// Bulk upload: map the entire buffer once and write all tiles
+			uploadTileDataBulk( m_pendingUpdates );
+		}
+		else
+		{
+			// Small update: use per-tile glBufferSubData
+			for ( const auto& batch : m_pendingUpdates )
+			{
+				uploadTileData( batch );
+			}
 		}
 		m_pendingUpdates.clear();
 	}
@@ -822,6 +846,33 @@ void MainWindowRenderer::uploadTileData( const QVector<TileDataUpdate>& tileData
 	{
 		GLintptr offset = update.id * TD_SIZE * sizeof( unsigned int );
 		glBufferSubData( GL_TEXTURE_BUFFER, offset, sizeof( TileData ), &update.tile );
+	}
+	glBindBuffer( GL_TEXTURE_BUFFER, 0 );
+}
+
+void MainWindowRenderer::uploadTileDataBulk( const QVector<QVector<TileDataUpdate>>& allUpdates )
+{
+	glBindBuffer( GL_TEXTURE_BUFFER, m_tileBo );
+	unsigned char* ptr = (unsigned char*)glMapBuffer( GL_TEXTURE_BUFFER, GL_WRITE_ONLY );
+	if ( ptr )
+	{
+		for ( const auto& batch : allUpdates )
+		{
+			for ( const auto& update : batch )
+			{
+				size_t offset = update.id * TD_SIZE * sizeof( unsigned int );
+				memcpy( ptr + offset, &update.tile, sizeof( TileData ) );
+			}
+		}
+		glUnmapBuffer( GL_TEXTURE_BUFFER );
+	}
+	else
+	{
+		// Fallback to per-tile upload
+		for ( const auto& batch : allUpdates )
+		{
+			uploadTileData( batch );
+		}
 	}
 	glBindBuffer( GL_TEXTURE_BUFFER, 0 );
 }

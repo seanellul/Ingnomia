@@ -23,6 +23,8 @@
 #include "../base/gamestate.h"
 #include "../base/global.h"
 #include "../base/position.h"
+
+#include <QDateTime>
 #include "../game/game.h"
 #include "../game/creaturefactory.h"
 #include "../game/creaturemanager.h"
@@ -148,6 +150,14 @@ void WorldGenerator::addLife()
 	int maxVeinLength = m_dimX / 2;
 
 	GameState::kingdomName = ngs->kingdomName();
+
+	// Generate unique save folder name to prevent collisions with same kingdom name
+	if ( GameState::saveFolderName.isEmpty() )
+	{
+		QString name = GameState::kingdomName.simplified();
+		name.replace( " ", "" );
+		GameState::saveFolderName = name + "_" + QString::number( QDateTime::currentSecsSinceEpoch() );
+	}
 
 	qDebug() << "world generator - life - done";
 

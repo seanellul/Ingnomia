@@ -87,7 +87,8 @@ public:
 	
 	static int groundLevel;
 	static QString kingdomName;
-	
+	static QString saveFolderName; // unique per game — "<KingdomName>_<timestamp>" to prevent save collisions
+
 	static bool peaceful;
 
 	static quint64 tick;

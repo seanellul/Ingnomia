@@ -383,6 +383,7 @@ void Inventory::addObject( Item& object, const QString& itemID, const QString& m
 	m_itemHistory->plusItem( itemID, materialID );
 
 	m_itemsChanged = true;
+	invalidateItemCounts();
 
 	emit signalAddItem( itemID, materialID );
 }
@@ -430,6 +431,7 @@ void Inventory::destroyObject( unsigned int id )
 		}
 
 		m_itemsChanged = true;
+		invalidateItemCounts();
 	}
 }
 
@@ -803,6 +805,7 @@ unsigned int Inventory::pickUpItem( unsigned int id, unsigned int creatureID )
 	if ( item )
 	{
 		item->setHeldBy( creatureID );
+		invalidateItemCounts();
 
 		//remove from possible stockpile
 		unsigned int stockpileID = item->isInStockpile();
@@ -868,6 +871,7 @@ unsigned int Inventory::putDownItem( unsigned int id, const Position& newPos )
 	if ( item )
 	{
 		item->setHeldBy( 0 );
+		invalidateItemCounts();
 		if ( m_positionHash.contains( newPos.toInt() ) )
 		{
 			m_positionHash[newPos.toInt()].insert( id );
@@ -1027,6 +1031,14 @@ QMap<QString, int> Inventory::materialCountsForItem( QString itemSID, bool allow
 
 unsigned int Inventory::itemCount( QString itemID, QString materialID )
 {
+	// Check cache first
+	auto cacheKey = qMakePair( itemID, materialID );
+	auto cacheIt  = m_itemCountCache.find( cacheKey );
+	if ( cacheIt != m_itemCountCache.end() && cacheIt->generation == m_itemCountGeneration )
+	{
+		return cacheIt->count;
+	}
+
 	unsigned int result = 0;
 
 	if ( materialID == "any" )
@@ -1059,6 +1071,8 @@ unsigned int Inventory::itemCount( QString itemID, QString materialID )
 		}
 	}
 
+	// Store in cache
+	m_itemCountCache.insert( cacheKey, { result, m_itemCountGeneration } );
 	return result;
 }
 
@@ -1297,6 +1311,7 @@ void Inventory::setInJob( unsigned int id, unsigned int job )
 	if ( item )
 	{
 		item->setInJob( job );
+		invalidateItemCounts();
 	}
 }
 
@@ -1340,6 +1355,7 @@ void Inventory::setConstructed( unsigned int id, bool status )
 			emit signalRemoveItem( itemSID( id ), materialSID( id ) );
 		}
 		item->setIsConstructed( status );
+		invalidateItemCounts();
 		if ( status )
 		{
 			addToWealth( item );
@@ -1364,6 +1380,7 @@ void Inventory::setIsUsedBy( unsigned int id, unsigned int creatureID )
 	if ( item )
 	{
 		item->setUsedBy( creatureID );
+		invalidateItemCounts();
 	}
 }
 

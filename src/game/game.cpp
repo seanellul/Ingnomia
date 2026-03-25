@@ -193,45 +193,85 @@ void Game::loop()
 		
 		if ( !m_paused )
 		{
-			
-			
 			emit sendOverlayMessage( 6, "tick " + QString::number( GameState::tick ) );
-			//printf("   game tick %d\n",GameState::tick );
-			
+
 			sendClock();
 
-			// process grass
+			// Tick profiling — logs every 100 ticks
+			QElapsedTimer phase;
+			auto sc = GameState::seasonChanged;
+			auto dc = GameState::dayChanged;
+			auto hc = GameState::hourChanged;
+			auto mc = GameState::minuteChanged;
+			bool profileTick = ( GameState::tick % 50 == 0 );
+
+			phase.start();
 			m_world->processGrass();
-			// process plants
+			qint64 tGrass = phase.restart();
+
 			processPlants();
+			qint64 tPlants = phase.restart();
 
-			// process animals
+			m_creatureManager->onTick( GameState::tick, sc, dc, hc, mc );
+			qint64 tCreatures = phase.restart();
 
-			m_creatureManager->onTick( GameState::tick, GameState::seasonChanged, GameState::dayChanged, GameState::hourChanged, GameState::minuteChanged );
+			m_gnomeManager->onTick( GameState::tick, sc, dc, hc, mc );
+			ms2 = phase.elapsed();
+			qint64 tGnomes = phase.restart();
 
-			// process gnomes
-			QElapsedTimer timer2;
-			timer2.start();
-			m_gnomeManager->onTick( GameState::tick, GameState::seasonChanged, GameState::dayChanged, GameState::hourChanged, GameState::minuteChanged );
-			ms2 = timer2.elapsed();
-			// process jobs
 			m_jobManager->onTick();
-			// process stockpiles
+			qint64 tJobs = phase.restart();
+
 			m_spm->onTick( GameState::tick );
-			m_farmingManager->onTick( GameState::tick, GameState::seasonChanged, GameState::dayChanged, GameState::hourChanged, GameState::minuteChanged );
+			qint64 tStockpiles = phase.restart();
+
+			m_farmingManager->onTick( GameState::tick, sc, dc, hc, mc );
+			qint64 tFarming = phase.restart();
+
 			m_workshopManager->onTick( GameState::tick );
+			qint64 tWorkshops = phase.restart();
+
 			m_roomManager->onTick( GameState::tick );
-			m_inv->itemHistory()->onTick( GameState::dayChanged );
-			m_eventManager->onTick( GameState::tick, GameState::seasonChanged, GameState::dayChanged, GameState::hourChanged, GameState::minuteChanged );
-			m_mechanismManager->onTick( GameState::tick, GameState::seasonChanged, GameState::dayChanged, GameState::hourChanged, GameState::minuteChanged );
-			m_fluidManager->onTick( GameState::tick, GameState::seasonChanged, GameState::dayChanged, GameState::hourChanged, GameState::minuteChanged );
-			m_neighborManager->onTick( GameState::tick, GameState::seasonChanged, GameState::dayChanged, GameState::hourChanged, GameState::minuteChanged );
+			qint64 tRooms = phase.restart();
+
+			m_inv->itemHistory()->onTick( dc );
+			m_eventManager->onTick( GameState::tick, sc, dc, hc, mc );
+			qint64 tEvents = phase.restart();
+
+			m_mechanismManager->onTick( GameState::tick, sc, dc, hc, mc );
+			qint64 tMechanisms = phase.restart();
+
+			m_fluidManager->onTick( GameState::tick, sc, dc, hc, mc );
+			qint64 tFluids = phase.restart();
+
+			m_neighborManager->onTick( GameState::tick, sc, dc, hc, mc );
+			qint64 tNeighbors = phase.restart();
 
 			m_soundManager->onTick( GameState::tick );
-			
+			qint64 tSound = phase.restart();
+
 			m_world->processWater();
+			qint64 tWater = phase.restart();
 
 			m_pf->findPaths();
+			qint64 tPaths = phase.restart();
+
+			if ( profileTick )
+			{
+				qint64 total = tGrass + tPlants + tCreatures + tGnomes + tJobs +
+					tStockpiles + tFarming + tWorkshops + tRooms + tEvents +
+					tMechanisms + tFluids + tNeighbors + tSound + tWater + tPaths;
+				qDebug().noquote() << QString(
+					"[TICK %1] %2ms | grass:%3 plants:%4 creatures:%5 gnomes:%6 jobs:%7 "
+					"stockpiles:%8 farming:%9 workshops:%10 rooms:%11 events:%12 "
+					"mechanisms:%13 fluids:%14 neighbors:%15 sound:%16 water:%17 paths:%18" )
+					.arg( GameState::tick )
+					.arg( total )
+					.arg( tGrass ).arg( tPlants ).arg( tCreatures ).arg( tGnomes )
+					.arg( tJobs ).arg( tStockpiles ).arg( tFarming ).arg( tWorkshops )
+					.arg( tRooms ).arg( tEvents ).arg( tMechanisms ).arg( tFluids )
+					.arg( tNeighbors ).arg( tSound ).arg( tWater ).arg( tPaths );
+			}
 
 			++GameState::tick;
 		}
@@ -243,15 +283,28 @@ void Game::loop()
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	
+		QElapsedTimer guiPhase;
+		guiPhase.start();
+
 		auto updates = m_world->updatedTiles();
 		if ( !updates.empty() )
 		{
 			signalUpdateTileInfo( std::move( updates ) );
 		}
+		qint64 tTileUpdates = guiPhase.restart();
+
 		emit signalUpdateStockpile();
-	
+		qint64 tStockpileSignal = guiPhase.restart();
+
 		Global::eventConnector->aggregatorCreatureInfo()->update();
-	
+		qint64 tCreatureInfo = guiPhase.restart();
+
+		if ( !m_paused && GameState::tick % 50 == 1 )
+		{
+			qDebug().noquote() << QString( "[GUI] tileUpdates:%1 stockpileSignal:%2 creatureInfo:%3 ms" )
+				.arg( tTileUpdates ).arg( tStockpileSignal ).arg( tCreatureInfo );
+		}
+
 		int ms        = timer.elapsed();
 		m_maxLoopTime = qMax( ms2, m_maxLoopTime );
 	

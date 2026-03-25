@@ -72,6 +72,31 @@ OpenGL 4.1 core profile (downgraded from 4.3 for macOS compatibility). Uses Text
 
 Game data (items, materials, recipes, etc.) loaded from SQLite databases in `content/db/` via Qt SQL. `DB::init()` and `DB::initStructs()` set up the schema and load data into `DBStruct` types.
 
+## Development Log — MANDATORY
+
+**Every code change must be logged in `DEVLOG.md` at the project root.** This is a hard rule — no exceptions.
+
+After completing any fix, feature, or improvement:
+1. Add a new entry at the TOP of `DEVLOG.md` (newest first)
+2. Use this format:
+```markdown
+## [YYYY-MM-DD] Short Description
+
+**Milestone**: X.X — Category
+**Files changed**: `file1.cpp`, `file2.h`, ...
+
+### Changes
+- **Bold summary of change** — explanation of what and why
+- Additional bullet points as needed
+
+### Technical Details
+- Implementation specifics that future developers should know
+```
+3. Reference the relevant milestone from `docs/updates/development_roadmap.md`
+4. After logging, check if the fix/feature maps to a Discord reply in `docs/discord_reply_queue.json` and update if needed
+
+This log becomes the release changelog and the source for Discord community replies.
+
 ## License
 
 GNU AGPL v3. All contributions must adhere to this license.

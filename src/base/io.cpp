@@ -195,9 +195,19 @@ QString IO::save( bool autosave )
 	{
 		QDir().mkdir( folder );
 	}
-	QString name = GameState::kingdomName;
-	name         = name.simplified();
-	name.replace( " ", "" );
+	// Use unique save folder name to prevent collisions with same kingdom name
+	QString name;
+	if ( !GameState::saveFolderName.isEmpty() )
+	{
+		name = GameState::saveFolderName;
+	}
+	else
+	{
+		// Legacy fallback for old saves without saveFolderName
+		name = GameState::kingdomName;
+		name = name.simplified();
+		name.replace( " ", "" );
+	}
 	folder += name;
 	folder += "/";
 

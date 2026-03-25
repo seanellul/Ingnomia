@@ -116,6 +116,9 @@ protected:
 	bool m_veryThirstLog = false;
 	bool m_sleepyLog     = false;
 
+	bool m_isTrapped           = false;
+	quint64 m_trappedCheckTick = 0;
+
 	bool m_carryBandages            = false;
 	bool m_carryFood                = false;
 	bool m_carryDrinks              = false;

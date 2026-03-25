@@ -861,11 +861,11 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 
 	ImGui::Separator();
 
-	// Needs bars
-	ImGui::Text( "Hunger" ); ImGui::SameLine( 100 ); ImGui::ProgressBar( ci.hunger / 100.0f, ImVec2( -1, 0 ) );
-	ImGui::Text( "Thirst" ); ImGui::SameLine( 100 ); ImGui::ProgressBar( ci.thirst / 100.0f, ImVec2( -1, 0 ) );
-	ImGui::Text( "Sleep" ); ImGui::SameLine( 100 ); ImGui::ProgressBar( ci.sleep / 100.0f, ImVec2( -1, 0 ) );
-	ImGui::Text( "Happiness" ); ImGui::SameLine( 100 ); ImGui::ProgressBar( ci.happiness / 100.0f, ImVec2( -1, 0 ) );
+	// Needs bars (clamp to 0-1 range for display)
+	ImGui::Text( "Hunger" ); ImGui::SameLine( 100 ); ImGui::ProgressBar( qBound( 0.0f, ci.hunger / 100.0f, 1.0f ), ImVec2( -1, 0 ) );
+	ImGui::Text( "Thirst" ); ImGui::SameLine( 100 ); ImGui::ProgressBar( qBound( 0.0f, ci.thirst / 100.0f, 1.0f ), ImVec2( -1, 0 ) );
+	ImGui::Text( "Sleep" ); ImGui::SameLine( 100 ); ImGui::ProgressBar( qBound( 0.0f, ci.sleep / 100.0f, 1.0f ), ImVec2( -1, 0 ) );
+	ImGui::Text( "Happiness" ); ImGui::SameLine( 100 ); ImGui::ProgressBar( qBound( 0.0f, ci.happiness / 100.0f, 1.0f ), ImVec2( -1, 0 ) );
 
 	ImGui::Separator();
 

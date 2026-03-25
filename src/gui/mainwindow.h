@@ -82,8 +82,6 @@ public:
 	void takeScreenshot();
 	void takeScreenshot( const QString& outputPath );
 
-	// Test mode: schedule a screenshot after N paint cycles
-	void scheduleTestScreenshot( const QString& outputPath, int framesToWait );
 
 protected:
 	void paintGL() override;
@@ -137,10 +135,6 @@ private:
 
 	bool m_pendingUpdate = false;
 
-	// Test screenshot state
-	QString m_testScreenshotPath;
-	int m_testScreenshotCountdown = -1;
-
 	KeyboardMove m_keyboardMove = KeyboardMove::None;
 
 public slots:
@@ -164,7 +158,6 @@ signals:
 
 	void signalRenderParams( int width, int height, int moveX, int moveY, float scale, int rotation );
 	void signalRotateSelection();
-	void testScreenshotDone();
 	void signalMouse( int mouseX, int mouseY, bool shift, bool ctrl );
 	void signalLeftClick( bool shift, bool ctrl );
 	void signalRightClick();

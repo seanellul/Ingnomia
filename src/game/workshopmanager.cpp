@@ -48,6 +48,7 @@ void WorkshopManager::onTick( quint64 tick )
 			Workshop* ws    = workshop( id );
 			if ( ws->canDelete() )
 			{
+				m_workshopsByID.remove( id );
 				for ( int k = 0; k < m_workshops.size(); ++k )
 				{
 					if ( m_workshops[k]->id() == id )
@@ -74,6 +75,7 @@ Workshop* WorkshopManager::addWorkshop( QString type, Position& pos, int rotatio
 {
 	Workshop* w = new Workshop( type, pos, rotation, g );
 	m_workshops.push_back( w );
+	m_workshopsByID.insert( w->id(), w );
 
 	return m_workshops.last();
 }
@@ -82,6 +84,7 @@ void WorkshopManager::addWorkshop( QVariantMap vals )
 {
 	Workshop* w = new Workshop( vals, g );
 	m_workshops.push_back( w );
+	m_workshopsByID.insert( w->id(), w );
 }
 
 bool WorkshopManager::isWorkshop( Position& pos )
@@ -110,14 +113,12 @@ Workshop* WorkshopManager::workshopAt( const Position& pos )
 
 Workshop* WorkshopManager::workshop( unsigned int ID )
 {
-	for ( auto& w : m_workshops )
+	auto it = m_workshopsByID.find( ID );
+	if ( it != m_workshopsByID.end() )
 	{
-		if ( w->id() == ID )
-		{
-			return w;
-		}
+		return it.value();
 	}
-	return 0;
+	return nullptr;
 }
 
 void WorkshopManager::deleteWorkshop( unsigned int workshopID )

@@ -172,6 +172,10 @@ void Farm::onTick( quint64 tick )
 	if ( !m_active )
 		return;
 
+	// Throttle: only check fields every 10 ticks (farms don't need per-tick updates)
+	if ( tick % 10 != 0 && tick != m_lastUpdateTick + 1 )
+		return;
+
 	for( auto& gf : m_fields )
 	{
 		if( !gf.job )

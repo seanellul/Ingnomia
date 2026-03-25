@@ -77,6 +77,7 @@ private:
 	void paintAxles();
 	void updateWorld();
 	void uploadTileData( const QVector<TileDataUpdate>& tileData );
+	void uploadTileDataBulk( const QVector<QVector<TileDataUpdate>>& allUpdates );
 	void updateTextures();
 	void updateRenderParams();
 

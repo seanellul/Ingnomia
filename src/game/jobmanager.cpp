@@ -164,13 +164,17 @@ void JobManager::onTick()
 	m_returnedJobQueue += skippedJobs;
 }
 
-// In order to cache the missing required items we iterate over all every time
-// which prevents us from breaking the loop ASAP.
-// Not sure if another approach would work better and still allow GUI to access
-// information without querying the game state
 bool JobManager::requiredItemsAvail( unsigned int jobID )
 {
-	QSharedPointer<Job> job       = m_jobList.value( jobID );
+	QSharedPointer<Job> job = m_jobList.value( jobID );
+
+	// Skip expensive checks if inventory hasn't changed since last check
+	quint64 invGen = g->inv()->itemCountGeneration();
+	if ( job->m_availabilityCacheGeneration == invGen )
+	{
+		return job->m_cachedAvailability;
+	}
+
 	bool found_all = true;
 	for ( auto rim : job->requiredItems() )
 	{
@@ -197,6 +201,9 @@ bool JobManager::requiredItemsAvail( unsigned int jobID )
 			}
 		}
 	}
+
+	job->m_availabilityCacheGeneration = invGen;
+	job->m_cachedAvailability          = found_all;
 	return found_all;
 }
 
@@ -206,13 +213,30 @@ bool JobManager::workPositionWalkable( unsigned int jobID )
 	{
 		QSharedPointer<Job> job     = m_jobList.value( jobID );
 		Position pos = job->pos();
+		int rotation = job->rotation();
 
 		job->clearPossibleWorkPositions();
-		// jobs on same tile
+		// jobs on same tile — apply rotation to work position offsets
 		auto wpl = job->origWorkPosOffsets();
 		for ( const auto& offset : wpl )
 		{
-			Position testPos( pos + offset );
+			Position rotatedOffset = offset;
+			switch ( rotation )
+			{
+				case 1:
+					rotatedOffset.x = -1 * offset.y;
+					rotatedOffset.y = offset.x;
+					break;
+				case 2:
+					rotatedOffset.x = -1 * offset.x;
+					rotatedOffset.y = -1 * offset.y;
+					break;
+				case 3:
+					rotatedOffset.x = offset.y;
+					rotatedOffset.y = -1 * offset.x;
+					break;
+			}
+			Position testPos( pos + rotatedOffset );
 			if ( g->w()->isWalkableGnome( testPos ) )
 			{
 				job->addPossibleWorkPosition( testPos );
@@ -996,14 +1020,15 @@ void JobManager::cancelJob( const Position& pos )
 
 	if ( jobID != 0 && m_jobList.contains( jobID ) )
 	{
-		if ( m_jobList.value( jobID )->isWorked() )
+		QSharedPointer<Job> job = m_jobList.value( jobID );
+
+		if ( job->isWorked() )
 		{
-			m_jobList.value( jobID )->setCanceled();
+			job->setCanceled();
+			job->setAborted( true );
 		}
 		else
 		{
-			QSharedPointer<Job> job = m_jobList.value( jobID );
-
 			if ( job->type() == "SoundAlarm" )
 			{
 				GameState::alarm       = 0;
@@ -1019,6 +1044,11 @@ void JobManager::cancelJob( const Position& pos )
 			}
 			m_jobList.remove( jobID );
 		}
+	}
+	else if ( jobID == 0 )
+	{
+		// No job found at position — clean up any stale job sprites
+		g->w()->clearJobSprite( pos, true );
 	}
 }
 

@@ -173,11 +173,22 @@ void ImGuiBridge::onKeyEsc()
 {
 	if ( appState == AppState::GameRunning )
 	{
-		if ( activeSidePanel != SidePanel::None )
+		// Priority 1: If a build/action tool is active, clear it first
+		if ( currentToolbar != ButtonSelection::None || currentBuildCategory != BuildSelection::None )
+		{
+			currentToolbar = ButtonSelection::None;
+			currentBuildCategory = BuildSelection::None;
+			currentBuildMaterial.clear();
+			buildItems.clear();
+			cmdPropagateEscape();
+		}
+		// Priority 2: Close side panels
+		else if ( activeSidePanel != SidePanel::None )
 		{
 			activeSidePanel = SidePanel::None;
 			cmdPropagateEscape();
 		}
+		// Priority 3: Only open pause menu when nothing else to dismiss
 		else
 		{
 			appState = AppState::InGameMenu;

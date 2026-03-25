@@ -51,6 +51,7 @@ struct RequiredTool
 
 class Job
 {
+	friend class JobManager;
 	Q_DISABLE_COPY_MOVE( Job )
 private:
 	unsigned int m_id = 0;
@@ -67,6 +68,10 @@ private:
 	bool m_componentMissing = false;
 	bool m_mayTrap          = false;
 	bool m_destroyOnAbort   = false;
+
+	// Cached item availability — only recheck when inventory changes
+	quint64 m_availabilityCacheGeneration = 0;
+	bool m_cachedAvailability             = false;
 
 	bool m_jobIsWorked      = false;
 	unsigned int m_workedBy = 0;

@@ -20,6 +20,7 @@
 
 #include "workshop.h"
 
+#include <QHash>
 #include <QList>
 #include <QObject>
 #include <QQueue>
@@ -76,6 +77,7 @@ private:
 	QPointer<Game> g;
 
 	QList<Workshop*> m_workshops;
+	QHash<unsigned int, Workshop*> m_workshopsByID;
 	QQueue<unsigned int> m_toDelete;
 
 signals:

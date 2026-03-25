@@ -68,14 +68,11 @@ TestCommandServer::TestCommandServer( ImGuiBridge* bridge, MainWindow* window, Q
 
 TestCommandServer::~TestCommandServer()
 {
+	// Close stdin so std::getline() returns EOF and the reader thread exits.
+	// QThread::terminate() is a no-op on macOS, so we must unblock the read.
+	fclose( stdin );
 	m_readerThread.quit();
-	// Don't wait — the reader thread may be blocked on std::getline(stdin)
-	// which can't be interrupted on macOS. Just terminate it.
-	if ( !m_readerThread.wait( 500 ) )
-	{
-		m_readerThread.terminate();
-		m_readerThread.wait( 500 );
-	}
+	m_readerThread.wait( 2000 );
 }
 
 void TestCommandServer::start()

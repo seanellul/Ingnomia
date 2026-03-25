@@ -27,7 +27,8 @@ enum class LogType
 	DEBUG,
 	JOB,
 	CRAFT,
-	COMBAT
+	COMBAT,
+	WARNING
 };
 
 struct LogMessage

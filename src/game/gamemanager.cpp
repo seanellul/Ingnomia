@@ -289,6 +289,7 @@ void GameManager::postCreationInit()
 	connect( Global::sel, &Selection::signalActionChanged, m_eventConnector->aggregatorSelection(), &AggregatorSelection::onActionChanged, Qt::QueuedConnection );
 	connect( Global::sel, &Selection::signalFirstClick, m_eventConnector->aggregatorSelection(), &AggregatorSelection::onUpdateFirstClick, Qt::QueuedConnection );
 	connect( Global::sel, &Selection::signalSize, m_eventConnector->aggregatorSelection(), &AggregatorSelection::onUpdateSize, Qt::QueuedConnection );
+	connect( m_eventConnector, &EventConnector::signalPropagateKeyEsc, Global::sel, &Selection::clear );
 	Global::sel->updateGui();
 
 	m_eventConnector->aggregatorInventory()->update();

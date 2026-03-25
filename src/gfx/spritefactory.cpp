@@ -52,6 +52,9 @@ SpriteFactory::~SpriteFactory()
 
 bool SpriteFactory::init()
 {
+	QElapsedTimer initTimer;
+	initTimer.start();
+
 	//m_pixmapSources.clear();
 	m_baseSprites.clear();
 
@@ -162,6 +165,30 @@ bool SpriteFactory::init()
 	}
 	
 	QList<QVariantMap> spriteList = DB::selectRows( "Sprites" );
+
+	// Batch-load all sprite sub-tables into hash maps keyed by ID.
+	// This replaces hundreds of individual DB::numRows + DB::selectRows calls
+	// with one bulk load per table.
+	auto batchLoad = []( const QString& tableName ) -> QHash<QString, QList<QVariantMap>>
+	{
+		QHash<QString, QList<QVariantMap>> cache;
+		auto allRows = DB::selectRows( tableName );
+		for ( const auto& row : allRows )
+		{
+			cache[row.value( "ID" ).toString()].append( row );
+		}
+		return cache;
+	};
+
+	auto cacheByMaterials     = batchLoad( "Sprites_ByMaterials" );
+	auto cacheByMaterialTypes = batchLoad( "Sprites_ByMaterialTypes" );
+	auto cacheCombine         = batchLoad( "Sprites_Combine" );
+	auto cacheFrames          = batchLoad( "Sprites_Frames" );
+	auto cacheRandom          = batchLoad( "Sprites_Random" );
+	auto cacheRotations       = batchLoad( "Sprites_Rotations" );
+	auto cacheSeasons         = batchLoad( "Sprites_Seasons" );
+	auto cacheSeasonsRots     = batchLoad( "Sprites_Seasons_Rotations" );
+
 	for ( auto& sprite : spriteList )
 	{
 		QString spriteID = sprite.value( "ID" ).toString();
@@ -179,9 +206,9 @@ bool SpriteFactory::init()
 			sprite.remove( "DefaultMaterial" );
 		}
 
-		if ( DB::numRows( "Sprites_ByMaterials", spriteID ) )
+		if ( cacheByMaterials.contains( spriteID ) )
 		{
-			auto rows = DB::selectRows( "Sprites_ByMaterials", spriteID );
+			auto rows = cacheByMaterials.value( spriteID );
 			QVariantList byMaterials;
 			for ( auto entry : rows )
 			{
@@ -198,9 +225,9 @@ bool SpriteFactory::init()
 			sprite.remove( "BaseSprite" );
 			sprite.insert( "ByMaterials", byMaterials );
 		}
-		if ( DB::numRows( "Sprites_ByMaterialTypes", spriteID ) )
+		if ( cacheByMaterialTypes.contains( spriteID ) )
 		{
-			auto rows = DB::selectRows( "Sprites_ByMaterialTypes", spriteID );
+			auto rows = cacheByMaterialTypes.value( spriteID );
 			QVariantList byMaterialTypes;
 			for ( auto entry : rows )
 			{
@@ -218,9 +245,9 @@ bool SpriteFactory::init()
 			sprite.remove( "BaseSprite" );
 			sprite.insert( "ByMaterialTypes", byMaterialTypes );
 		}
-		if ( DB::numRows( "Sprites_Combine", spriteID ) )
+		if ( cacheCombine.contains( spriteID ) )
 		{
-			auto rows = DB::selectRows( "Sprites_Combine", spriteID );
+			auto rows = cacheCombine.value( spriteID );
 			QVariantList combine;
 			for ( auto entry : rows )
 			{
@@ -247,9 +274,9 @@ bool SpriteFactory::init()
 			sprite.remove( "BaseSprite" );
 			sprite.insert( "Combine", combine );
 		}
-		if ( DB::numRows( "Sprites_Frames", spriteID ) )
+		if ( cacheFrames.contains( spriteID ) )
 		{
-			auto rows = DB::selectRows( "Sprites_Frames", spriteID );
+			auto rows = cacheFrames.value( spriteID );
 			QVariantList frames;
 			for ( auto entry : rows )
 			{
@@ -260,9 +287,9 @@ bool SpriteFactory::init()
 			sprite.remove( "BaseSprite" );
 			sprite.insert( "Frames", frames );
 		}
-		if ( DB::numRows( "Sprites_Random", spriteID ) )
+		if ( cacheRandom.contains( spriteID ) )
 		{
-			auto rows = DB::selectRows( "Sprites_Random", spriteID );
+			auto rows = cacheRandom.value( spriteID );
 			QVariantList random;
 			for ( auto entry : rows )
 			{
@@ -282,9 +309,9 @@ bool SpriteFactory::init()
 			sprite.remove( "BaseSprite" );
 			sprite.insert( "Random", random );
 		}
-		if ( DB::numRows( "Sprites_Rotations", spriteID ) )
+		if ( cacheRotations.contains( spriteID ) )
 		{
-			auto rows = DB::selectRows( "Sprites_Rotations", spriteID );
+			auto rows = cacheRotations.value( spriteID );
 			QVariantList rotations;
 			for ( auto entry : rows )
 			{
@@ -308,9 +335,9 @@ bool SpriteFactory::init()
 			sprite.remove( "BaseSprite" );
 			sprite.insert( "Rotations", rotations );
 		}
-		if ( DB::numRows( "Sprites_Seasons", spriteID ) )
+		if ( cacheSeasons.contains( spriteID ) )
 		{
-			auto rows = DB::selectRows( "Sprites_Seasons", spriteID );
+			auto rows = cacheSeasons.value( spriteID );
 			QVariantList seasons;
 			for ( auto entry : rows )
 			{
@@ -321,9 +348,10 @@ bool SpriteFactory::init()
 				}
 				cm.insert( "Season", entry.value( "Season" ) );
 
-				if ( DB::numRows( "Sprites_Seasons_Rotations", spriteID + entry.value( "Season" ).toString() ) )
+				QString seasonRotKey = spriteID + entry.value( "Season" ).toString();
+				if ( cacheSeasonsRots.contains( seasonRotKey ) )
 				{
-					auto crows = DB::selectRows( "Sprites_Seasons_Rotations", spriteID + entry.value( "Season" ).toString() );
+					auto crows = cacheSeasonsRots.value( seasonRotKey );
 					QVariantList rots;
 					for ( auto centry : crows )
 					{
@@ -370,6 +398,8 @@ bool SpriteFactory::init()
 	}
 
 	createStandardSprites();
+
+	qDebug() << "[SpriteFactory] init:" << initTimer.elapsed() << "ms";
 
 	return loaded;
 }

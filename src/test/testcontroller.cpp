@@ -4,6 +4,7 @@
 #include "../gui/eventconnector.h"
 #include "../gui/mainwindow.h"
 #include "../gui/mainwindowrenderer.h"
+#include "../gui/imguibridge.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -128,14 +129,43 @@ void TestController::onHeartbeat( int value )
 
 void TestController::doScreenshotFrame()
 {
-	qDebug() << "[TestController] Running" << m_config.screenshotDelay << "warmup frames...";
+	// Process pending events first — critical so that queued slots
+	// (especially ImGuiBridge::onLoadGameDone) are delivered before
+	// we start grabbing frames. Without this, appState stays on MainMenu.
+	QApplication::processEvents();
 
-	// Call grabFramebuffer in a burst to warm up the renderer.
-	// Each call internally triggers paintGL, advancing the warmup counter.
+	auto* bridge = m_window->imguiBridge();
+
+	// Wait for the renderer to be ready (world fully loaded).
+	// Each grabFramebuffer() triggers paintGL which advances the warmup.
+	// We process events between frames to allow game thread signals to arrive.
+	qDebug() << "[TestController] Waiting for renderer to be ready...";
+	int maxAttempts = 200; // 200 * 100ms = 20 seconds max wait
+	for ( int i = 0; i < maxAttempts; ++i )
+	{
+		m_window->grabFramebuffer();
+		QApplication::processEvents();
+		if ( bridge && bridge->rendererReady )
+		{
+			qDebug() << "[TestController] Renderer ready after" << i + 1 << "frames";
+			break;
+		}
+		if ( i % 10 == 0 && i > 0 )
+		{
+			qDebug() << "[TestController] Still waiting for renderer... frame" << i;
+		}
+	}
+
+	// Now grab the final screenshot with the fully rendered scene
+	qDebug() << "[TestController] Taking screenshot...";
 	QImage img;
 	for ( int i = 0; i < m_config.screenshotDelay; ++i )
 	{
 		img = m_window->grabFramebuffer();
+		if ( i % 5 == 0 )
+		{
+			QApplication::processEvents();
+		}
 	}
 
 	qDebug() << "[TestController] Taking screenshot" << img.width() << "x" << img.height();

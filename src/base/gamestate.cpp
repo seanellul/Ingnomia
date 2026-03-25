@@ -65,6 +65,7 @@ int GameState::sunset      = 0;
 
 int GameState::groundLevel     = 100;
 QString GameState::kingdomName = "uninitialized";
+QString GameState::saveFolderName = "";
 
 unsigned int GameState::nextID = 1;
 
@@ -159,7 +160,8 @@ void GameState::serialize( QVariantMap& out )
 	
 	out.insert( "groundLevel", groundLevel );
 	out.insert( "kingdomName", kingdomName );
-	
+	out.insert( "saveFolderName", saveFolderName );
+
 	out.insert( "peaceful", peaceful );
 
 	out.insert( "tick", tick );
@@ -314,6 +316,7 @@ void GameState::load( QVariantMap& vals )
 
 	groundLevel = tmp.value( "groundLevel" ).toInt();
 	kingdomName = tmp.value( "kingdomName" ).toString();
+	saveFolderName = tmp.value( "saveFolderName" ).toString();
 
 	peaceful = tmp.value( "peaceful" ).toBool();
 

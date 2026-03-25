@@ -28,6 +28,7 @@
 #include "../game/inventory.h"
 #include "../game/militarymanager.h"
 #include "../game/plant.h"
+#include "../game/roommanager.h"
 #include "../game/stockpilemanager.h"
 #include "../game/world.h"
 #include "../game/workshop.h"
@@ -787,6 +788,8 @@ void Gnome::die()
 {
 	Creature::die();
 	cleanUpJob( false );
+
+	// Clear workshop assignments
 	for ( Workshop* w : g->wsm()->workshops() )
 	{
 		if ( w->assignedGnome() == id() )
@@ -794,6 +797,17 @@ void Gnome::die()
 			w->assignGnome( 0 );
 		}
 	}
+
+	// Clear room ownership
+	for ( auto room : g->rm()->allRooms() )
+	{
+		if ( room->owner() == id() )
+		{
+			room->setOwner( 0 );
+		}
+	}
+
+	Global::logger().log( LogType::WARNING, m_name + " has died.", m_id );
 }
 
 bool Gnome::checkFloor()
@@ -842,13 +856,13 @@ bool Gnome::evalNeeds( bool seasonChanged, bool dayChanged, bool hourChanged, bo
 			//update need values
 			float decay  = Global::needDecays.value( need );
 			float oldVal = m_needs[need].toFloat();
-			float newVal = oldVal + decay;
+			float newVal = qMax( -100.f, qMin( 150.f, oldVal + decay ) );
 
 			m_needs.insert( need, newVal );
 
 			if ( need == "Hunger" || need == "Thirst" )
 			{
-				if ( newVal < -100 )
+				if ( newVal <= -100.f )
 				{
 					m_thoughtBubble = "";
 					die();
@@ -864,6 +878,44 @@ bool Gnome::evalNeeds( bool seasonChanged, bool dayChanged, bool hourChanged, bo
 			}
 		}
 	}
+
+	// Trapped gnome detection — check once per in-game hour
+	if ( hourChanged && GameState::tick > m_trappedCheckTick )
+	{
+		m_trappedCheckTick = GameState::tick + Global::util->ticksPerDay / 24;
+
+		bool canReachAnything = false;
+		auto stockpiles      = g->spm()->allStockpiles();
+		for ( auto spID : stockpiles )
+		{
+			Stockpile* sp = g->spm()->getStockpile( spID );
+			if ( sp && !sp->getFields().isEmpty() )
+			{
+				Position spPos( sp->getFields().firstKey() );
+				if ( g->m_world->regionMap().checkConnectedRegions( m_position, spPos ) )
+				{
+					canReachAnything = true;
+					break;
+				}
+			}
+		}
+
+		if ( !canReachAnything && !stockpiles.isEmpty() )
+		{
+			if ( !m_isTrapped )
+			{
+				m_isTrapped = true;
+				setThoughtBubble( "Trapped" );
+				Global::logger().log( LogType::WARNING, m_name + " is trapped and cannot reach any stockpile!", m_id );
+				qDebug() << m_name << "is TRAPPED at" << m_position.toString();
+			}
+		}
+		else
+		{
+			m_isTrapped = false;
+		}
+	}
+
 	return true;
 }
 

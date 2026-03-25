@@ -27,6 +27,11 @@
 #include "../gfx/sprite.h"
 #include "../gfx/spritefactory.h"
 
+#include <QElapsedTimer>
+#include <QThread>
+#include <thread>
+#include <cstring>
+
 AggregatorRenderer::AggregatorRenderer( QObject* parent ) :
 	QObject( parent )
 {
@@ -221,44 +226,107 @@ QHash<unsigned int, unsigned int> AggregatorRenderer::collectCreatures()
 	return creatures;
 }
 
+static bool tileDataIsEmpty( const TileData& td )
+{
+	// Fast check: compare all uint fields, then the byte fields.
+	// The GPU tile buffer is pre-zeroed, so empty tiles need no upload.
+	return !td.flags && !td.flags2 &&
+		!td.floorSpriteUID && !td.wallSpriteUID &&
+		!td.itemSpriteUID && !td.creatureSpriteUID &&
+		!td.jobSpriteFloorUID && !td.jobSpriteWallUID &&
+		!td.fluidLevel && !td.lightLevel && !td.vegetationLevel;
+}
+
 void AggregatorRenderer::onAllTileInfo()
 {
 	if( !g ) return;
-	// Bake tile updates
-	auto creatures = collectCreatures();
-	for ( auto tile = creatures.keyBegin(); tile != creatures.keyEnd(); ++tile )
-	{
-		//tiles.insert(*tile);
-	}
-	constexpr size_t batchSize = 1 << 16;
-	TileDataUpdateInfo tileUpdates;
-	tileUpdates.updates.reserve( batchSize );
-	const unsigned int worldSize = (unsigned int)g->w()->world().size();
-	for ( unsigned int tileUID = 0; tileUID < worldSize; ++tileUID )
-	{
-		auto update = aggregateTile( tileUID );
 
-		const auto creatureSprite = creatures.find( tileUID );
-		if ( creatureSprite != creatures.end() )
+	QElapsedTimer timer;
+	timer.start();
+
+	auto creatures = collectCreatures();
+	const unsigned int worldSize = (unsigned int)g->w()->world().size();
+
+	// Process tiles in parallel across worker threads, skipping empty tiles
+	const int numThreads = qMax( 1, QThread::idealThreadCount() );
+	const unsigned int chunkSize = ( worldSize + numThreads - 1 ) / numThreads;
+
+	QVector<QVector<TileDataUpdate>> threadResults( numThreads );
+
+	{
+		std::vector<std::thread> threads;
+		threads.reserve( numThreads );
+
+		for ( int t = 0; t < numThreads; ++t )
 		{
-			update.tile.creatureSpriteUID = creatureSprite.value();
+			unsigned int start = t * chunkSize;
+			unsigned int end = qMin( start + chunkSize, worldSize );
+			if ( start >= worldSize )
+				break;
+
+			threads.push_back( std::thread( [this, &threadResults, &creatures, start, end, t]()
+			{
+				auto& output = threadResults[t];
+				output.reserve( ( end - start ) / 4 ); // ~25% non-empty estimate
+
+				for ( unsigned int tileUID = start; tileUID < end; ++tileUID )
+				{
+					auto update = aggregateTile( tileUID );
+
+					const auto creatureSprite = creatures.constFind( tileUID );
+					if ( creatureSprite != creatures.constEnd() )
+					{
+						update.tile.creatureSpriteUID = creatureSprite.value();
+					}
+
+					// Skip tiles that are all-zero (buffer is pre-zeroed in initWorld)
+					if ( !tileDataIsEmpty( update.tile ) )
+					{
+						output.push_back( update );
+					}
+				}
+			} ) );
 		}
 
-		tileUpdates.updates.push_back( update );
-
-		if ( tileUpdates.updates.size() >= batchSize )
+		for ( auto& t : threads )
 		{
+			t.join();
+		}
+	}
+
+	// Count total non-empty tiles for logging
+	int totalUpdates = 0;
+	for ( const auto& chunk : threadResults )
+	{
+		totalUpdates += chunk.size();
+	}
+
+	// Emit results in batches
+	constexpr size_t batchSize = 1 << 16;
+	TileDataUpdateInfo tileUpdates;
+	tileUpdates.updates.reserve( qMin( (int)batchSize, totalUpdates ) );
+
+	for ( const auto& chunk : threadResults )
+	{
+		for ( const auto& update : chunk )
+		{
+			tileUpdates.updates.push_back( update );
+
+			if ( tileUpdates.updates.size() >= (int)batchSize )
 			{
 				emit signalTileUpdates( tileUpdates );
 				tileUpdates.updates.clear();
+				tileUpdates.updates.reserve( batchSize );
 			}
-			tileUpdates.updates.reserve( batchSize );
 		}
 	}
 	if ( !tileUpdates.updates.empty() )
 	{
 		emit signalTileUpdates( tileUpdates );
 	}
+
+	qDebug() << "[AggregatorRenderer] onAllTileInfo:" << timer.elapsed() << "ms,"
+		<< totalUpdates << "/" << worldSize << "non-empty tiles";
 }
 
 void AggregatorRenderer::onUpdateAnyTileInfo( const QSet<unsigned int>& changeSet )

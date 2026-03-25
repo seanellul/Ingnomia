@@ -38,7 +38,12 @@ PathFinder::~PathFinder()
 
 void PathFinder::cancelRequest( unsigned int id )
 {
-	//TODO implement
+	QMutexLocker lock( &m_mutex );
+	auto it = m_jobs.find( id );
+	if ( it != m_jobs.end() && it->state == PathFinderResult::Pending )
+	{
+		m_jobs.erase( it );
+	}
 }
 
 PathFinderResult PathFinder::getPath( unsigned int id, Position start, Position goal, bool ignoreNoPass, std::vector<Position>& path )

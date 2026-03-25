@@ -227,6 +227,19 @@ private:
 	QHash<QString, QHash<QString, QHash<unsigned int, Item*>>> m_hash;
 	QHash<QString, QHash<QString, Octree*>> m_octrees;
 
+	// Item count cache — invalidated when any item's free-state changes
+public:
+	quint64 itemCountGeneration() const { return m_itemCountGeneration; }
+private:
+	quint64 m_itemCountGeneration = 0;
+	struct CountCacheEntry
+	{
+		unsigned int count;
+		quint64 generation;
+	};
+	mutable QHash<QPair<QString, QString>, CountCacheEntry> m_itemCountCache;
+	void invalidateItemCounts() { ++m_itemCountGeneration; }
+
 	QList<QString> m_categoriesSorted;
 	QMap<QString, QList<QString>> m_groupsSorted;
 	QMap<QString, QMap<QString, QList<QString>>> m_itemsSorted;

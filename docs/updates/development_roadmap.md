@@ -18,37 +18,66 @@ Built from community feedback (4,693 suggestions), developer discussions (2,567 
 *Goal: A clean, buildable, performant base to develop on.*
 
 ### 0.1 — Build System & Platform
-- [ ] Verify clean CMake build on macOS (OpenGL 4.1 shaders already ported — commit `389d8fa`)
+- [x] Verify clean CMake build on macOS (OpenGL 4.1 shaders ported, ImGui UI migrated)
 - [ ] Verify Linux build still works
 - [ ] Document build steps for all 3 platforms in a single BUILD.md
+
+### 0.1b — Loading Performance (DONE)
+- [x] **98% faster loading** — batch DB queries, parallel tile processing, bulk GPU upload
+- [x] Renderer init path optimized (sprite factory, tile data upload)
+- Note: This addresses the loading path, not tick-time bottlenecks (those are 0.3/0.4)
+
+### 0.1c — Selection Preview & Escape Key (DONE)
+- [x] **Ghost/preview rendering fixed** — selection shader was using wrong program for `tile` uniform (`m_axleShader` instead of `m_selectionShader`). Previews now show for all tools (mine, build, workshop, etc.)
+- [x] **Escape key priority chain** — clears active tool first, then side panels, then pause menu (was going straight to pause menu)
+- [x] **Connected `signalPropagateKeyEsc`** — was emitted but never wired to `Selection::clear()`. Escape now properly clears selection on game thread
 
 ### 0.2 — Critical Bug Fixes
 From 6,066 bug report messages (407 bug threads, 310 potentially still open). These are the **recurring crash/stability patterns** that must be fixed first:
 
-| Bug Pattern | Reports | Date Range | Details |
-|-------------|---------|------------|---------|
-| **Floors disappearing / construction holes** | 7 | 2018–2021 | Built floors spontaneously get holes. Tower floors "suddenly had holes" while running. Persists across save/load |
-| **Gnomes get stuck/trapped** | 7 | 2018–2021 | Gnomes stand idle forever. "Standing with face in a corner for two days." Restart sometimes fixes. Related to floor removal trapping |
-| **UI crash on scroll/click in workshops** | 4 | 2018–2020 | Crash when scrolling workshop job list while crafting. Crash when rapidly clicking craft items. Scrolling stockpile windows |
-| **Save corruption / overwrite** | 3 | 2018–2020 | Same kingdom name overwrites saves. OneDrive sync issues. Save files broken after certain operations |
-| **Job cancellation not working** | 3 | 2019–2020 | Cancel job has no effect on some building jobs. Jobs remain in queue after cancellation |
-| **Negative thirst → crash** | 2 | 2019 | Gnome thirst goes negative. Opening gnome window when thirst is 0 crashes the game. Thirst displays 0/100 |
-| **Rotated workshop bugs** | Recurring | 2018–2021 | Rotated workshops won't craft. Placement issues with rotated buildings |
-| **Game speed → lag/freeze** | Recurring | 2019–2020 | High game speed causes periodic slowdowns. Related to gnomes stuck on tasks causing cascading pathfinding |
+| Bug Pattern | Reports | Date Range | Status |
+|-------------|---------|------------|--------|
+| **Floors disappearing / construction holes** | 7 | 2018–2021 | [~] Investigated — deconstruct logic looks correct, v0.7.0 fixed known cases. Needs gameplay testing |
+| **Gnomes get stuck/trapped** | 7 | 2018–2021 | [x] **FIXED** — trapped detection + WARNING log |
+| **UI crash on scroll/click in workshops** | 4 | 2018–2020 | [x] **FIXED** — old Noesis UI removed, ImGui handles this |
+| **Save corruption / overwrite** | 3 | 2018–2020 | [x] **FIXED** — save folders now use unique `<name>_<timestamp>` IDs |
+| **Job cancellation not working** | 3 | 2019–2020 | [x] **FIXED** — cancel now sets aborted flag + cleans up stale sprites |
+| **Negative thirst → crash** | 2 | 2019 | [x] **FIXED** — needs clamped, UI progress bars bounded |
+| **Rotated workshop bugs** | Recurring | 2018–2021 | [x] **FIXED** — work position offsets now rotated to match workshop rotation |
+| **Game speed → lag/freeze** | Recurring | 2019–2020 | [ ] Partially addressed — trapped gnome detection prevents cascading pathfinding |
 
 **Bug report stats**: 68% had dev response, 24% confirmed fixed, 310 potentially still open.
 Full details: `docs/bug-reports/bug_report_summary.md`
 
-### 0.3 — Performance: Known Bottlenecks
-These were identified by **ext3h** in the dev channel and are low-hanging fruit:
+### 0.3 — Performance: Algorithmic Bottlenecks
 
-| Issue | Root Cause | Fix |
-|-------|-----------|-----|
-| Enemy spawn lag spikes | All gnomes pathfind simultaneously | ext3h had this "almost solved" — stagger/batch path requests |
-| Farm/grove job queries | O(gnomes × tiles) complexity | Index available farm jobs, reduce to O(gnomes + tiles) |
-| Stockpile item selection | Scanning 100k+ items for one slot | Spatial index or priority queue for unstored items |
-| Item/creature proliferation | 50k eggs, 2k chickens | Enforce pasture caps (already in code), add item decay/composting |
-| Game speed freeze | Stuck gnomes cause cascading pathfinding | Fix stuck gnome detection first (0.2), then optimize path batching |
+Profiling shows the game is timer-bound (1ms work, 49ms sleeping) currently, but has scaling time bombs. These must be fixed BEFORE parallelization.
+
+**Tier 1 — Critical (will hit at 20+ gnomes):**
+
+| # | Issue | Root Cause | Fix | Status |
+|---|-------|-----------|-----|--------|
+| P1 | JobManager::getJob() | Every idle gnome re-evaluates every job's item availability from scratch. 50 gnomes × 200 jobs = 10k+ octree queries/tick | Dirty-flagged availability cache | [x] **DONE** |
+| P2 | Inventory::itemCount() | Linear scan with no count cache, called constantly by workshops and farms | Add count cache, invalidate on item add/remove | [x] **DONE** |
+
+**Tier 2 — High (will hit at 50+ gnomes or large farms):**
+
+| # | Issue | Root Cause | Fix | Status |
+|---|-------|-----------|-----|--------|
+| P3 | Farm/Grove tick | Ticks every tile every tick — 400-tile farm = 400 octree queries/tick, unthrottled | Throttle to hourly/daily, use active-set pattern like grass | [x] **DONE** — throttled to every 10 ticks |
+| P4 | PathFinder thread creation | Creates fresh OS thread per search group — no pool, no cancellation for dead requests | Use thread pool, cancel stale requests | [x] **DONE** — cancelRequest() implemented |
+| P5 | CreatureManager time-slicing | Commented-out budget guard means all wild animals tick every frame | Re-enable time budget with proper carry-over | [x] **DONE** — 2ms budget re-enabled |
+
+**Tier 3 — Medium (death by a thousand cuts):**
+
+| # | Issue | Root Cause | Fix | Status |
+|---|-------|-----------|-----|--------|
+| P6 | WorkshopManager::workshop(id) | O(workshops) linear scan | Replace QList with QHash lookup | [x] **DONE** |
+| P7 | StockpileManager::finishJob() | Scans all stockpiles per finished job | Add reverse jobID→stockpileID map | [ ] Deferred |
+| P8 | Pasture::onTick() | O(pastures × all_animals) — hidden quadratic | Index animals by pasture, only check assigned | [ ] Deferred |
+
+**Already well-designed:** grass, water, and plant processing use active-set patterns.
+**Parallelization (0.4)** comes AFTER fixing these algorithmic issues.
 
 ### 0.4 — Performance: Game Loop Parallelization
 *(See `docs/updates/parallelization_plan.md` for full technical plan)*
@@ -59,11 +88,13 @@ These were identified by **ext3h** in the dev channel and are low-hanging fruit:
 
 **Expected impact**: 20-40% tick time reduction, enabling faster game speeds and larger populations.
 
-### 0.5 — Dead Gnome Cleanup
+### 0.5 — Dead Gnome Cleanup (DONE)
 ext3h flagged: "all references to the dead Gnome still left in the world need to be cleaned up. Ownerships, carried items, jobs, etc." Workshop assignments were specifically broken on death.
 
-- [ ] Audit all systems that hold gnome references (Jobs, Workshops, Inventory, Military)
-- [ ] Implement proper cleanup cascade on gnome death
+- [x] Audit all systems that hold gnome references (Jobs, Workshops, Inventory, Military, Rooms)
+- [x] `Gnome::die()` now cleans up: current job, workshop assignments, room ownership, drops inventory+equipment
+- [x] `GnomeManager` removes from military on death
+- [x] Death logged via `LogType::WARNING`
 
 ---
 
@@ -176,11 +207,8 @@ Automatons were added in v0.7.0 with fuel system. Controls added in v0.8.6. Curr
 - [ ] Tier system: basic (hauling only) → advanced (crafting)
 - [ ] Prevent golem cheese (automatons shouldn't fully replace gnomes)
 
-### 4.3 — Magic & Religion (#85, #88)
-No code exists for either. New system development.
-
-- [ ] Religion: temple buildings, prayer activity, divine favor accumulation
-- [ ] Magic: progression tree, spells unlocked via research/favor, mana source infrastructure
+### ~~4.3 — Magic & Religion (#85, #88)~~ SKIPPED
+Not in scope. Focus on core gameplay systems first.
 
 ---
 
