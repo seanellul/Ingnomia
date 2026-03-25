@@ -751,7 +751,6 @@ void drawGameHUD( ImGuiBridge& bridge )
 					if ( ImGui::SmallButton( "Go To" ) )
 					{
 						bridge.cmdNavigateToEntity( toast.entityID );
-						toast.dismissed = true;
 					}
 					ImGui::PopStyleColor();
 					ImGui::SameLine();
