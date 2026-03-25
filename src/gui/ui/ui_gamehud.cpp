@@ -534,35 +534,33 @@ void drawGameHUD( ImGuiBridge& bridge )
 
 				ImGui::PushID( m );
 
-				// Try to show sprite icon above text
+				// Show sprite icon + text label as a styled ImageButton or fallback to text button
 				QString spriteName = subcatSprites.value( sc->subcats[m].label, "" );
 				ImTextureID icon = spriteName.isEmpty() ? (ImTextureID)0 : bridge.spriteTexCache->getTextureForItem( spriteName, { "None" } );
 
-				// Button with icon + label stacked
-				ImVec2 btnSize( 85, subcatBtnH );
-				ImVec2 cursor = ImGui::GetCursorPos();
-
-				if ( ImGui::Button( "##subcatBtn", btnSize ) )
-				{
-					bridge.currentBuildMaterial = sc->subcats[m].dbKey;
-					bridge.buildItems.clear();
-					s_selectedMats.clear();
-					bridge.cmdRequestBuildItems( bridge.currentBuildCategory, bridge.currentBuildMaterial );
-				}
-
-				// Overlay: icon centered, text below
 				if ( icon )
 				{
-					ImGui::SetCursorPos( ImVec2( cursor.x + ( btnSize.x - 32 ) * 0.5f, cursor.y + 2 ) );
-					ImGui::Image( icon, ImVec2( 32, 40 ) );
+					// Icon button with label below
+					if ( ImGui::ImageButton( sc->subcats[m].label, icon, ImVec2( 32, 40 ) ) )
+					{
+						bridge.currentBuildMaterial = sc->subcats[m].dbKey;
+						bridge.buildItems.clear();
+						s_selectedMats.clear();
+						bridge.cmdRequestBuildItems( bridge.currentBuildCategory, bridge.currentBuildMaterial );
+					}
+					ImGui::TextUnformatted( sc->subcats[m].label );
 				}
-				ImGui::SetCursorPos( ImVec2( cursor.x, cursor.y + ( icon ? 42 : btnSize.y * 0.3f ) ) );
-				float textW = ImGui::CalcTextSize( sc->subcats[m].label ).x;
-				ImGui::SetCursorPosX( cursor.x + ( btnSize.x - textW ) * 0.5f );
-				ImGui::TextUnformatted( sc->subcats[m].label );
-
-				// Reset cursor to after the button
-				ImGui::SetCursorPos( ImVec2( cursor.x, cursor.y + btnSize.y + ImGui::GetStyle().ItemSpacing.y ) );
+				else
+				{
+					// Fallback: text button
+					if ( ImGui::Button( sc->subcats[m].label, ImVec2( 85, subcatBtnH ) ) )
+					{
+						bridge.currentBuildMaterial = sc->subcats[m].dbKey;
+						bridge.buildItems.clear();
+						s_selectedMats.clear();
+						bridge.cmdRequestBuildItems( bridge.currentBuildCategory, bridge.currentBuildMaterial );
+					}
+				}
 
 				ImGui::PopID();
 				if ( matActive ) ImGui::PopStyleColor();
@@ -657,7 +655,7 @@ void drawGameHUD( ImGuiBridge& bridge )
 				auto& lm = logMessages[i];
 				if ( lm.type == LogType::WARNING || lm.type == LogType::DANGER ||
 					 lm.type == LogType::COMBAT || lm.type == LogType::DEATH ||
-					 lm.type == LogType::MIGRATION )
+					 lm.type == LogType::MIGRATION || lm.type == LogType::WILDLIFE )
 				{
 					ImGuiBridge::ToastNotification toast;
 					toast.text = lm.message;
