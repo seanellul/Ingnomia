@@ -185,7 +185,14 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 			mats.append( req.availableMats[selIdx].first );
 		}
 
-		// Action buttons: Fill Hole, Replace, Build
+		// Action buttons: Build (primary), then Fill Hole / Replace (secondary)
+		if ( !canBuild ) ImGui::BeginDisabled();
+		if ( ImGui::Button( "Build" ) )
+		{
+			bridge.cmdBuild( item.biType, "", item.id, mats );
+		}
+		if ( !canBuild ) ImGui::EndDisabled();
+
 		if ( item.biType == BuildItemType::Terrain )
 		{
 			bool isWall = item.id.endsWith( "Wall" ) || item.id.startsWith( "FancyWall" );
@@ -212,14 +219,6 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 				if ( !canBuild ) ImGui::EndDisabled();
 			}
 		}
-
-		ImGui::SameLine();
-		if ( !canBuild ) ImGui::BeginDisabled();
-		if ( ImGui::Button( "Build" ) )
-		{
-			bridge.cmdBuild( item.biType, "", item.id, mats );
-		}
-		if ( !canBuild ) ImGui::EndDisabled();
 
 		ImGui::PopID();
 	}
