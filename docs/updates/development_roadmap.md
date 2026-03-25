@@ -10,6 +10,9 @@ Built from community feedback (4,693 suggestions), developer discussions (2,567 
 2. **Each milestone should produce a playable, noticeably improved game**
 3. **Leverage what's already built** — needs system, skills, mechanisms, pathfinding parallelism all exist in some form
 4. **Community's top 10 most-requested features drive the order**
+5. **Systems must talk to each other** — personality drives mood, mood drives work speed, work speed drives production, production drives Kingdom Worth, KW drives threats
+
+**Design reference:** Each milestone's detailed design (competitor analysis, exact mechanics, performance notes) is in `docs/research/feature_reference_library.md`. Research sources are in `docs/research/` (RimWorld, Dwarf Fortress, Gnomoria wikis + community feedback).
 
 ---
 
@@ -79,14 +82,16 @@ Profiling shows the game is timer-bound (1ms work, 49ms sleeping) currently, but
 **Already well-designed:** grass, water, and plant processing use active-set patterns.
 **Parallelization (0.4)** comes AFTER fixing these algorithmic issues.
 
-### 0.4 — Performance: Game Loop Parallelization
+### 0.4 — Performance: Game Loop Parallelization (DONE)
 *(See `docs/updates/parallelization_plan.md` for full technical plan)*
 
-- [ ] **Phase 1**: Non-blocking pathfinding — dispatch at end of tick, collect at start of next
-- [ ] **Phase 2**: Parallel natural world — grass/plants/water on separate threads
-- [ ] **Phase 3**: Parallel passive systems — mechanisms/fluids/sound/rooms alongside gnome pipeline
+- [x] **Creature position spatial index** — O(creatures) → O(1) lookups via existing world position map
+- [x] **Phase 1**: Non-blocking pathfinding — dispatch at end of tick, collect at start of next
+- [x] **Phase 2**: Parallel natural world — grass/water/plants run concurrently via std::async
+- [x] **Phase 3**: Parallel passive systems — rooms/mechanisms/fluids/neighbors/sound alongside event processing
+- [x] **Bug fix**: RegionMap checkSplitFlood dimension bug (m_dimX * m_dimX → m_dimX * m_dimY)
 
-**Expected impact**: 20-40% tick time reduction, enabling faster game speeds and larger populations.
+**Game loop is now multi-threaded.** Three parallel phases overlap independent work across CPU cores.
 
 ### 0.5 — Dead Gnome Cleanup (DONE)
 ext3h flagged: "all references to the dead Gnome still left in the world need to be cleaned up. Ownerships, carried items, jobs, etc." Workshop assignments were specifically broken on death.
@@ -101,6 +106,8 @@ ext3h flagged: "all references to the dead Gnome still left in the world need to
 ## Milestone 1: Core QoL — "Make What Exists Feel Good"
 
 *Goal: Address the most-requested quality-of-life features. No new game systems — polish existing ones.*
+
+**Design reference:** See `docs/research/feature_reference_library.md` §1.1–1.4 for full designs with competitor analysis.
 
 ### 1.1 — Event & Notification Log (#11, #19)
 The most universally wanted feature. "Find cow dead, want to know why."
@@ -135,15 +142,44 @@ Biggest source of frustration across all suggestions.
 
 ## Milestone 2: Gnome Depth — "Make Gnomes Feel Alive"
 
-*Goal: Complete the gnome behavior systems that are partially implemented.*
+*Goal: Complete the gnome behavior systems that are partially implemented. This is the highest-impact milestone — personality and social systems are the #1 missing feature per community feedback.*
+
+**Design reference:** See `docs/research/feature_reference_library.md` §2.0–2.4 for full designs with competitor analysis.
+
+### 2.0 — Character Traits & Backstories (NEW)
+Foundation for all personality-driven systems. Must be implemented BEFORE mood (2.1) since traits modulate mood responses.
+
+- [ ] Add 12-15 trait scales to `Creature` (Bravery, Sociability, Industriousness, Appetite, Temper, Creativity, Greed, Curiosity, Empathy, Stubbornness, Optimism, Nerve)
+- [ ] Trait generation at gnome creation (bell curve, extreme values get descriptions)
+- [ ] DB table for backstories (childhood + adulthood) with skill/trait modifiers
+- [ ] 15-20 childhood + 20-30 adulthood backstories as initial content
+- [ ] Backstories reference NeighborManager kingdoms for world connectivity
+- [ ] Gnome info panel shows traits + backstory
+- [ ] Traits visible as plain-language descriptions (not raw numbers)
+
+### 2.0b — Social System (NEW)
+Relationships between gnomes — the engine for emergent stories. Depends on traits (2.0) for compatibility calculations.
+
+- [ ] Opinion score per gnome pair (-100 to +100) stored in `GnomeManager` or new `SocialManager`
+- [ ] Social interactions during idle time in shared rooms (Chat +1, Deep Talk +8, Argument -8, Insult -12, Compliment +5)
+- [ ] Trait compatibility drives interaction outcomes (similar traits → friendship, divergent → rivalry)
+- [ ] Relationship labels at thresholds (Rival, Disliked, Neutral, Friendly, Close Friend)
+- [ ] Social mood thoughts: Close Friend nearby +3, Rival nearby -2, Friend died -8, Insulted -3
+- [ ] Dining hall as social hub (bonus interaction chances when eating together)
 
 ### 2.1 — Happiness/Mood System (#17, #89, #91)
-The needs map exists (`creature.h:m_needs`) with Hunger/Thirst/Sleep. Automatons explicitly remove "Happiness" — so the slot exists but is unused.
+The needs map exists (`creature.h:m_needs`) with Hunger/Thirst/Sleep. Automatons explicitly remove "Happiness" — so the slot exists but is unused. Depends on traits (2.0) and social (2.0b) for full effect.
 
-- [ ] Implement happiness calculation from: room quality, food quality, relationships, recent events
-- [ ] Happiness affects work speed, migration rate, kingdom worth
-- [ ] "Dead friends" mood penalty (#91 — 3⭐)
-- [ ] Gnome needs panel in UI showing all current needs/mood
+- [ ] Thought stack system: each thought has value + duration + stack limit (RimWorld model)
+- [ ] Mood 0-100 bar calculated from sum of active thoughts + trait-based base mood
+- [ ] Traits modulate thought intensity (Compassionate gnome: death = -8; Cold gnome: death = -2)
+- [ ] Mood affects work speed ±30% (DF focus mechanic — makes mood economically meaningful)
+- [ ] 3-tier mental breaks at 35%/20%/5% thresholds, type determined by personality traits
+- [ ] Catharsis +40 after break to prevent cascade spirals
+- [ ] Room impressiveness generates mood thoughts (8 tiers)
+- [ ] Happiness affects migration rate and kingdom worth
+- [ ] "Dead friends" mood penalty (#91 — 3⭐) — now powered by social system
+- [ ] Gnome needs panel in UI showing all current thoughts/mood
 
 ### 2.2 — Designated Movement Zones (#30)
 "No pass designation" was added in v0.4.7 with a checkbox to let gnomes ignore it (v0.4.8). But the community wanted a fuller zone system.
@@ -151,19 +187,26 @@ The needs map exists (`creature.h:m_needs`) with Hunger/Thirst/Sleep. Automatons
 - [x] ~~Basic no-pass zone~~ — done in v0.4.7
 - [ ] Zone types: civilian allowed, military only, forbidden (expand beyond simple no-pass)
 - [ ] Per-gnome zone permissions (beyond the single "ignore no pass" checkbox)
+- [ ] Emergency lockdown button — confine civilians to safe area, military operates freely
 - [ ] Emergency override when gnome is trapped
 
 ### 2.3 — Medical System Improvements (#31, #37)
 Anatomy/wound system exists (`anatomy.cpp`). Hospital/bandage code exists.
 
 - [ ] Medics bring bandages TO injured gnomes (not other way around)
-- [ ] Triage priority (most injured first)
-- [ ] Basic disease system using existing anatomy framework
+- [ ] 3-tier auto-triage: Critical (bleeding) → Serious (breaks, infection) → Minor (bruises)
+- [ ] 2 roles: Medic (diagnosis + treatment) and Caretaker (transport + feeding)
+- [ ] Supply chain: bandages (cloth), splints (wood), herbal medicine (farming)
+- [ ] 3 starter diseases: Infection (untreated wounds), Plague (seasonal), Food Poisoning (low cooking skill)
+- [ ] Wire blindness flags (HALFBLIND/BLIND already in enums but not connected to eye damage)
 
 ### 2.4 — Food & Farming QoL (#28, #39, #41, #46)
-- [ ] Food exclusion list — reserve items from gnome consumption
-- [ ] Groves include existing trees (check grove system)
-- [ ] Separate seed vs food items
+- [ ] Food exclusion list — named food policies with per-gnome assignment
+- [ ] "Preserve Seeds" toggle: prevent kitchens from using last N seeds of any crop
+- [ ] Groves include existing trees (fix Gnomoria's #1 grove complaint)
+- [ ] Food variety bonus: 3+ different foods in 3 days = +3 mood; same food repeatedly = -2 mood
+- [ ] Drink hierarchy: water < milk < beer < wine, better drinks = bigger mood boost
+- [ ] Simple meal chain: raw (-mood) → simple cooked (neutral) → quality meal (2+ ingredients, +mood)
 - [ ] "Paint" mode for bulk farm/grove/pasture crop changes
 
 ---
@@ -171,6 +214,8 @@ Anatomy/wound system exists (`anatomy.cpp`). Hospital/bandage code exists.
 ## Milestone 3: Combat & World — "Make the World Dangerous"
 
 *Goal: Flesh out combat, enemies, and world dynamics.*
+
+**Design reference:** See `docs/research/feature_reference_library.md` §3.1–3.3 for full designs with competitor analysis.
 
 ### 3.1 — Combat UI & Feedback (#12, #13)
 - [ ] Combat overview screen (gnome stats left, enemies right)
@@ -193,6 +238,8 @@ Anatomy/wound system exists (`anatomy.cpp`). Hospital/bandage code exists.
 
 *Goal: Give players systems to manage a large, established fortress.*
 
+**Design reference:** See `docs/research/feature_reference_library.md` §4.1–4.3 for full designs with competitor analysis.
+
 ### 4.1 — Event-Triggered Mechanisms (#93)
 Mechanism system exists (`mechanismmanager.cpp`). Controls for mechanisms were added in v0.8.6. Need to extend with event-based triggers.
 
@@ -207,14 +254,22 @@ Automatons were added in v0.7.0 with fuel system. Controls added in v0.8.6. Curr
 - [ ] Tier system: basic (hauling only) → advanced (crafting)
 - [ ] Prevent golem cheese (automatons shouldn't fully replace gnomes)
 
-### ~~4.3 — Magic & Religion (#85, #88)~~ SKIPPED
-Not in scope. Focus on core gameplay systems first.
+### 4.3 — Magic & Religion (#85, #88) — STRETCH GOAL
+Full expansion-level feature. No visual or mechanical foundations exist. Deferred until Milestones 1-3 are solid. Full design documented in `docs/research/feature_reference_library.md` §4.3 for when the time comes.
+
+- [ ] Deity system with domains (earth, war, craft, harvest, death)
+- [ ] Temple tiers using room-value thresholds
+- [ ] Prayer as personality-driven need
+- [ ] Mana from temples + deep underground crystals
+- [ ] Spells as crafted items at Scriptorium workshop
 
 ---
 
 ## Milestone 5: Modding & Community
 
 *Goal: Let the community extend the game.*
+
+**Design reference:** See `docs/research/feature_reference_library.md` §5.1–5.2 for full designs with competitor analysis.
 
 ### 5.1 — Modding API (#95)
 Currently mods can only override SQLite DB entries.
@@ -285,11 +340,21 @@ These were discussed and explicitly rejected or deprioritized by the dev team:
 ```
  NOW   Milestone 0: Fix foundations (build, perf, cleanup)
   |    Milestone 1: Core QoL (notifications, stockpiles, workshops, HUD)
-  |    Milestone 2: Gnome depth (mood, zones, medical, farming QoL)
+  |    Milestone 2: Gnome depth (traits, social, mood, zones, medical, farming)
   |    Milestone 3: Combat & world (enemies, difficulty, world dynamics)
-  |    Milestone 4: Late game (automation, magic, religion)
+  |    Milestone 4: Late game (automation, automaton tiers)
   v    Milestone 5: Modding & community (API, translations)
-LATER
+LATER  Stretch: Magic & Religion (expansion scope)
 ```
 
-Each milestone builds on the previous. Milestone 0 is purely technical — it makes everything after it faster and more stable. Milestone 1 produces the most visible player-facing improvements for the least new code. Milestones 2-3 add gameplay depth. Milestones 4-5 are endgame content and extensibility.
+Each milestone builds on the previous. Milestone 0 is purely technical — it makes everything after it faster and more stable. Milestone 1 produces the most visible player-facing improvements for the least new code. Milestone 2 is the highest-impact gameplay milestone — traits + social + mood transform gnomes from "drones" into characters. Milestone 3 makes the world threatening. Milestones 4-5 are endgame and extensibility. Magic & Religion is deferred as expansion scope.
+
+**Dependency chain within Milestone 2:**
+```
+2.0 Traits & Backstories (foundation — no dependencies)
+  └─→ 2.0b Social System (needs traits for compatibility)
+       └─→ 2.1 Mood System (needs traits for modulation + social for thoughts)
+2.2 Movement Zones (independent)
+2.3 Medical (independent, but mood thoughts integrate with 2.1)
+2.4 Food QoL (independent, but food mood thoughts integrate with 2.1)
+```

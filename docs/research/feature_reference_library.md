@@ -96,6 +96,94 @@ See `docs/updates/parallelization_plan.md` for the full Phase 0 audit, performan
 
 ## Milestone 2: Gnome Depth — "Make Gnomes Feel Alive"
 
+### 2.0 — Character Traits & Backstories
+
+| Game | Approach |
+|------|----------|
+| **RimWorld** | **Traits**: 0-3 permanent traits per pawn from 73 options. 14 spectrum pairs (e.g. Industrious ↔ Slothful: ±35% work speed) + 30+ standalone traits. Traits affect: work speed, mood offsets, mental break thresholds, social opinion, combat stats, and work restrictions. **Backstories**: childhood + adulthood pair (36 + 85 options). Each grants/blocks skills, forces traits, and restricts work types. Backstory text is 2-3 sentences of flavor. Examples: "Medieval slave" (blocks Intellectual, +3 Plants), "Urbworld pirate" (+6 Shooting, +4 Melee, blocks Caring). |
+| **Dwarf Fortress** | **Three-layer personality**: 50 facets (0-100 scale, innate temperament), 34 values (-50 to +50, beliefs/ideals), 13 life goals (aspirations). Facets determine *how* a dwarf reacts (ANGER_PROPENSITY → tantrum risk), values determine *what* they care about (NATURE → unhappy when trees felled), goals create long-term satisfaction (CREATE_A_GREAT_WORK_OF_ART → strong happy thought when achieved). Divergent facets between dwarves cause grudges — the engine for emergent social conflict. Internal value-facet conflicts create psychologically complex characters (high SELF_CONTROL value + high IMMODERATION facet). **No backstories** — personality is purely numerical, history generated at world level. |
+| **Gnomoria** | 5 attributes (Fitness, Nimbleness, Focus, Curiosity, Charm) + ~25 skills organized into ~18 professions. **No personality traits, no backstories, no individual preferences** — the #1 community complaint. Gnomes were "drones." |
+
+**Ingnomia design — Traits:**
+- **12-15 core traits** on a -50 to +50 scale (simplified DF facets, RimWorld accessibility):
+
+| Trait | Low End | High End | Affects |
+|-------|---------|----------|---------|
+| **Bravery** | Coward (flees combat) | Fearless (seeks combat) | Combat stress, willingness to fight |
+| **Sociability** | Loner (prefers solitude) | Gregarious (needs company) | Social need decay, interaction frequency |
+| **Industriousness** | Lazy (-20% work speed) | Driven (+20% work speed) | Global work speed modifier |
+| **Appetite** | Ascetic (simple food ok) | Gourmand (needs good food) | Food mood sensitivity |
+| **Temper** | Calm (slow to anger) | Volatile (quick to anger) | Mental break type, threshold modifier |
+| **Creativity** | Practical (no art need) | Artistic (needs beauty) | Room beauty sensitivity, craft quality bonus |
+| **Greed** | Generous (ignores room quality) | Greedy (needs nice room) | Room impressiveness sensitivity |
+| **Curiosity** | Incurious (no exploration drive) | Explorer (wants to discover) | Skill XP rate modifier, underground mood |
+| **Empathy** | Cold (unaffected by others' pain) | Compassionate (strong grief) | Social thought intensity, death mood penalty |
+| **Stubbornness** | Flexible (adapts to change) | Stubborn (resists reassignment) | Job switch mood penalty, training resistance |
+| **Optimism** | Pessimist (-6 base mood) | Optimist (+6 base mood) | Permanent mood offset |
+| **Nerve** | Nervous (+8% break threshold) | Iron-Willed (-12% break threshold) | Mental break threshold modifier |
+
+- Each gnome gets all 12-15 traits at random values (bell curve centered on 0). Only extreme values (>25 or <-25) generate visible descriptions — most gnomes are "normal" in most traits, distinctive in 2-4.
+- Traits modify **which thoughts fire and their intensity** (DF model). A Compassionate gnome gets -8 from a death; a Cold gnome gets -2 from the same death.
+- Traits affect **mental break type** (DF model): high Temper → tantrum; high Nerve (low end) → catatonic freeze; low Optimism → sad wander.
+- Traits are **visible in the gnome info panel** with plain-language descriptions.
+
+**Ingnomia design — Backstories:**
+- Each gnome arrives with a **short backstory** (2-3 sentences) explaining their pre-arrival life.
+- **Backstory = childhood + adulthood** (RimWorld model), randomly combined.
+- Each backstory component modifies: starting skill levels (±1-3), initial trait biases (nudge 2-3 traits), and optionally blocks 1 work type.
+- **DF history integration**: backstories reference the world's neighbor kingdoms. "Fled a goblin raid on the eastern kingdom" ties the gnome to the NeighborManager's generated kingdoms, making the world feel connected.
+- **15-20 childhood backstories** (Miner's Child, Farm Kid, Street Urchin, Noble's Heir, Tinker's Apprentice, Soldier's Brat, etc.)
+- **20-30 adulthood backstories** (Wandering Trader, Disgraced Soldier, Master Brewer, Failed Alchemist, Refugee, Pit Fighter, Monastery Scholar, etc.)
+- Backstories are **DB-defined** (new SQLite table) so modders can add their own.
+- **No work type hard-blocks** unless thematically strong (e.g. "Pacifist Monk" can't do military) — Gnomoria's small population means every gnome needs to be flexible.
+
+**Performance note:** Traits are static per gnome — O(1) lookup. Backstory applied once at creation. No scaling concern.
+
+---
+
+### 2.0b — Social System
+
+| Game | Approach |
+|------|----------|
+| **RimWorld** | Opinion-based system (-100 to +100). Accumulates from interactions: Chitchat (+0.66), Deep Talk (+15), Insulted (-15), Kind Words (+5). Thresholds create relationship labels: Rival (<-20), Acquaintance (-20 to +20), Friend (>+20). Romance requires positive opinion + compatibility checks (age gap penalty, beauty multiplier). Marriage grants +30 base opinion + "Got some lovin'" (+8 mood). Death of spouse = -20 mood for 30 days. Social fights from insults. 20+ opinion modifiers from actions (rescue +15, botched surgery -20). |
+| **Dwarf Fortress** | Interaction-counter system. Idle dwarves chat when adjacent. ~15 interactions → friendship or grudge (determined by personality compatibility). ~40 → lovers. ~50 → marriage. **Compatibility**: divergent personality facets create grudges instead of friendships. Talking to a grudge = 700+ stress/day — one of the strongest stressors in the game. Family bonds: if spouse is expelled, entire family follows. Death of family → massive stress. |
+| **Gnomoria** | **No social system whatsoever.** No relationships, no opinions, no interactions. #1 missing feature per community feedback. |
+
+**Ingnomia design:**
+- **Opinion score** per gnome pair (-100 to +100), RimWorld model for clarity
+- **Interactions** happen when gnomes are in the same room during idle time (eating, sleeping area, training):
+  - **Chat** (+1 opinion, most common) — requires being in same room
+  - **Deep conversation** (+8 opinion, rare, requires Friend status)
+  - **Argument** (-8 opinion) — triggered when gnomes with incompatible traits interact (DF compatibility model). High Temper + High Temper = argument-prone. High Sociability + Low Sociability = friction.
+  - **Insult** (-12 opinion, -3 mood for target) — personality-driven, not random
+  - **Compliment** (+5 opinion, +2 mood) — requires high Empathy or Sociability
+- **Relationship labels** from opinion thresholds:
+  - **Rival** (<-30): argument chance doubled, -2 mood when working near each other
+  - **Disliked** (-30 to -10): minor friction
+  - **Neutral** (-10 to +10): no effects
+  - **Friendly** (+10 to +30): +1 mood when working near each other
+  - **Close Friend** (>+30): +3 mood when nearby, grief on death (-8 mood, 20 days)
+- **Romance** (stretch goal for later — adds complexity):
+  - Requires Close Friend + compatible orientation + age range
+  - Partners share rooms, get "Lovin'" mood boost (+6)
+  - Partner death = strongest grief (-15 mood, 30 days)
+- **Family is NOT simulated** (no children/marriage initially) — too much scope. Romance alone is a stretch. Focus is on friendship/rivalry as the core social dynamic.
+- **Dining hall as social hub**: gnomes eating together at the same time get bonus interaction chances. This makes dining room placement strategically important (emergent from DF's observation that dining halls are the #1 social space).
+
+**Key interaction with Traits (2.0):** Trait compatibility determines whether interactions trend positive or negative. Two gnomes with similar trait profiles become friends faster. Divergent profiles create rivals. This is the DF grudge system simplified — personality creates social structure automatically.
+
+**Key interaction with Mood (2.1):** Social relationships generate mood thoughts:
+- Close Friend nearby: +3
+- Rival nearby: -2
+- Close Friend died: -8 (20 days)
+- Rival died: +3 (5 days) — dark but realistic
+- Insulted: -3 (2 days, stacks to 5)
+- Had deep conversation: +4 (2 days)
+
+**Performance note:** Social interactions only checked during idle time in shared rooms — not every tick. O(gnomes_in_room²) but rooms cap at ~20 gnomes realistically. Negligible.
+
+---
+
 ### 2.1 — Happiness/Mood System
 
 | Game | Approach |
@@ -269,7 +357,9 @@ See `docs/updates/parallelization_plan.md` for the full Phase 0 audit, performan
 
 ---
 
-### 4.3 — Magic & Religion
+### 4.3 — Magic & Religion *(STRETCH GOAL — Expansion Scope)*
+
+*This is a full expansion-level feature requiring visual assets, new mechanics, and UI systems that don't yet exist. Designed here for future reference but explicitly deferred until core gameplay (Milestones 1-3) is solid and fun. No visual or mechanical foundations exist for either magic or religion currently.*
 
 | Game | Approach |
 |------|----------|

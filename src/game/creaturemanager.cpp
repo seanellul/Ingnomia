@@ -106,11 +106,16 @@ void CreatureManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayCh
 QList<Creature*> CreatureManager::creaturesAtPosition( Position& pos )
 {
 	QList<Creature*> out;
-	for ( int i = 0; i < m_creatures.size(); ++i )
+	unsigned int tileID = pos.toInt();
+	auto& posMap = g->w()->creaturePositions();
+	if ( posMap.contains( tileID ) )
 	{
-		if ( m_creatures[i]->getPos() == pos )
+		for ( auto id : posMap[tileID] )
 		{
-			out.push_back( m_creatures[i] );
+			if ( m_creaturesByID.contains( id ) )
+			{
+				out.push_back( m_creaturesByID[id] );
+			}
 		}
 	}
 	return out;
@@ -119,28 +124,42 @@ QList<Creature*> CreatureManager::creaturesAtPosition( Position& pos )
 QList<Animal*> CreatureManager::animalsAtPosition( Position& pos )
 {
 	QList<Animal*> out;
-	for ( int i = 0; i < m_creatures.size(); ++i )
+	unsigned int tileID = pos.toInt();
+	auto& posMap = g->w()->creaturePositions();
+	if ( posMap.contains( tileID ) )
 	{
-		auto c = m_creatures[i];
-
-		if ( c->isAnimal() && c->getPos() == pos )
+		for ( auto id : posMap[tileID] )
 		{
-			out.push_back( dynamic_cast<Animal*>( c ) );
+			if ( m_creaturesByID.contains( id ) )
+			{
+				auto c = m_creaturesByID[id];
+				if ( c->isAnimal() )
+				{
+					out.push_back( dynamic_cast<Animal*>( c ) );
+				}
+			}
 		}
 	}
 	return out;
 }
-	
+
 QList<Monster*> CreatureManager::monstersAtPosition( Position& pos )
 {
 	QList<Monster*> out;
-	for ( int i = 0; i < m_creatures.size(); ++i )
+	unsigned int tileID = pos.toInt();
+	auto& posMap = g->w()->creaturePositions();
+	if ( posMap.contains( tileID ) )
 	{
-		auto c = m_creatures[i];
-
-		if ( c->isMonster() && c->getPos() == pos )
+		for ( auto id : posMap[tileID] )
 		{
-			out.push_back( dynamic_cast<Monster*>( c ) );
+			if ( m_creaturesByID.contains( id ) )
+			{
+				auto c = m_creaturesByID[id];
+				if ( c->isMonster() )
+				{
+					out.push_back( dynamic_cast<Monster*>( c ) );
+				}
+			}
 		}
 	}
 	return out;

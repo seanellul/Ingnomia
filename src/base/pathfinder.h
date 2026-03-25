@@ -24,6 +24,7 @@
 #include <QSet>
 #include <QThreadPool>
 #include <QVector>
+#include <future>
 #include <optional>
 
 class PathFinderThread;
@@ -79,6 +80,14 @@ public:
 	bool checkConnectedRegions( const Position start, const Position goal );
 
 	void onResult( Position start, Position goal, bool ignoreNoPass, std::vector<Position> path );
-	// Dispatch workers for all outstanding pathfinding requests
+
+	// Split pathfinding into non-blocking dispatch and collect phases
+	void dispatchPaths();  // Launch async workers (non-blocking)
+	void collectPaths();   // Wait for outstanding workers and store results
+
+	// Legacy blocking version (calls dispatch + collect)
 	void findPaths();
+
+private:
+	std::vector<std::future<void>> m_activeTasks;
 };

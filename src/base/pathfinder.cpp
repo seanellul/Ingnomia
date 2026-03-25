@@ -106,11 +106,10 @@ PathFinderResult PathFinder::getPath( unsigned int id, Position start, Position 
 	}
 }
 
-void PathFinder::findPaths()
+void PathFinder::dispatchPaths()
 {
 	using namespace std::placeholders;
 
-	std::vector<std::future<void>> tasks;
 	decltype( m_jobs ) jobs;
 
 	{
@@ -158,15 +157,26 @@ void PathFinder::findPaths()
 				++it2;
 			}
 		}
-		tasks.emplace_back(std::async(
+		m_activeTasks.emplace_back(std::async(
 			std::launch::async,
 			PathFinderThread( m_world, start, std::move( goals ), ignoreNoPass, std::bind( &PathFinder::onResult, this, _1, _2, _3, _4 ) )
 		));
 	}
-	for ( auto& task : tasks )
+}
+
+void PathFinder::collectPaths()
+{
+	for ( auto& task : m_activeTasks )
 	{
 		task.get();
 	}
+	m_activeTasks.clear();
+}
+
+void PathFinder::findPaths()
+{
+	dispatchPaths();
+	collectPaths();
 }
 
 

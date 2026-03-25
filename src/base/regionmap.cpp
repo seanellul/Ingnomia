@@ -612,7 +612,7 @@ bool RegionMap::checkSplitFlood( const Position& pos, const Position& pos2, unsi
 	timer.start();
 	QQueue<Position> floodQueue;
 
-	QVector<bool> visited( m_dimX * m_dimX, false );
+	QVector<bool> visited( m_dimX * m_dimY, false );
 
 	floodQueue.enqueue( pos );
 	//qDebug() << "start flood fill:" << id << startPos.toString();

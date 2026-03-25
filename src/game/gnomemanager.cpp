@@ -306,27 +306,23 @@ void GnomeManager::forceMoveGnomes( Position from, Position to )
 QList<Gnome*> GnomeManager::gnomesAtPosition( Position pos )
 {
 	QList<Gnome*> out;
-	for ( int i = 0; i < m_gnomes.size(); ++i )
+	unsigned int tileID = pos.toInt();
+	auto& posMap = g->w()->creaturePositions();
+	if ( posMap.contains( tileID ) )
 	{
-		if ( m_gnomes[i]->getPos() == pos && !m_gnomes[i]->goneOffMap() )
+		for ( auto id : posMap[tileID] )
 		{
-			out.push_back( m_gnomes[i] );
+			if ( m_gnomesByID.contains( id ) )
+			{
+				Gnome* gn = m_gnomesByID[id];
+				if ( !gn->goneOffMap() )
+				{
+					out.push_back( gn );
+				}
+			}
 		}
 	}
-	for ( int i = 0; i < m_specialGnomes.size(); ++i )
-	{
-		if ( m_specialGnomes[i]->getPos() == pos )
-		{
-			out.push_back( m_specialGnomes[i] );
-		}
-	}
-	for ( int i = 0; i < m_automatons.size(); ++i )
-	{
-		if ( m_automatons[i]->getPos() == pos )
-		{
-			out.push_back( m_automatons[i] );
-		}
-	}
+	// Dead gnomes aren't in the position map, scan the small dead list
 	for ( int i = 0; i < m_deadGnomes.size(); ++i )
 	{
 		if ( m_deadGnomes[i]->getPos() == pos )
