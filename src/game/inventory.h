@@ -100,6 +100,9 @@ public:
 	unsigned int itemCountInStockpile( QString itemID, QString materialID );
 	unsigned int itemCountNotInStockpile( QString itemID, QString materialID );
 
+	int foodItemCount() const { return m_foodItems.size(); }
+	int drinkItemCount() const { return m_drinkItems.size(); }
+
 	struct ItemCountDetailed
 	{
 		unsigned int total;

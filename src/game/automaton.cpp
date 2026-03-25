@@ -52,6 +52,8 @@ Automaton::Automaton( QVariantMap& in, Game* game ) :
 
 	m_maintJobChanged = in.value( "MaintJobChanged" ).toBool();
 	m_refuel          = in.value( "Refuel" ).toBool();
+	m_tier            = in.contains( "Tier" ) ? (AutomatonTier)in.value( "Tier" ).toInt() : AutomatonTier::Clockwork;
+	m_durability      = in.contains( "Durability" ) ? in.value( "Durability" ).toFloat() : 100.0f;
 
 	init();
 }
@@ -68,6 +70,8 @@ void Automaton::serialize( QVariantMap& out )
 	out.insert( "MaintenanceJob", maintenanceJobID() );
 	out.insert( "MaintJobChanged", m_maintJobChanged );
 	out.insert( "Refuel", m_refuel );
+	out.insert( "Tier", (int)m_tier );
+	out.insert( "Durability", (double)m_durability );
 }
 
 Automaton::~Automaton()
@@ -402,4 +406,41 @@ void Automaton::fillUp( int burnValue )
 {
 	m_fuel = burnValue;
 	updateSprite();
+}
+
+// =============================================================================
+// Tier system (Milestone 4.2)
+// =============================================================================
+
+int Automaton::maxLabors() const
+{
+	switch ( m_tier )
+	{
+		case AutomatonTier::Clockwork: return 1;
+		case AutomatonTier::Steam:     return 3;
+		case AutomatonTier::Arcane:    return 99; // effectively unlimited
+	}
+	return 1;
+}
+
+float Automaton::degradationRate() const
+{
+	switch ( m_tier )
+	{
+		case AutomatonTier::Clockwork: return 0.002f;  // ~50k ticks to degrade fully
+		case AutomatonTier::Steam:     return 0.001f;  // ~100k ticks
+		case AutomatonTier::Arcane:    return 0.0005f; // ~200k ticks
+	}
+	return 0.002f;
+}
+
+float Automaton::workSpeedMultiplier() const
+{
+	switch ( m_tier )
+	{
+		case AutomatonTier::Clockwork: return 0.6f;
+		case AutomatonTier::Steam:     return 0.9f;
+		case AutomatonTier::Arcane:    return 1.0f;
+	}
+	return 0.6f;
 }

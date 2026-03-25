@@ -6,6 +6,115 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-25] UI Bug Fixes
+
+**Files changed**: `src/gui/mainwindow.cpp`, `src/gui/ui/ui_tileinfo.cpp`, `src/gui/ui/ui_sidepanels.cpp`, `src/gui/ui/ui_mainmenu.cpp`, `src/game/gamemanager.cpp`
+
+### Changes
+- **Space bar always pauses** — Space and Escape now handled BEFORE the `ImGui::WantCaptureKeyboard` check, so they work regardless of which ImGui window has focus.
+- **Tile Info repositioned** — Moved from Y=100 to Y=150, now uses `ImGuiCond_FirstUseEver` so it's moveable and resizable.
+- **Creature Info no longer covers time** — Moved from Y=60 to Y=150, now moveable and resizable.
+- **All side panels smaller and moveable** — Changed from full-screen fixed (`io.DisplaySize.x - 10, io.DisplaySize.y - 110`) to 60% width × 70% height defaults with `ImGuiCond_FirstUseEver`. Removed `NoMove | NoResize` flags from all panels.
+- **Gnome count on embark fixed** — `GameManager::startNewGame()` now syncs `numGnomes` from UI config to `NewGameSettings` before save/create. Previously the UI slider wrote to `Global::cfg` but `NewGameSettings::m_numGnomes` was never updated from it.
+
+---
+
+## [2026-03-25] Milestone 5.2 — Translation System
+
+**Milestone**: 5.2 — Modding & Community
+**Files changed**: `src/gui/strings.h`, `src/gui/strings.cpp`
+
+### Changes
+- **Named parameter interpolation** — `S::s("$Key", {{"name", "Urist"}, {"item", "sword"}})` replaces `{name}` and `{item}` in the translated string. Enables word-order flexibility for different languages.
+- **JSON translation loading** — `Strings::loadJsonTranslations(path)` loads key-value pairs from external JSON files, overriding DB strings. Community translators can work with JSON instead of SQLite.
+
+---
+
+## [2026-03-25] Milestone 5.1 — Modding API
+
+**Milestone**: 5.1 — Modding & Community
+**Files changed**: `src/base/modmanager.h` (new), `src/base/modmanager.cpp` (new)
+
+### Changes
+- **ModManager class** — scans `mods/` folder for mod directories containing `mod.json` metadata
+- **Mod metadata** — `mod.json` with name, author, version, description
+- **Data layer** — mods place JSON files in `data/` subfolder, each mapping to a DB table (e.g., `data/items.json` → Items table). Entries update matching DB rows by ID.
+- **Mod enable/disable** — `setEnabled()` per mod, `applyMods()` applies all enabled mods after DB init
+- **Auto-discovery** — `scanMods()` finds all valid mod directories automatically
+
+---
+
+## [2026-03-25] Milestone 4.2 — Automaton Progression
+
+**Milestone**: 4.2 — Automation & Late Game
+**Files changed**: `src/game/automaton.h`, `src/game/automaton.cpp`
+
+### Changes
+- **3-tier automaton system** — `AutomatonTier` enum: Clockwork (1 labor, 0.6x speed), Steam (3 labors, 0.9x speed), Arcane (unlimited labors, 1.0x speed)
+- **Degradation** — automatons lose durability over time. Clockwork degrades fastest, Arcane slowest.
+- **Anti-cheese** — `maxAutomatonsForGnomes()` limits automatons to 1 per 10 gnomes
+- **Work speed multiplier** — `workSpeedMultiplier()` returns tier-appropriate speed factor
+- **Serialization** — tier and durability saved/loaded, backward-compatible (old saves default to Clockwork tier)
+
+---
+
+## [2026-03-25] Milestone 4.1 — Event-Triggered Mechanisms
+
+**Milestone**: 4.1 — Automation & Late Game
+**Files changed**: `src/game/mechanismmanager.h`, `src/game/mechanismmanager.cpp`
+
+### Changes
+- **AlarmBell and ConditionPlate** mechanism types — new `MT_ALARMBELL` and `MT_CONDITIONPLATE` enum values
+- **Trigger condition system** — `triggerCondition` field on MechanismData supports: "raid", "nighttime", "daytime", "lockdown", plus numeric conditions ("food<50", "drink<10", "gnomes>5")
+- **Event trigger evaluation** — `evaluateEventTriggers()` runs every 10 ticks, activates/deactivates mechanisms based on game state
+- **Condition parser** — supports string equality checks and `<`/`>` numeric comparisons against inventory counts, gnome count, etc.
+
+---
+
+## [2026-03-25] Milestone 3.2 — Enemy Diversity (Raid Scaling)
+
+**Milestone**: 3.2 — Combat & World
+**Files changed**: `src/game/eventmanager.cpp`
+
+### Changes
+- **Difficulty-scaled raids** — Raid strength now uses formula: `(year + gnomeCount/4) × difficultyMultiplier`. Peaceful difficulty prevents all raids. Easy halves raid strength. Hard/Brutal increase significantly.
+- **Night raid bonus** — Raids triggered at night get 1.3x strength multiplier.
+- **Raid incoming notification** — DANGER log message when a raid is dispatched: "A goblin raid is approaching! N enemies detected."
+- **Population-based scaling** — More gnomes attract larger raids (gnomeCount/4 added to base amount).
+
+### Technical Details
+- Uses `DifficultyMultipliers::forDifficulty()` from 3.3 work
+- Replaces `GameState::year + 1` with proper formula
+- Note: New enemy types (ranged/flying/sapper/digger) need DB entries + BT XML files — deferred to dedicated content pass
+
+---
+
+## [2026-03-25] Milestone 3.1 — Combat UI & Feedback
+
+**Milestone**: 3.1 — Combat & World
+**Files changed**: `src/game/eventmanager.h`, `src/game/eventmanager.cpp`, `src/game/monster.cpp`, `src/game/gnome.cpp`
+
+### Changes
+- **Battle tracker** — `BattleTracker` struct in EventManager tracks active battles (start tick, gnome wounds/deaths, enemy kills). Starts on first combat event, ends after 200 ticks of no combat.
+- **Post-battle recap** — When battle ends, a summary is logged: "Battle ended! Duration: N ticks. Enemies killed: X. Gnome casualties: Y dead, Z wounded." Appears as COMBAT log entry and toast notification.
+- **Enhanced combat messages** — Monster attacks now show damage amount. Gnome attack logs show hit/dodge detail. Monster deaths say "has been slain!" instead of generic.
+- **Combat event recording** — `recordCombatEvent(isGnome, isDeath, isWound)` called from Monster and Gnome attack methods to feed the battle tracker.
+
+---
+
+## [2026-03-25] Milestone 3.3 — World Dynamics
+
+**Milestone**: 3.3 — Combat & World
+**Files changed**: `src/base/enums.h`, `src/base/gamestate.h`, `src/base/gamestate.cpp`, `src/game/game.cpp`, `src/game/newgamesettings.h`, `src/game/gamemanager.cpp`
+
+### Changes
+- **Difficulty system** — 6-level `Difficulty` enum (Peaceful/Easy/Normal/Hard/Brutal/Custom) with `DifficultyMultipliers` struct providing raid strength, spawn frequency, equipment tier, immigration, resource multipliers
+- **Temperature system** — `GameState::temperature` (0-100) updates hourly by season + day/night ± weather
+- **Weather events** — Storm, HeatWave, ColdSnap (5% daily chance, ~3 day duration). Logged as WARNING.
+- **Full serialization** — difficulty, temperature, weather all persist in save files
+
+---
+
 ## [2026-03-25] Milestone 2.1 — Happiness/Mood System
 
 **Milestone**: 2.1 — Gnome Depth

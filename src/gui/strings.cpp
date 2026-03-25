@@ -62,6 +62,46 @@ QString Strings::s( QString key )
 	}
 }
 
+QString Strings::s( QString key, const QMap<QString, QString>& params )
+{
+	QString result = s( key );
+	for ( auto it = params.constBegin(); it != params.constEnd(); ++it )
+	{
+		result.replace( "{" + it.key() + "}", it.value() );
+	}
+	return result;
+}
+
+bool Strings::loadJsonTranslations( const QString& filePath )
+{
+	QFile file( filePath );
+	if ( !file.open( QIODevice::ReadOnly ) )
+	{
+		qDebug() << "Failed to load translation file:" << filePath;
+		return false;
+	}
+
+	QJsonDocument doc = QJsonDocument::fromJson( file.readAll() );
+	file.close();
+
+	if ( !doc.isObject() )
+	{
+		qDebug() << "Translation file is not a JSON object:" << filePath;
+		return false;
+	}
+
+	QJsonObject obj = doc.object();
+	int count = 0;
+	for ( auto it = obj.constBegin(); it != obj.constEnd(); ++it )
+	{
+		m_table.insert( it.key(), it.value().toString() );
+		++count;
+	}
+
+	qDebug() << "Loaded" << count << "translations from" << filePath;
+	return true;
+}
+
 void Strings::insertString( QString key, QString string )
 {
 	m_table.insert( key, string );

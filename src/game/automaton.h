@@ -22,6 +22,13 @@
 
 class GnomeManager;
 
+enum class AutomatonTier : int
+{
+	Clockwork = 1, // copper/bronze, 1 labor, slow, needs wind-up
+	Steam     = 2, // iron/steel+coal, 2-3 labors, self-powered, needs maintenance
+	Arcane    = 3  // mana-infused, any labor, requires mana upkeep
+};
+
 class Automaton : public Gnome
 {
 public:
@@ -62,6 +69,15 @@ public:
 	int getFuelLevel();
 	void fillUp( int burnValue );
 
+	// Tier system (Milestone 4.2)
+	AutomatonTier tier() const { return m_tier; }
+	void setTier( AutomatonTier t ) { m_tier = t; }
+	int maxLabors() const;           // 1 for Clockwork, 3 for Steam, unlimited for Arcane
+	float degradationRate() const;   // HP loss per tick — higher tiers degrade slower
+	float workSpeedMultiplier() const; // 0.6 Clockwork, 0.9 Steam, 1.0 Arcane
+
+	static int maxAutomatonsForGnomes( int gnomeCount ) { return gnomeCount / 10; } // Anti-cheese: max 1 per 10 gnomes
+
 protected:
 	unsigned int m_automatonItem = 0;
 	unsigned int m_core          = 0;
@@ -69,6 +85,9 @@ protected:
 	bool m_refuel                = true;
 	QString m_coreType;
 	bool m_uninstallCore = false;
+
+	AutomatonTier m_tier = AutomatonTier::Clockwork;
+	float m_durability   = 100.0f; // 0-100, degrades over time
 
 	QWeakPointer<Job> m_maintenaceJob;
 	bool m_maintJobChanged       = false;

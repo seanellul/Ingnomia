@@ -62,6 +62,13 @@ public:
 
 	static QString s( QString key );
 
+	// Parameter interpolation: s("$Key", {{"name", "Urist"}, {"item", "sword"}})
+	// Replaces {name} and {item} in the string
+	static QString s( QString key, const QMap<QString, QString>& params );
+
+	// Load translations from external JSON file (for mod/translation packs)
+	static bool loadJsonTranslations( const QString& filePath );
+
 	static void insertString( QString key, QString string );
 
 	QString numberWord( int number );

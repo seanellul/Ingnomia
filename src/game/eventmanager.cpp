@@ -20,8 +20,11 @@
 
 #include "../base/config.h"
 #include "../base/db.h"
+#include "../base/enums.h"
 #include "../base/gamestate.h"
 #include "../base/global.h"
+#include "../base/logger.h"
+#include "../game/gnomemanager.h"
 #include "../base/pathfinder.h"
 #include "../base/util.h"
 #include "../game/gnome.h"
@@ -178,6 +181,7 @@ void EventManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayChang
 				msg.replace( "$Num", QString::number( amount ) );
 				QString title = em.value( "OnSuccess" ).toMap().value( "Title" ).toString();
 				Global::eventConnector->onEvent( 0, title, msg, true, false );
+				Global::logger().log( LogType::MIGRATION, title + ": " + msg, 0 );
 			}
 			executeEvent( event );
 			it = m_eventList.erase( it );
@@ -186,6 +190,53 @@ void EventManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayChang
 		{
 			++it;
 		}
+	}
+
+	// Update battle tracker
+	updateBattleTracker( tickNumber );
+}
+
+void EventManager::recordCombatEvent( bool isGnome, bool isDeath, bool isWound )
+{
+	if ( !m_battle.active )
+	{
+		m_battle.active    = true;
+		m_battle.startTick = GameState::tick;
+		m_battle.gnomeWounds = 0;
+		m_battle.gnomeDeaths = 0;
+		m_battle.enemyKills  = 0;
+		m_battle.enemyWounds = 0;
+		Global::logger().log( LogType::DANGER, "Battle has begun!", 0 );
+	}
+	m_battle.lastCombatTick = GameState::tick;
+
+	if ( isGnome )
+	{
+		if ( isDeath ) m_battle.gnomeDeaths++;
+		if ( isWound ) m_battle.gnomeWounds++;
+	}
+	else
+	{
+		if ( isDeath ) m_battle.enemyKills++;
+		if ( isWound ) m_battle.enemyWounds++;
+	}
+}
+
+void EventManager::updateBattleTracker( quint64 tick )
+{
+	if ( !m_battle.active ) return;
+
+	// End battle if no combat for 200 ticks (~3 in-game minutes)
+	if ( tick - m_battle.lastCombatTick > 200 )
+	{
+		quint64 duration = m_battle.lastCombatTick - m_battle.startTick;
+		QString recap = QString( "Battle ended! Duration: %1 ticks. Enemies killed: %2. Gnome casualties: %3 dead, %4 wounded." )
+			.arg( duration )
+			.arg( m_battle.enemyKills )
+			.arg( m_battle.gnomeDeaths )
+			.arg( m_battle.gnomeWounds );
+		Global::logger().log( LogType::COMBAT, recap, 0 );
+		m_battle.active = false;
 	}
 }
 
@@ -563,8 +614,26 @@ void EventManager::addRaidEvent( NeighborKingdom kingdom )
 		return;
 	}
 
+	// Apply difficulty multiplier to raid
+	auto diffMult = DifficultyMultipliers::forDifficulty( (Difficulty)GameState::difficulty );
+	if ( diffMult.raidStrength <= 0.0f )
+	{
+		return; // Peaceful difficulty — no raids
+	}
+
 	quint64 leaveTick = GameState::tick;
 	quint64 tick      = leaveTick + kingdom.distance * Global::util->ticksPerMinute * Global::util->minutesPerHour;
+
+	// Raid strength scales with year, population, and difficulty
+	int baseAmount = GameState::year + 1;
+	int gnomeCount = g->gm()->numGnomes();
+	int scaledAmount = qMax( 1, (int)( ( baseAmount + gnomeCount / 4 ) * diffMult.raidStrength ) );
+
+	// Night raids get a strength bonus
+	if ( !GameState::daylight )
+	{
+		scaledAmount = (int)( scaledAmount * 1.3f );
+	}
 
 	auto e = createEvent( "EventInvasion" );
 	e.tick = tick;
@@ -573,11 +642,14 @@ void EventManager::addRaidEvent( NeighborKingdom kingdom )
 	data.insert( "KingdomType", (int)kingdom.type );
 	data.insert( "KingdomWealth", (int)kingdom.wealth );
 	data.insert( "KingdomMilitary", (int)kingdom.military );
-	data.insert( "Amount", GameState::year + 1 ); //TODO amount depending on factors
+	data.insert( "Amount", scaledAmount );
 	data.insert( "Species", "Goblin" );
 	e.data = data;
 
 	m_eventList.append( e );
+
+	Global::logger().log( LogType::DANGER,
+		"A goblin raid is approaching! " + QString::number( scaledAmount ) + " enemies detected.", 0 );
 }
 
 void EventManager::startMission( MissionType type, MissionAction action, unsigned int targetKingdom, unsigned int gnomeID )

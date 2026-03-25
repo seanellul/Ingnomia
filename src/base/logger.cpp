@@ -34,7 +34,17 @@ void Logger::reset()
 
 void Logger::log( LogType lt, QString msg, unsigned int sourceEntity )
 {
-	LogMessage lm { GameState::tick, "", lt, msg, sourceEntity };
+	QString dateTime = "Y" + QString::number( GameState::year ) + " " +
+		GameState::seasonString + " D" + QString::number( GameState::day ) +
+		" " + QString::number( GameState::hour ) + ":" +
+		QString::number( GameState::minute ).rightJustified( 2, '0' );
+	LogMessage lm { GameState::tick, dateTime, lt, msg, sourceEntity };
 	QMutexLocker lock( &m_mutex );
 	m_messages.push_back( lm );
+
+	// Cap log at 1000 entries to prevent unbounded growth
+	if ( m_messages.size() > 1000 )
+	{
+		m_messages.erase( m_messages.begin() );
+	}
 }

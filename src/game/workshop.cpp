@@ -117,6 +117,8 @@ CraftJob::CraftJob( QVariantMap& in )
 		mode = CraftMode::CraftNumber;
 	else if ( sMode == "CraftTo" )
 		mode = CraftMode::CraftTo;
+	else if ( sMode == "CraftUntilStock" )
+		mode = CraftMode::CraftUntilStock;
 	else
 		mode = CraftMode::Repeat;
 
@@ -159,6 +161,9 @@ void CraftJob::serialize( QVariantMap& out )
 			break;
 		case CraftMode::CraftTo:
 			out.insert( "Mode", "CraftTo" );
+			break;
+		case CraftMode::CraftUntilStock:
+			out.insert( "Mode", "CraftUntilStock" );
 			break;
 		case CraftMode::Repeat:
 			out.insert( "Mode", "Repeat" );
@@ -404,7 +409,7 @@ void Workshop::onTick( quint64 tick )
 	{
 		for ( auto& cj : m_jobList )
 		{
-			if ( cj.mode == CraftMode::CraftTo )
+			if ( cj.mode == CraftMode::CraftTo || cj.mode == CraftMode::CraftUntilStock )
 			{
 				QString materialID = "any";
 
@@ -419,7 +424,11 @@ void Workshop::onTick( quint64 tick )
 					}
 				}
 
-				int existing = g->inv()->itemCountWithInJob( cj.itemSID, materialID );
+				// CraftTo counts items including those in jobs; CraftUntilStock counts only free items
+				int existing = ( cj.mode == CraftMode::CraftUntilStock )
+					? g->inv()->itemCount( cj.itemSID, materialID )
+					: g->inv()->itemCountWithInJob( cj.itemSID, materialID );
+
 				if ( existing >= cj.numItemsToCraft )
 				{
 					cj.paused = true;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../base/logger.h"
 #include "aggregatoragri.h"
 #include "aggregatorcreatureinfo.h"
 #include "aggregatordebug.h"
@@ -57,9 +58,21 @@ public:
 		TileInfo,
 		Workshop,
 		Agriculture,
-		CreatureInfo
+		CreatureInfo,
+		EventLog
 	};
 	SidePanel activeSidePanel = SidePanel::None;
+
+	// Toast notification system
+	struct ToastNotification
+	{
+		QString text;
+		LogType severity;
+		quint64 createdTick = 0;
+		float alpha         = 1.0f;
+	};
+	QList<ToastNotification> activeToasts;
+	quint64 lastLogCount = 0; // track new log entries for toast generation
 
 	bool showDebugPanel = false;
 
@@ -74,6 +87,12 @@ public:
 	// Kingdom info
 	QString kingdomName;
 	QString kingdomInfo1, kingdomInfo2, kingdomInfo3;
+
+	// Stock counters (updated from kingdom info signals)
+	int stockFood   = 0;
+	int stockDrink  = 0;
+	int stockGnomes = 0;
+	int stockItems  = 0;
 
 	int viewLevel = 0;
 

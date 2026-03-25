@@ -25,10 +25,14 @@
 enum class LogType
 {
 	DEBUG,
+	INFO,
 	JOB,
 	CRAFT,
 	COMBAT,
-	WARNING
+	WARNING,
+	DANGER,
+	MIGRATION,
+	DEATH
 };
 
 struct LogMessage

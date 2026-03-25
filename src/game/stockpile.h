@@ -141,6 +141,11 @@ public:
 	void setLimitWithMaterial( bool value );
 	bool limitWithMaterial();
 
+	bool forTrade() const { return m_forTrade; }
+	void setForTrade( bool v ) { m_forTrade = v; }
+	bool autoAcceptNew() const { return m_autoAcceptNew; }
+	void setAutoAcceptNew( bool v ) { m_autoAcceptNew = v; }
+
 	bool suspendChanged();
 
 	bool stillHasJobs();
@@ -176,6 +181,9 @@ private:
 	QMap<QString, StockpileItemLimit> m_limits;
 
 	bool m_limitWithmaterial = false;
+
+	bool m_forTrade      = false;  // Mark stockpile contents for trading
+	bool m_autoAcceptNew = true;   // Automatically accept new item types in checked categories
 
 	unsigned int createJob( unsigned int itemID, InventoryField* infi );
 

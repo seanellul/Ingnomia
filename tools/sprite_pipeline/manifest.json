@@ -1,0 +1,164 @@
+{
+  "description": "Sprite generation manifest for Ingnomia. Each entry defines a sprite or sprite group to generate.",
+  "global_settings": {
+    "cell_width": 32,
+    "cell_height": 36,
+    "projection": "isometric_dimetric_30deg",
+    "style": "chunky voxel-like pixel art, earthy muted palette, transparent background",
+    "model": "PublicPrompts/All-In-One-Pixel-Model",
+    "inference_steps": 30,
+    "guidance_scale": 7.5
+  },
+  "sprites": [
+    {
+      "id": "terrain_stone_wall",
+      "category": "terrain",
+      "prompt": "pixelsprite, isometric stone wall block, gray granite texture, chunky voxel style, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": true,
+      "variants": 4,
+      "notes": "Will be tinted by material color at runtime"
+    },
+    {
+      "id": "terrain_stone_floor",
+      "category": "terrain",
+      "prompt": "pixelsprite, isometric stone floor tile, flat top surface, gray, chunky voxel style, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": true,
+      "variants": 4,
+      "notes": "Floor tile seen from above at isometric angle"
+    },
+    {
+      "id": "terrain_dirt_floor",
+      "category": "terrain",
+      "prompt": "pixelsprite, isometric dirt floor tile, brown earth, chunky voxel pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": false,
+      "variants": 4
+    },
+    {
+      "id": "terrain_grass",
+      "category": "terrain",
+      "prompt": "pixelsprite, isometric grass tile, green grass on dirt, chunky voxel pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": false,
+      "variants": 6
+    },
+    {
+      "id": "terrain_water",
+      "category": "terrain",
+      "prompt": "pixelsprite, isometric water tile, blue water surface, pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": false,
+      "variants": 4
+    },
+    {
+      "id": "item_wooden_chair",
+      "category": "furniture",
+      "prompt": "pixelsprite, isometric wooden chair, small chunky voxel furniture, pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark, person",
+      "grayscale": true,
+      "variants": 1,
+      "rotations": true
+    },
+    {
+      "id": "item_wooden_table",
+      "category": "furniture",
+      "prompt": "pixelsprite, isometric wooden table, small chunky voxel furniture, pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark, person",
+      "grayscale": true,
+      "variants": 1,
+      "rotations": true
+    },
+    {
+      "id": "item_wooden_bed",
+      "category": "furniture",
+      "prompt": "pixelsprite, isometric wooden bed with sheets, small chunky voxel furniture, pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark, person",
+      "grayscale": true,
+      "variants": 1,
+      "rotations": true
+    },
+    {
+      "id": "item_anvil",
+      "category": "workshop",
+      "prompt": "pixelsprite, isometric blacksmith anvil, dark metal, chunky voxel pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": true,
+      "variants": 1
+    },
+    {
+      "id": "item_sword",
+      "category": "weapons",
+      "prompt": "pixelsprite, isometric short sword, metal blade wooden handle, chunky pixel art weapon, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark, person, hand",
+      "grayscale": true,
+      "variants": 1
+    },
+    {
+      "id": "item_pickaxe",
+      "category": "tools",
+      "prompt": "pixelsprite, isometric pickaxe mining tool, metal head wooden handle, chunky pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark, person, hand",
+      "grayscale": true,
+      "variants": 1
+    },
+    {
+      "id": "item_axe",
+      "category": "tools",
+      "prompt": "pixelsprite, isometric axe, metal head wooden handle, chunky pixel art tool, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark, person, hand",
+      "grayscale": true,
+      "variants": 1
+    },
+    {
+      "id": "creature_gnome_body",
+      "category": "creatures",
+      "prompt": "pixelsprite, isometric small gnome character, front-right facing, chunky voxel pixel art, fantasy dwarf, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark, multiple characters",
+      "grayscale": false,
+      "variants": 1,
+      "rotations": true
+    },
+    {
+      "id": "plant_oak_tree",
+      "category": "plants",
+      "prompt": "pixelsprite, isometric oak tree, green canopy brown trunk, chunky voxel pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": false,
+      "variants": 3
+    },
+    {
+      "id": "plant_bush",
+      "category": "plants",
+      "prompt": "pixelsprite, isometric small bush, green shrub, chunky voxel pixel art, game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": false,
+      "variants": 3
+    },
+    {
+      "id": "item_chest",
+      "category": "furniture",
+      "prompt": "pixelsprite, isometric wooden storage chest, chunky voxel pixel art, fantasy game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": true,
+      "variants": 1
+    },
+    {
+      "id": "terrain_ore_iron",
+      "category": "terrain",
+      "prompt": "pixelsprite, isometric stone wall with iron ore veins, dark spots in gray rock, chunky voxel pixel art, mining game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": false,
+      "variants": 3
+    },
+    {
+      "id": "item_torch",
+      "category": "furniture",
+      "prompt": "pixelsprite, isometric wall torch with flame, chunky voxel pixel art, fantasy game asset, transparent background",
+      "negative_prompt": "blurry, smooth, realistic, 3d render, text, watermark",
+      "grayscale": false,
+      "variants": 1
+    }
+  ]
+}

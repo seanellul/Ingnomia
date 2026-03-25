@@ -169,6 +169,25 @@ private:
 
 	QList<Mission> m_missions;
 
+	// Battle tracking (Milestone 3.1)
+	struct BattleTracker
+	{
+		bool active           = false;
+		quint64 startTick     = 0;
+		quint64 lastCombatTick = 0;
+		int gnomeWounds       = 0;
+		int gnomeDeaths       = 0;
+		int enemyKills        = 0;
+		int enemyWounds       = 0;
+	};
+	BattleTracker m_battle;
+	void updateBattleTracker( quint64 tick );
+
+public:
+	bool battleActive() const { return m_battle.active; }
+	const BattleTracker& battleTracker() const { return m_battle; }
+	void recordCombatEvent( bool isGnome, bool isDeath, bool isWound );
+
 signals:
 	void signalCenterCamera( const Position& location );
 	void signalUpdateMission( const Mission& mission );

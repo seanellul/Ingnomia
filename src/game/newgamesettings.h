@@ -115,7 +115,16 @@ public:
 	}
 	bool isPeaceful()
 	{
-		return m_isPeaceful;
+		return m_isPeaceful || m_difficulty == 0;
+	}
+	int difficulty()
+	{
+		return m_difficulty;
+	}
+	void setDifficulty( int d )
+	{
+		m_difficulty = d;
+		m_isPeaceful = ( d == 0 );
 	}
 	int globalMaxPerType()
 	{
@@ -202,6 +211,7 @@ private:
 	int m_maxPerType     = 1000;
 
 	bool m_isPeaceful = true;
+	int m_difficulty  = 2; // Difficulty enum: 0=Peaceful..4=Brutal, 5=Custom
 
 	QList<StartingItem> m_startingItems;
 	QList<StartingAnimal> m_startingAnimals;

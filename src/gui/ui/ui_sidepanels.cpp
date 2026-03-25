@@ -9,11 +9,11 @@
 void drawKingdomPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ) );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x - 10, io.DisplaySize.y - 110 ) );
+	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Kingdom - Inventory", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Kingdom - Inventory", &open, 0 );
 
 	if ( !open ) bridge.activeSidePanel = ImGuiBridge::SidePanel::None;
 
@@ -43,11 +43,11 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 {
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ) );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x - 10, io.DisplaySize.y - 110 ) );
+	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Stockpile Management", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Stockpile Management", &open, 0 );
 
 	if ( !open )
 	{
@@ -187,11 +187,11 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 void drawPopulationPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ) );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x - 10, io.DisplaySize.y - 110 ) );
+	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Population", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Population", &open, 0 );
 
 	if ( !open ) bridge.activeSidePanel = ImGuiBridge::SidePanel::None;
 
@@ -528,11 +528,11 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 void drawMilitaryPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ) );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x - 10, io.DisplaySize.y - 110 ) );
+	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Military", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Military", &open, 0 );
 
 	if ( !open ) bridge.activeSidePanel = ImGuiBridge::SidePanel::None;
 
@@ -641,11 +641,11 @@ void drawMilitaryPanel( ImGuiBridge& bridge )
 void drawNeighborsPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ) );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x - 10, io.DisplaySize.y - 110 ) );
+	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Neighbors & Missions", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Neighbors & Missions", &open, 0 );
 
 	if ( !open ) bridge.activeSidePanel = ImGuiBridge::SidePanel::None;
 
@@ -724,7 +724,7 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 	ImGui::SetNextWindowSize( ImVec2( panelW, panelH ) );
 
 	bool open = true;
-	ImGui::Begin( "Workshop", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Workshop", &open, 0 );
 
 	if ( !open ) bridge.cmdCloseWorkshopWindow();
 
@@ -948,11 +948,11 @@ void drawAgriculturePanel( ImGuiBridge& bridge )
 		return;
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ) );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x - 10, io.DisplaySize.y - 110 ) );
+	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Agriculture", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Agriculture", &open, 0 );
 
 	if ( !open ) bridge.cmdCloseAgriWindow();
 
@@ -994,11 +994,11 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 		return;
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 340, 60 ) );
-	ImGui::SetNextWindowSize( ImVec2( 330, io.DisplaySize.y - 130 ) );
+	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 340, 150 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 330, io.DisplaySize.y - 220 ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Creature Info", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Creature Info", &open );
 
 	if ( !open )
 	{
@@ -1194,11 +1194,11 @@ void drawDebugPanel( ImGuiBridge& bridge )
 void drawEventLogPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ) );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x - 10, io.DisplaySize.y - 110 ) );
+	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Event Log", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Event Log", &open, 0 );
 
 	if ( !open ) bridge.activeSidePanel = ImGuiBridge::SidePanel::None;
 

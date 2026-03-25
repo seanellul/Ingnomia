@@ -222,6 +222,39 @@ enum class BuildSelection
 };
 Q_DECLARE_METATYPE( BuildSelection )
 
+enum class Difficulty : int
+{
+	Peaceful = 0,
+	Easy     = 1,
+	Normal   = 2,
+	Hard     = 3,
+	Brutal   = 4,
+	Custom   = 5
+};
+
+struct DifficultyMultipliers
+{
+	float raidStrength   = 1.0f;
+	float spawnFrequency = 1.0f;
+	float equipmentTier  = 1.0f;
+	float immigration    = 1.0f;
+	float resources      = 1.0f;
+
+	static DifficultyMultipliers forDifficulty( Difficulty d )
+	{
+		switch ( d )
+		{
+			case Difficulty::Peaceful: return { 0.0f, 0.0f, 0.0f, 1.5f, 1.5f };
+			case Difficulty::Easy:     return { 0.5f, 0.5f, 0.5f, 1.2f, 1.2f };
+			case Difficulty::Normal:   return { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+			case Difficulty::Hard:     return { 1.5f, 1.5f, 1.5f, 0.8f, 0.8f };
+			case Difficulty::Brutal:   return { 2.5f, 2.0f, 2.0f, 0.5f, 0.6f };
+			case Difficulty::Custom:   return { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+		}
+		return {};
+	}
+};
+
 enum class ShownInfo
 {
 	None,

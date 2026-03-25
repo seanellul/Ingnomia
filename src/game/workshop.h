@@ -31,6 +31,7 @@ enum class CraftMode : unsigned char
 {
 	CraftNumber,
 	CraftTo,
+	CraftUntilStock,
 	Repeat
 };
 

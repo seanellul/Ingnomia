@@ -8,10 +8,10 @@ void drawTileInfo( ImGuiBridge& bridge )
 		return;
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 310, 100 ) );
-	ImGui::SetNextWindowSize( ImVec2( 300, 400 ) );
+	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 310, 150 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 300, 400 ), ImGuiCond_FirstUseEver );
 
-	ImGui::Begin( "Tile Info", &bridge.showTileInfo, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+	ImGui::Begin( "Tile Info", &bridge.showTileInfo );
 
 	const auto& ti = bridge.tileInfo;
 

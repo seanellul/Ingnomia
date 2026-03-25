@@ -22,6 +22,7 @@
 #include "../base/gamestate.h"
 #include "../base/global.h"
 #include "../base/util.h"
+#include "../game/eventmanager.h"
 #include "../game/gnomemanager.h"
 #include "../game/fluidmanager.h"
 #include "../game/inventory.h"
@@ -123,6 +124,12 @@ void MechanismManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayC
 	if ( m_needNetworkUpdate )
 	{
 		updateNetWorks();
+	}
+
+	// Evaluate event triggers every 10 ticks
+	if ( tickNumber % 10 == 0 )
+	{
+		evaluateEventTriggers( tickNumber );
 	}
 
 	for ( auto& network : m_networks )
@@ -890,4 +897,81 @@ void MechanismManager::updateCreaturesAtPos( Position pos, int numCreatures )
 			}
 		}
 	}
+}
+
+// =============================================================================
+// Event-Triggered Mechanisms (Milestone 4.1)
+// =============================================================================
+
+void MechanismManager::evaluateEventTriggers( quint64 tick )
+{
+	for ( auto& md : m_mechanisms )
+	{
+		if ( md.type == MT_ALARMBELL || md.type == MT_CONDITIONPLATE )
+		{
+			bool shouldBeActive = evaluateCondition( md.triggerCondition );
+			if ( shouldBeActive != md.triggerActive )
+			{
+				md.triggerActive = shouldBeActive;
+				setActive( md.itemID, shouldBeActive );
+			}
+		}
+	}
+}
+
+bool MechanismManager::evaluateCondition( const QString& condition ) const
+{
+	if ( condition.isEmpty() ) return false;
+
+	// Simple condition evaluation
+	if ( condition == "raid" )
+	{
+		return g->em()->battleActive();
+	}
+	if ( condition == "nighttime" )
+	{
+		return !GameState::daylight;
+	}
+	if ( condition == "daytime" )
+	{
+		return GameState::daylight;
+	}
+	if ( condition == "lockdown" )
+	{
+		return GameState::lockdown;
+	}
+
+	// Numeric conditions: "food<50", "enemies>0", etc.
+	if ( condition.contains( '<' ) )
+	{
+		QStringList parts = condition.split( '<' );
+		if ( parts.size() == 2 )
+		{
+			QString key = parts[0].trimmed();
+			int threshold = parts[1].trimmed().toInt();
+
+			if ( key == "food" )
+				return g->inv()->foodItemCount() < threshold;
+			if ( key == "drink" )
+				return g->inv()->drinkItemCount() < threshold;
+			if ( key == "gnomes" )
+				return g->gm()->numGnomes() < threshold;
+		}
+	}
+	if ( condition.contains( '>' ) )
+	{
+		QStringList parts = condition.split( '>' );
+		if ( parts.size() == 2 )
+		{
+			QString key = parts[0].trimmed();
+			int threshold = parts[1].trimmed().toInt();
+
+			if ( key == "food" )
+				return g->inv()->foodItemCount() > threshold;
+			if ( key == "gnomes" )
+				return g->gm()->numGnomes() > threshold;
+		}
+	}
+
+	return false;
 }

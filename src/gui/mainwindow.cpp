@@ -162,6 +162,19 @@ void MainWindow::onFullScreen( bool value )
 void MainWindow::keyPressEvent( QKeyEvent* event )
 {
 	ImGuiQt5::ProcessKeyEvent( event );
+
+	// Space and Escape always work regardless of ImGui focus
+	if ( event->key() == Qt::Key_Space )
+	{
+		emit signalTogglePause();
+		return;
+	}
+	if ( event->key() == Qt::Key_Escape )
+	{
+		emit signalKeyPress( event->key() );
+		return;
+	}
+
 	if ( ImGui::GetIO().WantCaptureKeyboard )
 		return;
 
@@ -208,12 +221,7 @@ void MainWindow::keyPressEvent( QKeyEvent* event )
 			case Qt::Key_Period:
 				m_renderer->rotate( -1 );
 				break;
-			case Qt::Key_Escape:
-				emit signalKeyPress( event->key() );
-				break;
-			case Qt::Key_Space:
-				emit signalTogglePause();
-				break;
+			// Space and Escape handled above (before ImGui capture check)
 			case Qt::Key_W:
 				keyboardMove();
 				m_keyboardMove += KeyboardMove::Up;
@@ -236,6 +244,14 @@ void MainWindow::keyPressEvent( QKeyEvent* event )
 				break;
 			case Qt::Key_F12:
 				takeScreenshot();
+				break;
+			case Qt::Key_PageUp:
+				keyboardZPlus( event->modifiers() & Qt::ShiftModifier, event->modifiers() & Qt::ControlModifier );
+				redraw();
+				break;
+			case Qt::Key_PageDown:
+				keyboardZMinus( event->modifiers() & Qt::ShiftModifier, event->modifiers() & Qt::ControlModifier );
+				redraw();
 				break;
 		}
 		emit signalRenderParams( width(), height(), m_renderer->moveX(), m_renderer->moveY(), m_renderer->scale(), m_renderer->rotation() );
@@ -591,6 +607,9 @@ void MainWindow::drawImGui()
 						break;
 					case ImGuiBridge::SidePanel::CreatureInfo:
 						drawCreatureInfoPanel( *m_bridge );
+						break;
+					case ImGuiBridge::SidePanel::EventLog:
+						drawEventLogPanel( *m_bridge );
 						break;
 					default:
 						break;

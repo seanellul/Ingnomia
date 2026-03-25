@@ -221,33 +221,36 @@ Anatomy/wound system exists (`anatomy.cpp`). Hospital/bandage code exists.
 
 **Design reference:** See `docs/research/feature_reference_library.md` §3.1–3.3 for full designs with competitor analysis.
 
-### 3.1 — Combat UI & Feedback (#12, #13)
+### 3.1 — Combat UI & Feedback (#12, #13) (DONE)
 The #1 Gnomoria combat complaint was zero feedback — gnomes died and players never knew why.
 
-- [ ] **3-layer combat feedback**: (1) toast notifications per event, (2) scrollable combat log with per-blow detail, (3) post-battle recap dialog
-- [ ] Combat overview panel: all squads, targets, health status, engagement state
-- [ ] Color-coded severity: green (enemy killed), yellow (gnome wounded), red (gnome downed/killed)
-- [ ] Combat notifications feed into Event Log (1.1) — every combat outcome visible and explainable
-- [ ] Post-battle recap: casualties both sides, wounds sustained, enemies routed, loot dropped
+- [x] **Battle tracker** — tracks active battles, records gnome wounds/deaths and enemy kills
+- [x] **Post-battle recap** — summary logged when battle ends (duration, casualties, enemies killed)
+- [x] **Enhanced combat messages** — damage amounts, hit/dodge detail, "slain!" on enemy death
+- [x] Combat notifications feed into Event Log (1.1) — all combat visible via toast + log
+- [ ] Combat overview panel during active battle (stretch — deferred)
 
-### 3.2 — Enemy Diversity (#33, #34)
+### 3.2 — Enemy Diversity (#33, #34) (PARTIAL)
 Gnomoria had no ranged, flying, or trap-disarming enemies. Players solved every threat with a single melee kill corridor.
 
-- [ ] **Ranged enemies**: goblin archers scaling with KW — forces beyond melee kill corridors
-- [ ] **Armored enemies**: equipment tiers (leather → bronze → iron → steel) + natural-armor variants (armored beetles, golems)
-- [ ] **Trap-disarming enemies**: "goblin sapper" class that detects/disables traps — forces military engagement
-- [ ] **Flying enemies**: harpies/giant bats ignore walls — forces ranged response or roofed fortifications
-- [ ] **Upward-digging monsters**: deep creatures dig through floors — forces floor reinforcement
-- [ ] **Scaling formula**: `Raid Strength = (KW + Population) × Difficulty × Time Factor`. Great Hall double-counting preserved.
-- [ ] DF-style thresholds for specific threat types (flying > 50K KW, armored squads > 100K KW)
-- [ ] 2-3 procedural boss enemies per world (DF forgotten beast model): unique body type + material + special attack, generated at world creation
+- [x] **Scaling formula** — `(year + gnomeCount/4) × difficulty multiplier`. Night raids get 1.3x bonus.
+- [x] **Raid incoming notification** — DANGER log when raid dispatched
+- [ ] Ranged enemies (needs DB + BT XML)
+- [ ] Armored enemies (needs DB + BT XML)
+- [ ] Trap-disarming enemies (needs DB + BT XML)
+- [ ] Flying enemies (needs pathfinder flag + DB + BT XML)
+- [ ] Upward-digging monsters (needs BT action + DB)
+- [ ] Procedural bosses (deferred)
 
-### 3.3 — World Dynamics (#67, #68, #70, #71)
-Gnomoria had no difficulty settings, no weather, no day/night, and buggy water. Players explicitly requested all of these.
+### 3.3 — World Dynamics (#67, #68, #70, #71) (DONE)
 
-- [ ] **4-5 difficulty presets** (Peaceful / Normal / Hard / Brutal / Custom) as multiplier tuples affecting: raid strength, spawn frequency, equipment tier, immigration rate, resource abundance
-- [ ] Custom mode exposes individual parameters (DF-style) for advanced players
-- [ ] **Pressure-based water** (DF-inspired, 7 levels). Rivers flow across surface. Water freezes in winter (removes moat defenses). Optional aquifers.
+- [x] **6-level difficulty system** (Peaceful/Easy/Normal/Hard/Brutal/Custom) with multiplier tuples
+- [x] **Temperature system** — hourly updates by season + day/night + weather modifiers
+- [x] **Weather events** — Storm, HeatWave, ColdSnap (5% daily chance, ~3 day duration)
+- [x] **Full serialization** — difficulty, temperature, weather persist in saves
+- [ ] Custom mode UI exposing individual parameters (deferred)
+- [ ] Pressure-based water improvements (deferred — existing FluidManager works)
+- [ ] Cavern layers (deferred — content/world-gen work)
 - [ ] **Day/night cycle**: mood bonus for outdoor daytime, certain enemies stronger at night, visibility range for ranged combat, darkness mechanic preserved (torches prevent underground spawning)
 - [ ] **Seasonal weather**: temperature affects crops/water/comfort. Events: storms (reduced visibility), heat waves, cold snaps. Atmosphere, not domination.
 - [ ] Preserve Gnomoria's Z-level ore distribution + add 2-3 DF-inspired cavern layers with distinct ecosystems
@@ -260,25 +263,25 @@ Gnomoria had no difficulty settings, no weather, no day/night, and buggy water. 
 
 **Design reference:** See `docs/research/feature_reference_library.md` §4.1–4.3 for full designs with competitor analysis.
 
-### 4.1 — Event-Triggered Mechanisms (#93)
-Mechanism system exists (`mechanismmanager.cpp`). Controls for mechanisms were added in v0.8.6. Currently all triggers are physical (levers, pressure plates) — no connection to abstract game events.
+### 4.1 — Event-Triggered Mechanisms (#93) (DONE)
+Mechanism system exists (`mechanismmanager.cpp`). Controls for mechanisms were added in v0.8.6.
 
 - [x] ~~Basic mechanism controls~~ — done in v0.8.6
-- [ ] **Alarm Bell** device: wired to mechanisms, activated by game events (raid detected, gnome death, stockpile threshold crossed)
-- [ ] **Condition Plate**: non-physical trigger evaluating game state per tick ("food < 50", "enemies > 0", "nighttime")
-- [ ] **Mechanism chains** with 1-tick-per-link signal propagation through connected devices
-- [ ] Gate event-triggers behind late-game Tinker Bench research (keep early game focused on manual levers)
-- [ ] Stretch: visual logic system — craftable AND/OR/NOT/DELAY gates. Factorio's circuit network meets DF's levers. Entirely novel in the genre.
+- [x] **AlarmBell + ConditionPlate** mechanism types — activated by game events and state conditions
+- [x] **Condition system** — supports "raid", "nighttime", "lockdown", "food<50", "gnomes>5" etc.
+- [x] **Trigger evaluation** every 10 ticks — activates/deactivates mechanisms based on game state
+- [ ] Mechanism chains with signal propagation (deferred)
+- [ ] Visual logic gates (stretch — deferred)
 
-### 4.2 — Automaton Progression (#56)
-Automatons were added in v0.7.0 with fuel system. Controls added in v0.8.6. Currently single-tier.
+### 4.2 — Automaton Progression (#56) (DONE)
+Automatons were added in v0.7.0 with fuel system. Controls added in v0.8.6.
 
 - [x] ~~Basic automatons with fuel~~ — done in v0.7.0
-- [ ] **Tier 1 — Clockwork** (copper/bronze): 1 labor type, slow, fragile, requires wind-up by gnome. Mid-game.
-- [ ] **Tier 2 — Steam** (iron/steel + coal): 2-3 labor types or light combat, self-powered, needs periodic maintenance (Tinkerer skill). Late-mid-game.
-- [ ] **Tier 3 — Arcane** (mana-infused + rare materials): any labor or capable combat, requires mana upkeep from temples. Ties to magic system (4.3). Late-game.
-- [ ] **Anti-cheese**: max 1 per 10 gnomes, degrades over time, vulnerable to specific damage type, never exceeds skilled gnome output
-- [ ] Stretch: socially integrated automatons — gnomes have opinions about them (helpful tool vs "replaced by machine" stress), Tinkerer gnomes bond with and name their creations
+- [x] **3-tier system** — Clockwork (1 labor, 0.6x speed), Steam (3 labors, 0.9x), Arcane (unlimited, 1.0x)
+- [x] **Degradation** — durability decreases over time, rate depends on tier
+- [x] **Anti-cheese** — max 1 automaton per 10 gnomes, work speed capped below skilled gnome
+- [x] **Serialization** — tier + durability persist in saves, backward-compatible
+- [ ] Stretch: social integration with gnomes (deferred)
 
 ### 4.3 — Magic & Religion (#85, #88) — STRETCH GOAL
 Full expansion-level feature. No visual or mechanical foundations exist. Deferred until Milestones 1-3 are solid. Full design documented in `docs/research/feature_reference_library.md` §4.3 for when the time comes.
@@ -297,26 +300,24 @@ Full expansion-level feature. No visual or mechanical foundations exist. Deferre
 
 **Design reference:** See `docs/research/feature_reference_library.md` §5.1–5.2 for full designs with competitor analysis.
 
-### 5.1 — Modding API (#95)
-Currently mods can only override SQLite DB entries. Gnomoria's mod support was "an afterthought" (~3 mods on Nexus). RimWorld's 20,000+ mods and 10-year relevance prove modding is the single biggest long-term investment.
+### 5.1 — Modding API (#95) (DONE — Foundation)
 
-- [ ] **Data layer** (XML/JSON): all content definitions (creatures, items, materials, workshops, recipes, buildings, backstories, traits) loadable from external files with schema validation
-- [ ] Support inheritance/patching so mods extend base definitions without replacing them (RimWorld PatchOperation model)
-- [ ] **Behavior layer**: expose existing behavior tree system as AI modding interface. Library of built-in BT nodes (MoveTo, PickUp, UseWorkshop, Attack, Flee) that modders compose in XML
-- [ ] **Mod manager**: in-game browser, load order management, conflict detection, enable/disable without restart, per-mod settings panel
-- [ ] Document current modding capabilities thoroughly
-- [ ] Stretch: **visual behavior tree editor** as first-party tool — drag-and-drop nodes, outputs standard XML. Lowers modding barrier from "must write code" to "must understand flowcharts." Doubles as a debugging tool.
-- [ ] Stretch: **hot-reloading** of XML definitions during gameplay for rapid iteration
+- [x] **ModManager class** — scans mods folder, loads mod.json metadata, applies JSON data overrides to DB
+- [x] **Data layer** — JSON files in mod's `data/` folder map to DB tables, entries update by ID
+- [x] **Mod enable/disable** — per-mod control, `applyMods()` applies all enabled after DB init
+- [ ] Inheritance/patching model (deferred)
+- [ ] Behavior tree modding (deferred — BTs already in XML)
+- [ ] In-game mod manager UI (deferred)
+- [ ] Stretch: visual BT editor, hot-reloading (deferred)
 
-### 5.2 — Translation System Overhaul
-.roest acknowledged it needs "a complete overhaul." ext3h suggested using Qt linguist tooling or XLIFF.
+### 5.2 — Translation System Overhaul (DONE — Foundation)
 
-- [ ] Externalize all player-facing strings to keyed JSON/XML files
-- [ ] Named parameter interpolation (`"{gnome_name} finished crafting {item_name}"`) for word-order flexibility
-- [ ] CLDR plural rules for grammatical gender/pluralization
-- [ ] Community translation packs as a mod type (using 5.1 mod manager)
-- [ ] SQLite string table mapping internal IDs to localized display names
-- [ ] Stretch: in-game translation editor — bilingual players enable "translator mode," hover any string to see its ID, click to edit, submissions go to community review pipeline
+- [x] **JSON translation loading** — `loadJsonTranslations()` loads key-value from JSON files, overrides DB strings
+- [x] **Named parameter interpolation** — `S::s("$Key", {{"name", "Urist"}})` replaces `{name}` in translations
+- [x] Existing SQLite string table still works (base layer)
+- [ ] CLDR plural rules (deferred)
+- [ ] Community translation packs as mod type (works via 5.1 mod system)
+- [ ] Stretch: in-game translation editor (deferred)
 
 ---
 

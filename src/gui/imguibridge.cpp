@@ -153,6 +153,23 @@ void ImGuiBridge::onTimeAndDate( int min, int hr, int d, QString s, int y, QStri
 void ImGuiBridge::onKingdomInfo( QString name, QString i1, QString i2, QString i3 )
 {
 	kingdomName = name; kingdomInfo1 = i1; kingdomInfo2 = i2; kingdomInfo3 = i3;
+
+	// Parse stock counters from kingdom info strings
+	auto parseCount = []( const QString& s ) -> int {
+		int idx = s.indexOf( ':' );
+		if ( idx >= 0 ) return s.mid( idx + 1 ).trimmed().toInt();
+		return 0;
+	};
+	stockGnomes = parseCount( i1 );
+	stockItems  = parseCount( i3 );
+
+	// i2 format: "Food: N | Drink: N"
+	QStringList parts = i2.split( '|' );
+	if ( parts.size() >= 2 )
+	{
+		stockFood  = parseCount( parts[0] );
+		stockDrink = parseCount( parts[1] );
+	}
 }
 
 void ImGuiBridge::onViewLevel( int level ) { viewLevel = level; }

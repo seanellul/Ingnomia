@@ -24,6 +24,7 @@
 #include "../base/util.h"
 #include "../game/game.h"
 #include "../game/creaturemanager.h"
+#include "../game/eventmanager.h"
 #include "../game/gnomemanager.h"
 #include "../game/inventory.h"
 #include "../gfx/sprite.h"
@@ -195,7 +196,8 @@ CreatureTickResult Monster::onTick( quint64 tickNumber, bool seasonChanged, bool
 		auto status = m_anatomy.status();
 		if ( status & AS_DEAD )
 		{
-			Global::logger().log( LogType::COMBAT, "The " + m_name + " died. Bummer!", m_id );
+			Global::logger().log( LogType::COMBAT, "The " + m_name + " has been slain!", m_id );
+			g->em()->recordCombatEvent( false, true, false ); // enemy killed
 			die();
 			// TODO check for other statuses
 		}
@@ -304,10 +306,12 @@ BT_RESULT Monster::actionAttackTarget( bool halt )
 
 		if ( m_rightHandCooldown <= 0 )
 		{
-			Global::logger().log( LogType::COMBAT, "The goblin attacks " + creature->name(), m_id );
 			int skill    = getSkillLevel( "Unarmed" );
 			int strength = attribute( "Str" );
-			creature->attack( DT_BLUNT, m_anatomy.randomAttackHeight(), skill, qMin( 5, strength ), m_position, m_id );
+			AnatomyHeight ah = m_anatomy.randomAttackHeight();
+			Global::logger().log( LogType::COMBAT, m_name + " strikes " + creature->name() + " for " + QString::number( qMin( 5, strength ) ) + " damage", m_id );
+			bool hit = creature->attack( DT_BLUNT, ah, skill, qMin( 5, strength ), m_position, m_id );
+			g->em()->recordCombatEvent( false, false, hit ); // enemy attacks gnome
 			m_rightHandCooldown = qMax( 5, 20 - m_rightHandAttackSkill );
 		}
 		return BT_RESULT::RUNNING;

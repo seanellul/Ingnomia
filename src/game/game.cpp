@@ -330,9 +330,9 @@ void Game::loop()
 		emit sendOverlayMessage( 3, msg );
 	
 		
-		emit signalKingdomInfo( GameState::kingdomName, 
-			"Gnomes: " + QString::number( gm()->numGnomes() ), 
-			"Animals: " + QString::number( fm()->countAnimals() ),
+		emit signalKingdomInfo( GameState::kingdomName,
+			"Gnomes: " + QString::number( gm()->numGnomes() ),
+			"Food: " + QString::number( inv()->foodItemCount() ) + " | Drink: " + QString::number( inv()->drinkItemCount() ),
 			"Items: "  + QString::number( inv()->numItems() ) );
 
 		m_guiHeartbeat = m_guiHeartbeat + 1;
@@ -424,6 +424,58 @@ void Game::sendClock()
 	QString dt = QString( "Day %1, %2:%3" ).arg( GameState::day, 2, 10, QChar( ' ' ) ).arg( GameState::hour, 2, 10, QChar( '0' ) ).arg( GameState::minute, 2, 10, QChar( '0' ) );
 	GameState::currentDayTime = dt;
 	GameState::currentYearAndSeason = "Year " + QString::number( GameState::year ) + ", " + S::s( "$SeasonName_" + GameState::seasonString );
+
+	// Update temperature based on season + weather modifiers
+	if ( GameState::hourChanged )
+	{
+		float baseTemp = 50.0f;
+		if ( GameState::seasonString == "Spring" ) baseTemp = 50.0f;
+		else if ( GameState::seasonString == "Summer" ) baseTemp = 70.0f;
+		else if ( GameState::seasonString == "Autumn" ) baseTemp = 40.0f;
+		else if ( GameState::seasonString == "Winter" ) baseTemp = 20.0f;
+
+		// Day/night variation: ±5 degrees
+		baseTemp += GameState::daylight ? 5.0f : -5.0f;
+
+		// Weather modifiers
+		if ( GameState::activeWeather == "HeatWave" ) baseTemp += 20.0f;
+		else if ( GameState::activeWeather == "ColdSnap" ) baseTemp -= 20.0f;
+
+		GameState::temperature = qBound( 0.0f, baseTemp, 100.0f );
+	}
+
+	// Random weather events (check daily)
+	if ( GameState::dayChanged )
+	{
+		// Clear expired weather (lasts 3 days, tracked by simple random chance of clearing)
+		if ( !GameState::activeWeather.isEmpty() && ( rand() % 3 == 0 ) )
+		{
+			Global::logger().log( LogType::INFO, "The " + GameState::activeWeather + " has passed.", 0 );
+			GameState::activeWeather = "";
+		}
+
+		// Random chance of new weather event (5% per day)
+		if ( GameState::activeWeather.isEmpty() && ( rand() % 20 == 0 ) )
+		{
+			int roll = rand() % 3;
+			switch ( roll )
+			{
+				case 0:
+					GameState::activeWeather = "Storm";
+					Global::logger().log( LogType::WARNING, "A storm has rolled in!", 0 );
+					break;
+				case 1:
+					GameState::activeWeather = "HeatWave";
+					Global::logger().log( LogType::WARNING, "A heat wave has begun!", 0 );
+					break;
+				case 2:
+					GameState::activeWeather = "ColdSnap";
+					Global::logger().log( LogType::WARNING, "A cold snap has set in!", 0 );
+					break;
+			}
+		}
+	}
+
 	emit signalTimeAndDate( GameState::minute, GameState::hour, GameState::day, S::s( "$SeasonName_" + GameState::seasonString ), GameState::year, sunStatus );
 }
 

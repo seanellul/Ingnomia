@@ -34,7 +34,9 @@ enum MechanismType
 	MT_ENGINE,
 	MT_PUMP,
 	MT_WALL,
-	MT_PRESSUREPLATE
+	MT_PRESSUREPLATE,
+	MT_ALARMBELL,       // Activated by game events (raid, death, stockpile threshold)
+	MT_CONDITIONPLATE   // Evaluates game state per tick (food < N, enemies > 0, nighttime)
 };
 
 struct MechanismData
@@ -65,6 +67,10 @@ struct MechanismData
 	bool isInvertable   = false;
 	bool inverted       = false;
 	bool changeInverted = false;
+
+	// Event trigger data (for AlarmBell and ConditionPlate)
+	QString triggerCondition;  // e.g. "raid", "death", "food<50", "enemies>0", "nighttime"
+	bool triggerActive = false; // current trigger evaluation result
 
 	QList<Position> connectsTo;
 
@@ -163,4 +169,8 @@ private:
 	QHash<unsigned int, MechanismNetwork> m_networks;
 
 	QHash<QString, MechanismType> m_string2Type;
+
+	// Event trigger evaluation
+	void evaluateEventTriggers( quint64 tick );
+	bool evaluateCondition( const QString& condition ) const;
 };

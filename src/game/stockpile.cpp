@@ -78,6 +78,8 @@ Stockpile::Stockpile( QVariantMap vals, Game* game ) :
 	m_pullOthers        = vals.value( "PullOthers" ).toBool();
 	m_allowPull         = vals.value( "AllowPull" ).toBool();
 	m_limitWithmaterial = vals.value( "LimitWithMaterial" ).toBool();
+	m_forTrade          = vals.value( "ForTrade" ).toBool();
+	m_autoAcceptNew     = vals.contains( "AutoAcceptNew" ) ? vals.value( "AutoAcceptNew" ).toBool() : true;
 
 	QVariantList vfl = vals.value( "Fields" ).toList();
 	for ( auto vf : vfl )
@@ -151,6 +153,8 @@ QVariant Stockpile::serialize()
 	out.insert( "PullOthers", m_pullOthers );
 	out.insert( "AllowPull", m_allowPull );
 	out.insert( "LimitWithMaterial", m_limitWithmaterial );
+	out.insert( "ForTrade", m_forTrade );
+	out.insert( "AutoAcceptNew", m_autoAcceptNew );
 
 	QVariantList fields;
 	for ( auto field : m_fields )

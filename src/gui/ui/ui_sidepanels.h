@@ -9,4 +9,5 @@ void drawWorkshopPanel( ImGuiBridge& bridge );
 void drawAgriculturePanel( ImGuiBridge& bridge );
 void drawCreatureInfoPanel( ImGuiBridge& bridge );
 void drawInventoryPanel( ImGuiBridge& bridge );
+void drawEventLogPanel( ImGuiBridge& bridge );
 void drawDebugPanel( ImGuiBridge& bridge );

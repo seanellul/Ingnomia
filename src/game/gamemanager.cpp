@@ -127,10 +127,13 @@ void GameManager::startNewGame()
 {
 	qDebug() << "GameManger: New game";
 
-	// create new random kingdom name
+	// Sync UI settings to NewGameSettings before saving
+	auto ngs = Global::newGameSettings;
+	auto cfg = Global::cfg;
+	ngs->setNumGnomes( cfg->get( "numGnomes" ).toInt() );
 
 	// save current settings for fast create new game
-	Global::newGameSettings->save();
+	ngs->save();
 	
 	// check if folder exists, set new save folder name if yes
 	createNewGame();
@@ -228,6 +231,7 @@ void GameManager::createNewGame()
 	Global::sel = new Selection( m_game );
 
 	GameState::peaceful = Global::newGameSettings->isPeaceful();
+	GameState::difficulty = Global::newGameSettings->difficulty();
 
 	postCreationInit();
 }
