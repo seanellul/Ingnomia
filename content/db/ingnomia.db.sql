@@ -936,6 +936,15 @@ INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offse
 INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('Furnace',0.0,NULL,NULL,'1 -1 0',NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('Furnace',0.0,NULL,NULL,'1 0 0',NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('Furnace',0.0,NULL,NULL,'1 1 0',NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',4.0,'Log',NULL,'-1 0 0',NULL,NULL,'CharcoalKilnFrame',NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',0.0,NULL,NULL,'0 0 0',NULL,NULL,'CharcoalKilnFR',NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',0.0,NULL,'1','-1 -1 0',NULL,NULL,'CrateLog',NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',0.0,NULL,NULL,'-1 1 0',NULL,NULL,'CoalPile',NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',0.0,NULL,NULL,'0 -1 0',NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',0.0,NULL,NULL,'0 1 0',NULL,NULL,'WorkshopInputIndicator',NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',0.0,NULL,NULL,'1 -1 0',NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',0.0,NULL,NULL,'1 0 0',NULL,NULL,'CharcoalKilnBL',NULL,NULL,NULL,NULL);
+INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('CharcoalKiln',0.0,NULL,NULL,'1 1 0',NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('Kiln',1.0,'Furnace',NULL,'-1 0 0',NULL,NULL,'KilnWithFlame',NULL,NULL,NULL,NULL);
 INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('Kiln',1.0,'Bellows',NULL,'0 0 0',NULL,NULL,'Bellows',NULL,NULL,'BL',NULL);
 INSERT INTO "Workshops_Components" ("ID","Amount","ItemID","MaterialItem","Offset","Required","Forbidden","SpriteID","SpriteID2","Type","WallRotation","IsFloor") VALUES ('Kiln',0.0,NULL,'1','-1 -1 0',NULL,NULL,'WorkshopTable',NULL,NULL,NULL,NULL);
@@ -1206,6 +1215,7 @@ INSERT INTO "Workshops" ("ID","Crafts","GUI","InputTile","OutputTile","Size","No
 INSERT INTO "Workshops" ("ID","Crafts","GUI","InputTile","OutputTile","Size","NoAutoGenerate","Icon","Tab") VALUES ('Dyer','RedDye|GreenDye|BlueDye|PurpleDye|YellowDye|CyanDye|DyedTable|DyedPlank|DyedBolt',NULL,'0 1 0','0 -1 0','3 3','true',NULL,'Craft');
 INSERT INTO "Workshops" ("ID","Crafts","GUI","InputTile","OutputTile","Size","NoAutoGenerate","Icon","Tab") VALUES ('Forge','Bar|BronzeBar|SteelBar|RoseGoldBar|Anvil|SliverBar',NULL,'0 1 0','0 -1 0','3 3',NULL,NULL,'Metal');
 INSERT INTO "Workshops" ("ID","Crafts","GUI","InputTile","OutputTile","Size","NoAutoGenerate","Icon","Tab") VALUES ('Furnace','RawCoal',NULL,'0 1 0','0 -1 0','3 3',NULL,NULL,'Wood');
+INSERT INTO "Workshops" ("ID","Crafts","GUI","InputTile","OutputTile","Size","NoAutoGenerate","Icon","Tab") VALUES ('CharcoalKiln','RawCoal',NULL,'0 1 0','0 -1 0','3 3',NULL,NULL,'Wood');
 INSERT INTO "Workshops" ("ID","Crafts","GUI","InputTile","OutputTile","Size","NoAutoGenerate","Icon","Tab") VALUES ('Kiln','Brick|ClayStatuette',NULL,'0 1 0','0 -1 0','3 3',NULL,NULL,'Stone');
 INSERT INTO "Workshops" ("ID","Crafts","GUI","InputTile","OutputTile","Size","NoAutoGenerate","Icon","Tab") VALUES ('Blacksmith','PickaxeHeadMetal|FellingAxeHead|FellingAxe|CuttingWheel|File|BallPeenHammer|MetalNeedle|AlarmBell|AlarmBellBell|BigTorch|Brazier',NULL,'0 1 0','0 -1 0','3 3',NULL,NULL,'Metal');
 INSERT INTO "Workshops" ("ID","Crafts","GUI","InputTile","OutputTile","Size","NoAutoGenerate","Icon","Tab") VALUES ('Metalworker','MetalStatue|MetalStatuette|Coin',NULL,'0 1 0','0 -1 0','3 3',NULL,NULL,'Metal');
@@ -4492,6 +4502,7 @@ INSERT INTO "Translation" ("ID","Text") VALUES ('$WorkshopName_Stonemason','ston
 INSERT INTO "Translation" ("ID","Text") VALUES ('$WorkshopName_Distillery','distillery');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$WorkshopName_Forge','forge');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$WorkshopName_Furnace','furnace');
+INSERT INTO "Translation" ("ID","Text") VALUES ('$WorkshopName_CharcoalKiln','charcoal kiln');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$WorkshopName_Kiln','kiln');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$WorkshopName_Blacksmith','blacksmith');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$WorkshopName_Metalworker','metal worker');
