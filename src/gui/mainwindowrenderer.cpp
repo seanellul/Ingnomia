@@ -667,7 +667,7 @@ void MainWindowRenderer::updateRenderParams()
 
 	m_lightMin = Global::cfg->get( "lightMin" ).toFloat();
 	if ( m_lightMin < 0.01 )
-		m_lightMin = 0.03f;
+		m_lightMin = 0.06f;
 
 	m_debug   = Global::debugMode;
 

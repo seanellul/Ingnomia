@@ -116,16 +116,30 @@ void LightMap::addLight( QSet<unsigned int>& updateList, std::vector<Tile>& worl
 						wq.enqueue( QPair<Position, int>( east, current.second + 1 ) );
 						Position west( ( curPos.x == 0 ) ? 0 : curPos.x - 1, curPos.y, curPos.z );
 						wq.enqueue( QPair<Position, int>( west, current.second + 1 ) );
-						if ( !( tile.floorType & FloorType::FT_SOLIDFLOOR ) )
+						// Propagate light downward — through open floors, stairs, and ramps
+					bool canGoDown = !( tile.floorType & FloorType::FT_SOLIDFLOOR )
+						|| ( tile.wallType & ( WallType::WT_STAIR | WallType::WT_RAMP ) )
+						|| ( tile.floorType & FloorType::FT_STAIRTOP )
+						|| ( tile.floorType & FloorType::FT_RAMPTOP );
+					if ( canGoDown && curPos.z > 0 )
+					{
+						Position down( curPos.x, curPos.y, curPos.z - 1 );
+						wq.enqueue( QPair<Position, int>( down, current.second + 1 ) );
+					}
+					// Propagate light upward — same logic, check the tile above
+					if ( curPos.z < m_dimZ - 1 )
+					{
+						Tile& aboveTile = getTile( world, curPos.x, curPos.y, curPos.z + 1 );
+						bool canGoUp = !( aboveTile.floorType & FloorType::FT_SOLIDFLOOR )
+							|| ( tile.wallType & ( WallType::WT_STAIR | WallType::WT_RAMP ) )
+							|| ( aboveTile.floorType & FloorType::FT_STAIRTOP )
+							|| ( aboveTile.floorType & FloorType::FT_RAMPTOP );
+						if ( canGoUp )
 						{
-							Position down( curPos.x, curPos.y, ( curPos.z == 0 ) ? 0 : curPos.z - 1 );
-							wq.enqueue( QPair<Position, int>( down, current.second + 1 ) );
-						}
-						if ( !( getTile( world, pos.aboveOf() ).floorType & FloorType::FT_SOLIDFLOOR ) )
-						{
-							Position up( curPos.x, curPos.y, ( curPos.z == m_dimZ - 1 ) ? m_dimZ - 1 : curPos.z + 1 );
+							Position up( curPos.x, curPos.y, curPos.z + 1 );
 							wq.enqueue( QPair<Position, int>( up, current.second + 1 ) );
 						}
+					}
 					}
 				}
 			}

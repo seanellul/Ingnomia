@@ -398,7 +398,7 @@ bool Selection::testTileForJobSelection( const Position& pos )
 				case SEL_NONE:
 					break;
 				case SEL_FLOOR:
-					if ( !(bool)( tile->floorType & FloorType::FT_SOLIDFLOOR ) )
+					if ( !(bool)( tile->floorType & ( FloorType::FT_SOLIDFLOOR | FloorType::FT_STAIRTOP | FloorType::FT_RAMPTOP | FloorType::FT_CONSTRUCTION ) ) )
 						return false;
 					break;
 				case SEL_FLOOR_OR_SCAFFOLD:

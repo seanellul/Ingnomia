@@ -141,8 +141,8 @@ void main()
 			{
 				vec4 tmpTexel = getTexel( uUndiscoveredTex / 4 + 2, 0, 0 );
 
-				// Fully replace — don't show any content through fog of war
-				texel.rgb = tmpTexel.rgb;
+				// Dark grey tint — hint of terrain shape without revealing details
+				texel.rgb = tmpTexel.rgb * 0.12;
 				texel.a = tmpTexel.a;
 			}
 			// Skip all further floor rendering for undiscovered tiles
@@ -319,8 +319,8 @@ void main()
 			{
 				vec4 tmpTexel = getTexel( uUndiscoveredTex / 4, 0, 0 );
 
-				// Fully replace — don't show any content through fog of war
-				texel.rgb = tmpTexel.rgb;
+				// Dark grey tint — hint of terrain shape without revealing details
+				texel.rgb = tmpTexel.rgb * 0.12;
 				texel.a = tmpTexel.a;
 			}
 			// Skip all further wall rendering for undiscovered tiles
@@ -472,23 +472,22 @@ void main()
 			light = max( light, uDaylight );
 		}
 
-		// Cubic falloff — sharp boundary between lit and dark, darkness absorbs aggressively
-		float lightCurved = light * light * light;
+		// Smooth S-curve falloff — gradual transition from lit to dark with grey boundary zone
+		float lightCurved = smoothstep( 0.0, 1.0, light );
 
-		// True darkness: near-black in unlit areas
+		// True darkness: near-black in unlit areas, but with a grey buffer zone
 		float lightMult = mix( uLightMin, 1.0, lightCurved );
 
-		// Desaturation in darkness: color drains away as light fades
-		float saturation = mix( 0.0, 1.0, sqrt( lightCurved ) );
+		// Desaturation in darkness: color drains smoothly, grey zone before full darkness
+		float saturation = smoothstep( 0.0, 0.5, light ); // desaturate below 50% light
 		float brightness = dot( texel.rgb, perceivedBrightness.xyz );
 		texel.rgb = mix( brightness * vec3( 1.0 ), texel.rgb, saturation ) * lightMult;
 
-		// Underground cave color — darkness has a deep, oppressive quality
-		if( !hasSunlight && light < 0.3 )
+		// Underground cave atmosphere — gradual shift to deep darkness
+		if( !hasSunlight && light < 0.4 )
 		{
-			vec3 caveColor = vec3( 0.04, 0.02, 0.06 ); // near-black with hint of deep purple
-			float caveBlend = ( 0.3 - light ) / 0.3;
-			caveBlend = caveBlend * caveBlend * 0.7; // quadratic ramp, strong at zero light
+			vec3 caveColor = vec3( 0.05, 0.04, 0.07 ); // deep dark with subtle purple
+			float caveBlend = smoothstep( 0.4, 0.0, light ) * 0.6;
 			texel.rgb = mix( texel.rgb, caveColor, caveBlend );
 		}
 
