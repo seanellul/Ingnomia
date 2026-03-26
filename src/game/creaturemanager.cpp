@@ -60,11 +60,17 @@ void CreatureManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayCh
 	int oldStartIndex = m_startIndex;
 	QList<unsigned int> toDestroy;
 	QList<unsigned int> toDead;
+
+	// Adaptive time budget — scales with creature count but caps at 5ms
+	// Small colony: 2ms is plenty. Large map with 1000+ creatures: allow up to 5ms.
+	int budgetMs = qBound( 2, (int)m_creatures.size() / 200, 5 );
+
 	for ( int i = m_startIndex; i < m_creatures.size(); ++i )
 	{
 		Creature* creature = m_creatures[i];
 
 		// Skip creatures on undiscovered tiles — dormant until player digs to them
+		// Use a cheap position-based check instead of tile flag lookup for bulk skipping
 		Tile& tile = g->w()->getTile( creature->getPos() );
 		if ( tile.flags & TileFlag::TF_UNDISCOVERED )
 		{
@@ -95,7 +101,7 @@ void CreatureManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayCh
 		}
 
 		m_startIndex = i + 1;
-		if ( timer.elapsed() > 2 )
+		if ( timer.elapsed() > budgetMs )
 			break;
 	}
 

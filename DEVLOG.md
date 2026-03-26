@@ -6,6 +6,31 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-26] Cap Mushroom Creatures & Adaptive Creature Time Budget
+
+**Milestone**: 0.0 — Foundations & Performance
+**Files changed**: `src/game/worldgenerator.cpp`, `src/game/creaturemanager.cpp`
+
+### Changes
+- **Cap mushroom creatures at 200**: Previously spawned at 4% of underground area (6,200 at size 400!). Now uses random placement with a hard cap of 200, matching surface animal spawning pattern.
+- **Adaptive creature time budget**: Was hard-coded 2ms. Now scales `qBound(2, creatures/200, 5)` — small colonies stay snappy, large maps get up to 5ms to process more creatures per tick.
+- **Entity counts in get_perf**: Added creature/plant/gnome counts to benchmark output for visibility.
+
+### Benchmark Results (before → after, 100 ticks)
+| Size | Creatures Before → After | Tick μs Before → After |
+|------|-------------------------|----------------------|
+| 200 | 1,079 → **162** | 3,304 → **940** |
+| 300 | 2,613 → **162** | 3,538 → **1,099** |
+| 400 | 4,510 → **162** | 3,570 → **1,226** |
+
+### Technical Details
+- Mushroom spawner now uses random position + walkability check loop (max 2000 attempts for 200 creatures)
+- Creature count flat at ~162 regardless of map size (500 surface attempts + 200 mushroom cap)
+- Tick time now scales with plant count (only thing proportional to area) — sub-linear growth
+- Surface animal placement unchanged (numWildAnimals=500 with per-type caps)
+
+---
+
 ## [2026-03-25] Rebrand: Ingnomia → Masonry
 
 **Milestone**: 1.0 — Independent Release

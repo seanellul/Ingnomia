@@ -595,23 +595,28 @@ void WorldGenerator::addAnimals()
 		}
 	}
 
-	for ( int x_ = 3; x_ < m_dimX - 3; ++x_ )
+	// Mushroom creatures — cap at a fixed count instead of scaling with area
+	// (4% of dimX*dimY would give 6000+ at size 400, overwhelming creature processing)
+	if ( !mushroomKeys.empty() )
 	{
-		for ( int y_ = 3; y_ < m_dimY - 3; ++y_ )
+		int maxMushroomCreatures = qMin( 200, (int)mushroomKeys.size() * 30 );
+		int spawned = 0;
+		int attempts = 0;
+		int maxAttempts = maxMushroomCreatures * 10;
+		while ( spawned < maxMushroomCreatures && attempts < maxAttempts )
 		{
-			Position pos( x_, y_, m_mushroomLevel + 5 );
+			++attempts;
+			int x = 3 + rand() % ( m_dimX - 6 );
+			int y = 3 + rand() % ( m_dimY - 6 );
+			Position pos( x, y, m_mushroomLevel + 5 );
 			w->getFloorLevelBelow( pos, false );
 
-			int random = rand();
-			if ( random % 100 > 96 )
+			if ( w->isWalkable( pos ) )
 			{
-				if ( w->isWalkable( pos ) )
-				{
-					int randomType = rand() % ( mushroomKeys.size() );
-					QString type   = mushroomKeys[randomType];
-
-					g->cm()->addCreature( CreatureType::ANIMAL, type, pos, rand() % 2 == 0 ? Gender::MALE : Gender::FEMALE, true, false );
-				}
+				int randomType = rand() % ( mushroomKeys.size() );
+				QString type   = mushroomKeys[randomType];
+				g->cm()->addCreature( CreatureType::ANIMAL, type, pos, rand() % 2 == 0 ? Gender::MALE : Gender::FEMALE, true, false );
+				++spawned;
 			}
 		}
 	}
