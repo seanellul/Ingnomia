@@ -1055,6 +1055,31 @@ static QMap<QString, QMap<int, int>> s_craftSelectedMats;
 static int s_craftMode = 0;      // 0=CraftNumber, 1=CraftTo, 2=Repeat
 static int s_craftAmount = 1;
 
+// Smart item name lookup: tries $ItemName_X, falls back to readable SID
+static QString itemName( const QString& sid )
+{
+	QString name = S::s( "$ItemName_" + sid );
+	if ( !name.isEmpty() && !name.startsWith( "Error" ) && !name.startsWith( "$" ) )
+		return name;
+	// Insert spaces before capitals: "StoneChair" -> "Stone Chair"
+	QString readable;
+	for ( int i = 0; i < sid.size(); ++i )
+	{
+		if ( i > 0 && sid[i].isUpper() && !sid[i - 1].isUpper() )
+			readable += ' ';
+		readable += sid[i];
+	}
+	return readable.toLower();
+}
+
+static QString materialName( const QString& sid )
+{
+	QString name = S::s( "$MaterialName_" + sid );
+	if ( !name.isEmpty() && !name.startsWith( "Error" ) && !name.startsWith( "$" ) )
+		return name;
+	return sid;
+}
+
 void drawWorkshopPanel( ImGuiBridge& bridge )
 {
 	if ( !bridge.showWorkshopWindow )
@@ -1172,7 +1197,7 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 					ImGui::SameLine();
 					if ( ImGui::SmallButton( "v" ) ) bridge.cmdWorkshopCraftJobCommand( job.id, "Down" );
 					ImGui::SameLine();
-					if ( ImGui::SmallButton( "X" ) ) bridge.cmdWorkshopCraftJobCommand( job.id, "Delete" );
+					if ( ImGui::SmallButton( "X" ) ) bridge.cmdWorkshopCraftJobCommand( job.id, "Cancel" );
 
 					ImGui::PopID();
 				}
@@ -1225,9 +1250,7 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 				for ( const auto& product : ws.products )
 				{
 					// Filter by search
-					QString productName = S::s( "$ItemName_" + product.sid );
-					if ( productName.isEmpty() || productName.startsWith( "$" ) )
-						productName = product.sid;
+					QString productName = itemName( product.sid );
 					if ( !searchFilter.isEmpty() && !productName.toLower().contains( searchFilter ) )
 						continue;
 
@@ -1243,10 +1266,7 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 					for ( int c = 0; c < product.components.size(); ++c )
 					{
 						const auto& comp = product.components[c];
-						// Translate component name
-						QString compName = S::s( "$ItemName_" + comp.sid );
-						if ( compName.isEmpty() || compName.startsWith( "$" ) )
-							compName = comp.sid;
+						QString compName = itemName( comp.sid );
 
 						if ( comp.materials.isEmpty() )
 						{
@@ -1265,11 +1285,8 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 
 						QString comboLabel = "##comp" + QString::number( c );
 
-						// Build preview string: "any <itemname> (count)" or "<material> <itemname> (count)"
 						QString matSid = comp.materials[selIdx].sid;
-						QString matName = S::s( "$MaterialName_" + matSid );
-						if ( matName.isEmpty() || matName.startsWith( "$" ) )
-							matName = matSid;
+						QString matName = materialName( matSid );
 						QString preview = matName + " " + compName + " (" + QString::number( comp.materials[selIdx].amount ) + ")";
 
 						ImGui::SetNextItemWidth( 200 );
@@ -1278,9 +1295,7 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 							for ( int m = 0; m < comp.materials.size(); ++m )
 							{
 								QString mSid = comp.materials[m].sid;
-								QString mName = S::s( "$MaterialName_" + mSid );
-								if ( mName.isEmpty() || mName.startsWith( "$" ) )
-									mName = mSid;
+								QString mName = materialName( mSid );
 								QString label = mName + " " + compName + " (" + QString::number( comp.materials[m].amount ) + ")";
 								if ( ImGui::Selectable( label.toStdString().c_str(), m == selIdx ) )
 								{
