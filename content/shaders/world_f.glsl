@@ -141,8 +141,8 @@ void main()
 			{
 				vec4 tmpTexel = getTexel( uUndiscoveredTex / 4 + 2, 0, 0 );
 
-				// Dark grey tint — hint of terrain shape without revealing details
-				texel.rgb = tmpTexel.rgb * 0.12;
+				// Dark grey — visible shape without revealing content
+				texel.rgb = vec3( 0.08, 0.08, 0.10 ) * tmpTexel.a;
 				texel.a = tmpTexel.a;
 			}
 			// Skip all further floor rendering for undiscovered tiles
@@ -319,8 +319,8 @@ void main()
 			{
 				vec4 tmpTexel = getTexel( uUndiscoveredTex / 4, 0, 0 );
 
-				// Dark grey tint — hint of terrain shape without revealing details
-				texel.rgb = tmpTexel.rgb * 0.12;
+				// Dark grey — visible shape without revealing content
+				texel.rgb = vec3( 0.08, 0.08, 0.10 ) * tmpTexel.a;
 				texel.a = tmpTexel.a;
 			}
 			// Skip all further wall rendering for undiscovered tiles
@@ -460,7 +460,7 @@ void main()
 	}
 	
 	
-	if( !uDebug )
+	if( !uDebug && ( vFlags & TF_UNDISCOVERED ) == 0 )
 	{
 		// === LIGHTING MODEL: Light vs Darkness ===
 		float torchLight = float( vLightLevel ) / 20.0;

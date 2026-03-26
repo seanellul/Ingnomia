@@ -398,7 +398,9 @@ bool Selection::testTileForJobSelection( const Position& pos )
 				case SEL_NONE:
 					break;
 				case SEL_FLOOR:
-					if ( !(bool)( tile->floorType & ( FloorType::FT_SOLIDFLOOR | FloorType::FT_STAIRTOP | FloorType::FT_RAMPTOP | FloorType::FT_CONSTRUCTION ) ) )
+					// Accept solid floors, stair/ramp tops, constructions, and stair/ramp wall tiles as valid "floor"
+					if ( !(bool)( tile->floorType & ( FloorType::FT_SOLIDFLOOR | FloorType::FT_STAIRTOP | FloorType::FT_RAMPTOP | FloorType::FT_CONSTRUCTION ) )
+						&& !(bool)( tile->wallType & ( WallType::WT_STAIR | WallType::WT_RAMP ) ) )
 						return false;
 					break;
 				case SEL_FLOOR_OR_SCAFFOLD:
