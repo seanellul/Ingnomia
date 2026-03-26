@@ -42,7 +42,7 @@ layout(location = 0) noperspective in vec2 vTexCoords;
 layout(location = 1) flat in uvec4  block1;
 layout(location = 2) flat in uvec4  block2;
 layout(location = 3) flat in uvec4  block3;
-layout(location = 4) flat in uint   vTileZ;
+layout(location = 4) flat in uvec2  vTileExtra; // x=tileZ, y=aoFlags
 
 layout(location = 0) out vec4 fColor;
 
@@ -66,6 +66,8 @@ uniform bool uShowJobs;
 uniform float uViewLevel;
 uniform float uRenderDepth;
 uniform int uSeason;
+uniform int uWeather;          // 0=clear, 1=storm, 2=heatwave, 3=coldsnap
+uniform float uWeatherIntensity; // 0-1 ramp
 
 const float waterAlpha = 0.6;
 const float flSize =  ( 1.0 / 32. );
@@ -283,14 +285,27 @@ void main()
 
 			texel.rgb = mix( texel.rgb, tmpTexel.rgb, waterAlpha * tmpTexel.a );
 			texel.a = max(texel.a , tmpTexel.a);
+
+			// Water caustics — animated dappled light on shallow water
+			if( vFluidLevel <= 4u && vFluidLevel >= 1u )
+			{
+				float time = float(uTickNumber) * 0.05;
+				vec2 p = vTexCoords * 4.0 + vec2( float(vTileExtra.x) * 0.3, float(vTileExtra.x) * 0.7 );
+				float c1 = sin( p.x * 3.0 + time ) * cos( p.y * 2.5 - time * 0.7 );
+				float c2 = sin( p.x * 2.0 - time * 0.5 + 1.5 ) * cos( p.y * 3.5 + time * 0.3 );
+				float caustic = ( c1 + c2 ) * 0.5 + 0.5;
+				caustic = caustic * caustic;
+				float shallowFactor = 1.0 - float( vFluidLevel ) / 5.0;
+				texel.rgb += vec3( 0.15, 0.2, 0.25 ) * caustic * shallowFactor * 0.4;
+			}
 		}
 		////////////////////////////////////////////////////////////////////////////////////////////////////
 		//
 		// end water related calculations
 		//
 		////////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		
+
+
 	}
 	else
 	{
@@ -459,11 +474,11 @@ void main()
 		// Desaturate, then darken
 		texel.rgb = mix(brightness * vec3(1,1,1), texel.rgb, saturation) * lightMult;
 
-		// Underground cave color — deep purple tint in dark underground areas
-		if( !hasSunlight && light < 0.3 )
+		// Underground cave color — subtle purple tint in dark underground areas
+		if( !hasSunlight && light < 0.2 )
 		{
 			vec3 caveColor = vec3( 0.12, 0.08, 0.15 );
-			float caveBlend = ( 0.3 - light ) / 0.3 * 0.3;
+			float caveBlend = ( 0.2 - light ) / 0.2 * 0.15;
 			texel.rgb = mix( texel.rgb, caveColor, caveBlend );
 		}
 
@@ -483,18 +498,94 @@ void main()
 		// Seasonal color grading
 		vec3 seasonGrade;
 		float seasonStrength;
-		if( uSeason == 0 )      { seasonGrade = vec3( 0.95, 1.05, 0.9 );  seasonStrength = 0.15; } // spring: green
-		else if( uSeason == 1 ) { seasonGrade = vec3( 1.05, 1.0, 0.9 );   seasonStrength = 0.1; }  // summer: warm
-		else if( uSeason == 2 ) { seasonGrade = vec3( 1.1, 0.9, 0.7 );    seasonStrength = 0.25; } // autumn: amber
-		else                    { seasonGrade = vec3( 0.85, 0.9, 1.1 );    seasonStrength = 0.2; }  // winter: blue-grey
+		if( uSeason == 0 )      { seasonGrade = vec3( 0.90, 1.10, 0.85 ); seasonStrength = 0.3; }  // spring: lush green
+		else if( uSeason == 1 ) { seasonGrade = vec3( 1.10, 1.02, 0.85 ); seasonStrength = 0.25; } // summer: warm golden
+		else if( uSeason == 2 ) { seasonGrade = vec3( 1.15, 0.85, 0.60 ); seasonStrength = 0.4; }  // autumn: strong amber
+		else                    { seasonGrade = vec3( 0.80, 0.88, 1.15 );  seasonStrength = 0.35; } // winter: cold blue-grey
 		texel.rgb = mix( texel.rgb, texel.rgb * seasonGrade, seasonStrength );
 
-		// Depth fog — fade lower z-levels toward atmospheric color
-		if( uRenderDepth > 0.0 )
+		// Weather effects on sunlit tiles
+		if( hasSunlight && uWeatherIntensity > 0.0 )
 		{
-			float depthFade = clamp( ( uViewLevel - float(vTileZ) ) / uRenderDepth, 0.0, 1.0 );
-			vec3 fogColor = mix( vec3( 0.08, 0.06, 0.12 ), vec3( 0.6, 0.7, 0.85 ), uDaylight );
-			texel.rgb = mix( texel.rgb, fogColor, depthFade * 0.6 );
+			float wi = uWeatherIntensity;
+			if( uWeather == 1 ) // Storm — darken, increase saturation, blue tint
+			{
+				texel.rgb *= mix( 1.0, 0.7, wi );
+				float grey = dot( texel.rgb, perceivedBrightness );
+				texel.rgb = mix( vec3(grey), texel.rgb, 1.0 + wi * 0.3 ); // boost saturation
+				texel.rgb = mix( texel.rgb, texel.rgb * vec3( 0.8, 0.85, 1.0 ), wi * 0.3 );
+			}
+			else if( uWeather == 2 ) // HeatWave — warm, slight haze
+			{
+				texel.rgb = mix( texel.rgb, texel.rgb * vec3( 1.1, 1.0, 0.85 ), wi * 0.3 );
+			}
+			else if( uWeather == 3 ) // ColdSnap — brighten, desaturate, blue shift
+			{
+				float grey = dot( texel.rgb, perceivedBrightness );
+				texel.rgb = mix( texel.rgb, vec3(grey), wi * 0.3 ); // desaturate
+				texel.rgb = mix( texel.rgb, texel.rgb * vec3( 0.9, 0.95, 1.15 ), wi * 0.4 );
+				texel.rgb *= mix( 1.0, 1.1, wi ); // brighten slightly
+			}
+		}
+
+		// Depth fog — fade tiles below view level toward atmospheric haze
+		if( uRenderDepth > 1.0 )
+		{
+			float zBelow = uViewLevel - float(vTileExtra.x);
+			float depthFade = clamp( ( zBelow - 1.0 ) / ( uRenderDepth - 1.0 ), 0.0, 1.0 );
+			depthFade *= depthFade; // quadratic — gentle near camera, strong far away
+			float fogStrength = 0.6;
+			if( uWeather == 1 || uWeather == 3 )
+				fogStrength += uWeatherIntensity * 0.2;
+			// Fog color is always brighter than the darkest tiles so it reads as haze
+			vec3 nightFog = vec3( 0.10, 0.10, 0.18 ); // visible blue-grey even at night
+			vec3 dayFog   = vec3( 0.45, 0.50, 0.60 );  // hazy blue during day
+			vec3 fogColor = mix( nightFog, dayFog, uDaylight );
+			texel.rgb = mix( texel.rgb, fogColor, depthFade * fogStrength );
+		}
+
+		// Ambient occlusion — darken edges near solid walls
+		uint aoFlags = vTileExtra.y;
+		if( aoFlags != 0u )
+		{
+			// AO bits: 0=above, 1=north(y-), 2=east(x+), 3=south(y+), 4=west(x-)
+			// In isometric view, texcoords map: x=0 is left edge, x=1 is right edge
+			// y=0 is top, y=1 is bottom
+			float aoStrength = 0.25;
+			float ao = 0.0;
+
+			// Above — darken entire tile slightly
+			if( ( aoFlags & 0x01u ) != 0u )
+				ao += 0.15;
+
+			// Directional edge darkening — apply based on which direction has a wall
+			// Use world rotation to rotate the AO directions
+			uint rotatedAO = aoFlags >> 1; // bits 0-3 = N/E/S/W
+			// Rotate N/E/S/W by world rotation
+			rotatedAO = ( ( rotatedAO >> uint(uWorldRotation) ) | ( rotatedAO << ( 4u - uint(uWorldRotation) ) ) ) & 0x0fu;
+
+			// After rotation: bit0=screen-north, bit1=screen-east, bit2=screen-south, bit3=screen-west
+			// In isometric: screen-north = top-right, screen-east = bottom-right
+			// screen-south = bottom-left, screen-west = top-left
+			float northAO = float( ( rotatedAO & 0x01u ) != 0u );
+			float eastAO  = float( ( rotatedAO & 0x02u ) != 0u );
+			float southAO = float( ( rotatedAO & 0x04u ) != 0u );
+			float westAO  = float( ( rotatedAO & 0x08u ) != 0u );
+
+			// Edge proximity: how close to each edge (0 = at edge, 1 = far away)
+			float topDist    = vTexCoords.y;         // 0 at top edge
+			float bottomDist = 1.0 - vTexCoords.y;   // 0 at bottom edge
+			float leftDist   = vTexCoords.x;          // 0 at left edge
+			float rightDist  = 1.0 - vTexCoords.x;    // 0 at right edge
+
+			// Isometric mapping: top-right = north, bottom-right = east, etc.
+			float edgeFalloff = 0.25;
+			ao += northAO * smoothstep( edgeFalloff, 0.0, rightDist ) * smoothstep( edgeFalloff, 0.0, topDist ) * aoStrength;
+			ao += eastAO  * smoothstep( edgeFalloff, 0.0, rightDist ) * smoothstep( edgeFalloff, 0.0, bottomDist ) * aoStrength;
+			ao += southAO * smoothstep( edgeFalloff, 0.0, leftDist )  * smoothstep( edgeFalloff, 0.0, bottomDist ) * aoStrength;
+			ao += westAO  * smoothstep( edgeFalloff, 0.0, leftDist )  * smoothstep( edgeFalloff, 0.0, topDist ) * aoStrength;
+
+			texel.rgb *= ( 1.0 - min( ao, 0.5 ) );
 		}
 	}
 

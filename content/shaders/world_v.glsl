@@ -41,6 +41,7 @@ layout(location = 0) noperspective out vec2 vTexCoords;
 layout(location = 1) flat out uvec4  block1;
 layout(location = 2) flat out uvec4  block2;
 layout(location = 3) flat out uvec4  block3;
+layout(location = 4) flat out uvec2  vTileExtra; // x=tileZ, y=aoFlags
 
 uniform uvec3 uWorldSize;
 uniform mat4 uTransform;
@@ -283,6 +284,8 @@ void main()
 		block1 = uvec4(floorSprite, jobFloorSprite, wallSprite, jobWallSprite);
 		block2 = uvec4(itemSprite, creatureSprite, vFluidLevelPacked1, uIsWall);
 		block3 = uvec4(vFlags, vFlags2, vLightLevel, vVegetationLevel);
+		uint vAOFlags = ( packedLevels >> 24 ) & 0xffu;
+		vTileExtra = uvec2( tile.z, vAOFlags );
 
 		vec3 worldPos = project( rotate( tile ), vVertexCoords.xy, uIsWall );
 		gl_Position = uTransform * vec4( worldPos, 1.0 );

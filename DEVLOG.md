@@ -6,6 +6,72 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-25] Main Menu Redesign — Custom Fonts, Styling, Continue Button Fix
+
+**Milestone**: 3.0 — Visual Polish & Atmosphere
+**Files changed**: `src/gui/imgui_impl_qt5.h`, `src/gui/imgui_impl_qt5.cpp`, `src/gui/ui/ui_mainmenu.cpp`, `src/base/io.h`
+
+### Changes
+- **Custom font loading** — Added `ImGuiFonts` struct and font loading during ImGui init. Loads HermeneusOne (48px title) and PT Root UI (18px body, 14px captions) from existing `content/xaml/` fonts. Scales by device pixel ratio. Falls back gracefully if font files are missing.
+- **Main menu visual overhaul** — Dark gradient background with subtle edge vignette. Responsive sizing (scales with window, clamped 300-450px wide). Title in decorative serif font, "A Colony Simulation" tagline, version pinned to bottom. Buttons styled with rounded corners and extra padding. Exit button visually separated from other actions.
+- **Continue button fix** — Disabled when no save games exist. Uses `IO::saveGameExists()` (now static) with a 1-second throttled check to avoid filesystem hits every frame.
+
+### Technical Details
+- Fonts loaded once in `ImGuiQt5::Init()` before first frame, baked into texture atlas
+- Font paths resolved via `QCoreApplication::applicationDirPath()` (same pattern as audio system)
+- Background drawn via `ImGui::GetBackgroundDrawList()` — renders behind all windows but after GL clear
+- `IO::saveGameExists()` made static (was instance method but only used static `getDataFolder()`)
+
+---
+
+## [2026-03-26] Visual Style — Phase 3: AO, Weather, Caustics
+
+**Milestone**: 3.0 — Visual Polish & Atmosphere
+**Files changed**: `content/shaders/world_f.glsl`, `content/shaders/world_v.glsl`, `src/gui/aggregatorrenderer.h`, `src/gui/aggregatorrenderer.cpp`, `src/gui/mainwindowrenderer.cpp`, `src/gui/mainwindowrenderer.h`
+
+### Changes
+- **Per-tile ambient occlusion**: Computes neighbor solidity flags (above, N/E/S/W) CPU-side in `aggregateTile()`, packs into bits 24-31 of packedLevels (previously `unused3`). Shader darkens tile edges near solid walls with rotation-aware directional falloff using smoothstep.
+- **Weather shader effects**: Maps `GameState::activeWeather` ("Storm"/"HeatWave"/"ColdSnap") to shader uniform with smooth intensity ramp. Storm: darken + blue tint + saturation boost. HeatWave: warm shift. ColdSnap: desaturate + brighten + blue shift. Weather also increases depth fog density.
+- **Water caustics**: Animated dappled light on shallow water (depth 1-4) using overlapping sine waves. Intensity scales with shallowness.
+
+### Technical Details
+- AO flags stored in `TileData::aoFlags` byte, replacing `unused3`. Computed per tile update (not per frame).
+- AO rotation in shader: bit-rotate N/E/S/W flags by `uWorldRotation` so shadows track camera rotation
+- Weather intensity smoothly ramps via `m_weatherIntensity` lerp (0.03/frame) — no sudden jumps
+- Caustics use `uTickNumber * 0.05` for animation speed, seeded with tile Z for spatial variation
+- Performance: 31ms avg tick over 500 ticks — no measurable regression from Phase 2
+
+---
+
+## [2026-03-25] Visual Style — Shader Effects Pipeline (Phases 1 & 2)
+
+**Milestone**: 3.0 — Visual Polish & Atmosphere
+**Files changed**: `content/shaders/world_f.glsl`, `content/shaders/world_v.glsl`, `content/shaders/postprocess_f.glsl`, `content/shaders/postprocess_v.glsl`, `content/shaders/brightextract_f.glsl`, `content/shaders/brightextract_v.glsl`, `content/shaders/blur_f.glsl`, `content/shaders/blur_v.glsl`, `src/gui/mainwindowrenderer.cpp`, `src/gui/mainwindowrenderer.h`
+
+### Changes
+- **Phase 1 — In-shader effects (zero infrastructure)**:
+  - **Depth fog**: Tiles below the camera view level fade toward an atmospheric color (dark purple underground, hazy blue outdoors). Passes tile Z as a flat varying from vertex shader.
+  - **Seasonal color grading**: Entire palette shifts by season — spring green, summer warm, autumn amber, winter blue-grey. Driven by `GameState::season` uniform.
+  - **Underground cave color**: Dark unlit tiles shift toward deep purple instead of flat grey, giving caves atmosphere.
+  - **Mouseover rim highlight**: Hovered tile gets a warm edge glow using texcoord-based edge detection via `TF_MOUSEOVER` flag.
+
+- **Phase 2 — FBO post-processing pipeline**:
+  - **FBO infrastructure**: Scene renders to an RGBA16F offscreen texture with depth attachment. Fullscreen triangle shader (no vertex buffer, uses gl_VertexID).
+  - **Bloom**: Bright extraction → half-res ping-pong gaussian blur (9-tap, 4 passes) → additive composite. Torches and lava get warm glow halos.
+  - **Vignette**: Subtle screen-edge darkening to focus attention on center.
+  - **Film grain**: Nearly invisible noise overlay to prevent color banding, especially at night.
+
+### Technical Details
+- FBO uses RGBA16F for HDR headroom — bloom extraction works on values above 0.7 brightness
+- Bloom runs at half resolution with separable gaussian blur for performance
+- All Phase 1 effects cost ~0 GPU time (few mix ops per fragment)
+- Phase 2 adds ~0ms measurable overhead (54ms/tick vs 53ms before)
+- New uniforms: `uViewLevel`, `uRenderDepth`, `uSeason` on world shader
+- Post-process chain: scene FBO → bright extract → blur H → blur V (×4) → composite + vignette + grain → default FB
+- ImGui renders after post-process onto the default framebuffer, unaffected
+
+---
+
 ## [2026-03-25] Animal Hunger Priority System — Food Before Killing
 
 **Files changed**: `src/game/animal.h`, `src/game/animal.cpp`

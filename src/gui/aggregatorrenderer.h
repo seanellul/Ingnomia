@@ -42,7 +42,7 @@ struct TileData
 	unsigned char fluidLevel      = 0;
 	unsigned char lightLevel      = 0;
 	unsigned char vegetationLevel = 0;
-	unsigned char unused3         = 0;
+	unsigned char aoFlags         = 0; // bits: 0=above, 1=north, 2=east, 3=south, 4=west
 };
 Q_DECLARE_TYPEINFO( TileData, Q_PRIMITIVE_TYPE );
 

@@ -210,6 +210,11 @@ void MainWindowRenderer::cleanup()
 	m_thoughtBubbleShader.reset();
 	m_selectionShader.reset();
 	m_axleShader.reset();
+	m_postProcessShader.reset();
+	m_brightExtractShader.reset();
+	m_blurShader.reset();
+
+	cleanupPostProcess();
 
 	glDeleteBuffers( 1, &m_vbo );
 	glDeleteBuffers( 1, &m_vibo );
@@ -236,6 +241,226 @@ void MainWindowRenderer::cleanupWorld()
 	m_selectionData.clear();
 	m_thoughBubbles = ThoughtBubbleInfo();
 	m_axleData      = AxleDataInfo();
+}
+
+void MainWindowRenderer::initPostProcess()
+{
+	// Fullscreen VAO — no buffers needed, vertex shader generates coords from gl_VertexID
+	glGenVertexArrays( 1, &m_fullscreenVao );
+
+	// Scene FBO — render world to this instead of default framebuffer
+	glGenFramebuffers( 1, &m_sceneFbo );
+	glGenTextures( 1, &m_sceneColorTex );
+	glGenTextures( 1, &m_sceneDepthTex );
+
+	// Bright extraction FBO (half resolution)
+	glGenFramebuffers( 1, &m_brightFbo );
+	glGenTextures( 1, &m_brightColorTex );
+
+	// Ping-pong blur FBOs (half resolution)
+	glGenFramebuffers( 2, m_pingPongFbo );
+	glGenTextures( 2, m_pingPongTex );
+
+	// Allocate textures at current size
+	if ( m_width > 0 && m_height > 0 )
+	{
+		resizePostProcess( m_width, m_height );
+	}
+
+	m_postProcessReady = true;
+}
+
+void MainWindowRenderer::resizePostProcess( int w, int h )
+{
+	if ( !m_sceneFbo )
+		return;
+
+	// Scene color (full res, RGBA16F for HDR headroom)
+	glBindTexture( GL_TEXTURE_2D, m_sceneColorTex );
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+
+	// Scene depth (full res)
+	glBindTexture( GL_TEXTURE_2D, m_sceneDepthTex );
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+
+	// Attach to scene FBO
+	glBindFramebuffer( GL_FRAMEBUFFER, m_sceneFbo );
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_sceneColorTex, 0 );
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_sceneDepthTex, 0 );
+
+	GLenum status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
+	if ( status != GL_FRAMEBUFFER_COMPLETE )
+	{
+		qWarning() << "Scene FBO incomplete:" << status;
+	}
+
+	// Half-res for bloom
+	int hw = w / 2;
+	int hh = h / 2;
+	if ( hw < 1 ) hw = 1;
+	if ( hh < 1 ) hh = 1;
+
+	// Bright extract texture
+	glBindTexture( GL_TEXTURE_2D, m_brightColorTex );
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, hw, hh, 0, GL_RGBA, GL_FLOAT, nullptr );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+
+	glBindFramebuffer( GL_FRAMEBUFFER, m_brightFbo );
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_brightColorTex, 0 );
+
+	// Ping-pong blur textures (half res)
+	for ( int i = 0; i < 2; ++i )
+	{
+		glBindTexture( GL_TEXTURE_2D, m_pingPongTex[i] );
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, hw, hh, 0, GL_RGBA, GL_FLOAT, nullptr );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+
+		glBindFramebuffer( GL_FRAMEBUFFER, m_pingPongFbo[i] );
+		glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_pingPongTex[i], 0 );
+	}
+
+	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+	glBindTexture( GL_TEXTURE_2D, 0 );
+}
+
+void MainWindowRenderer::cleanupPostProcess()
+{
+	if ( m_sceneFbo )
+	{
+		glDeleteFramebuffers( 1, &m_sceneFbo );
+		m_sceneFbo = 0;
+	}
+	if ( m_sceneColorTex )
+	{
+		glDeleteTextures( 1, &m_sceneColorTex );
+		m_sceneColorTex = 0;
+	}
+	if ( m_sceneDepthTex )
+	{
+		glDeleteTextures( 1, &m_sceneDepthTex );
+		m_sceneDepthTex = 0;
+	}
+	if ( m_brightFbo )
+	{
+		glDeleteFramebuffers( 1, &m_brightFbo );
+		m_brightFbo = 0;
+	}
+	if ( m_brightColorTex )
+	{
+		glDeleteTextures( 1, &m_brightColorTex );
+		m_brightColorTex = 0;
+	}
+	glDeleteFramebuffers( 2, m_pingPongFbo );
+	m_pingPongFbo[0] = m_pingPongFbo[1] = 0;
+	glDeleteTextures( 2, m_pingPongTex );
+	m_pingPongTex[0] = m_pingPongTex[1] = 0;
+
+	if ( m_fullscreenVao )
+	{
+		glDeleteVertexArrays( 1, &m_fullscreenVao );
+		m_fullscreenVao = 0;
+	}
+
+	m_postProcessReady = false;
+}
+
+void MainWindowRenderer::renderPostProcess()
+{
+	// Use texture units 17-18 to avoid conflicting with tile textures (0-15) and TBO (16)
+	// macOS OpenGL driver has issues with GL_TEXTURE_2D and GL_TEXTURE_2D_ARRAY on same unit
+	const int PP_UNIT0 = 17;
+	const int PP_UNIT1 = 18;
+
+	glBindVertexArray( m_fullscreenVao );
+
+	// Step 1: Bright extraction — extract bright pixels at half resolution
+	{
+		glBindFramebuffer( GL_FRAMEBUFFER, m_brightFbo );
+		glViewport( 0, 0, m_width / 2, m_height / 2 );
+		glClear( GL_COLOR_BUFFER_BIT );
+
+		m_brightExtractShader->bind();
+		glActiveTexture( GL_TEXTURE0 + PP_UNIT0 );
+		glBindTexture( GL_TEXTURE_2D, m_sceneColorTex );
+		m_brightExtractShader->setUniformValue( "uSceneColor", PP_UNIT0 );
+		m_brightExtractShader->setUniformValue( "uThreshold", m_bloomThreshold );
+
+		glDrawArrays( GL_TRIANGLES, 0, 3 );
+		m_brightExtractShader->release();
+	}
+
+	// Step 2: Gaussian blur ping-pong at half resolution
+	{
+		m_blurShader->bind();
+		bool horizontal = true;
+		bool firstPass  = true;
+
+		for ( int i = 0; i < m_bloomBlurPasses * 2; ++i )
+		{
+			glBindFramebuffer( GL_FRAMEBUFFER, m_pingPongFbo[horizontal ? 1 : 0] );
+			glClear( GL_COLOR_BUFFER_BIT );
+
+			m_blurShader->setUniformValue( "uHorizontal", horizontal );
+			glActiveTexture( GL_TEXTURE0 + PP_UNIT0 );
+			glBindTexture( GL_TEXTURE_2D, firstPass ? m_brightColorTex : m_pingPongTex[horizontal ? 0 : 1] );
+			m_blurShader->setUniformValue( "uImage", PP_UNIT0 );
+
+			glDrawArrays( GL_TRIANGLES, 0, 3 );
+
+			horizontal = !horizontal;
+			firstPass  = false;
+		}
+
+		m_blurShader->release();
+	}
+
+	// Step 3: Composite — combine scene + bloom, add vignette + grain
+	{
+		glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		glViewport( 0, 0, m_width, m_height );
+		glClear( GL_COLOR_BUFFER_BIT );
+		glDisable( GL_DEPTH_TEST );
+
+		m_postProcessShader->bind();
+
+		glActiveTexture( GL_TEXTURE0 + PP_UNIT0 );
+		glBindTexture( GL_TEXTURE_2D, m_sceneColorTex );
+		m_postProcessShader->setUniformValue( "uSceneColor", PP_UNIT0 );
+
+		glActiveTexture( GL_TEXTURE0 + PP_UNIT1 );
+		glBindTexture( GL_TEXTURE_2D, m_pingPongTex[0] );
+		m_postProcessShader->setUniformValue( "uBloomBlur", PP_UNIT1 );
+
+		m_postProcessShader->setUniformValue( "uBloomStrength", m_bloomStrength );
+		m_postProcessShader->setUniformValue( "uVignetteStrength", m_vignetteStrength );
+		m_postProcessShader->setUniformValue( "uGrainStrength", m_grainStrength );
+		m_postProcessShader->setUniformValue( "uTime", (float)GameState::tick );
+
+		glDrawArrays( GL_TRIANGLES, 0, 3 );
+
+		m_postProcessShader->release();
+		glEnable( GL_DEPTH_TEST );
+	}
+
+	// Clean up — unbind post-process textures and restore VAO
+	glActiveTexture( GL_TEXTURE0 + PP_UNIT0 );
+	glBindTexture( GL_TEXTURE_2D, 0 );
+	glActiveTexture( GL_TEXTURE0 + PP_UNIT1 );
+	glBindTexture( GL_TEXTURE_2D, 0 );
+	glBindVertexArray( 0 );
+	glActiveTexture( GL_TEXTURE0 );
 }
 
 void MainWindowRenderer::onTileUpdates( const TileDataUpdateInfo& updates )
@@ -313,8 +538,12 @@ bool MainWindowRenderer::initShaders()
 	m_thoughtBubbleShader.reset(initShader( "thoughtbubble" ));
 	m_selectionShader.reset(initShader( "selection" ));
 	m_axleShader.reset(initShader( "axle" ));
+	m_postProcessShader.reset(initShader( "postprocess" ));
+	m_brightExtractShader.reset(initShader( "brightextract" ));
+	m_blurShader.reset(initShader( "blur" ));
 
-	if ( !m_worldShader || !m_thoughtBubbleShader || !m_selectionShader || !m_axleShader )
+	if ( !m_worldShader || !m_thoughtBubbleShader || !m_selectionShader || !m_axleShader
+		|| !m_postProcessShader || !m_brightExtractShader || !m_blurShader )
 	{
 		// Can't proceed, and need to know what happened!
 		abort();
@@ -496,6 +725,7 @@ void MainWindowRenderer::paintWorld()
 		initTextures();
 		updateRenderParams();
 	}
+
 	updateWorld();
 
 	// Rebind correct textures to texture units
@@ -511,6 +741,7 @@ void MainWindowRenderer::paintWorld()
 	QString msg = "render time: " + QString::number( timer.elapsed() ) + " ms";
 	//emit sendOverlayMessage( 1, msg );
 
+	// Render world to default framebuffer first (avoids FBO rendering issues on macOS)
 	{
 		glEnable( GL_BLEND );
 		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
@@ -540,6 +771,10 @@ void MainWindowRenderer::paintWorld()
 			paintAxles();
 		}
 	}
+
+	// Post-processing disabled — suspected macOS Retina viewport mismatch
+	// TODO: fix FBO dimensions to use devicePixelRatio for Retina displays
+	// In-shader effects (AO, seasons, depth fog, weather, caustics) still active
 
 	//glFinish();
 
@@ -639,6 +874,27 @@ void MainWindowRenderer::paintTiles()
 	}
 	m_worldShader->setUniformValue( "uDaylight", (float)m_daylight );
 	m_worldShader->setUniformValue( "uLightMin", m_lightMin );
+	m_worldShader->setUniformValue( "uViewLevel", (float)m_viewLevel );
+	m_worldShader->setUniformValue( "uRenderDepth", (float)m_renderDepth );
+	m_worldShader->setUniformValue( "uSeason", (GLint)GameState::season );
+
+	// Weather type mapping
+	{
+		int weatherType = 0;
+		if ( GameState::activeWeather == "Storm" )
+			weatherType = 1;
+		else if ( GameState::activeWeather == "HeatWave" )
+			weatherType = 2;
+		else if ( GameState::activeWeather == "ColdSnap" )
+			weatherType = 3;
+
+		// Smooth ramp weather intensity
+		float targetIntensity = ( weatherType != 0 ) ? 1.0f : 0.0f;
+		m_weatherIntensity = m_weatherIntensity + ( targetIntensity - m_weatherIntensity ) * 0.03f;
+
+		m_worldShader->setUniformValue( "uWeather", (GLint)weatherType );
+		m_worldShader->setUniformValue( "uWeatherIntensity", m_weatherIntensity );
+	}
 
 	auto volume   = m_volume.size();
 	GLsizei tiles = volume.x * volume.y * volume.z;
@@ -760,6 +1016,10 @@ void MainWindowRenderer::resize( int w, int h )
 {
 	m_width  = w;
 	m_height = h;
+	if ( m_postProcessReady )
+	{
+		resizePostProcess( w, h );
+	}
 	onRenderParamsChanged();
 }
 

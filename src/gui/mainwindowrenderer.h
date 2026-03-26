@@ -53,6 +53,9 @@ protected:
 	QScopedPointer<QOpenGLShaderProgram> m_thoughtBubbleShader;
 	QScopedPointer<QOpenGLShaderProgram> m_selectionShader;
 	QScopedPointer<QOpenGLShaderProgram> m_axleShader;
+	QScopedPointer<QOpenGLShaderProgram> m_postProcessShader;
+	QScopedPointer<QOpenGLShaderProgram> m_brightExtractShader;
+	QScopedPointer<QOpenGLShaderProgram> m_blurShader;
 
 	GLuint m_textures[16] = { 0 };
 	GLuint m_tileBo       = 0;
@@ -82,6 +85,30 @@ private:
 	void updateRenderParams();
 
 	void updatePositionAfterCWRotation( float& x, float& y );
+
+	// Post-processing FBO pipeline
+	void initPostProcess();
+	void resizePostProcess( int w, int h );
+	void cleanupPostProcess();
+	void renderPostProcess();
+
+	GLuint m_sceneFbo        = 0;
+	GLuint m_sceneColorTex   = 0;
+	GLuint m_sceneDepthTex   = 0;
+	GLuint m_brightFbo       = 0;
+	GLuint m_brightColorTex  = 0;
+	GLuint m_pingPongFbo[2]  = { 0, 0 };
+	GLuint m_pingPongTex[2]  = { 0, 0 };
+	GLuint m_fullscreenVao   = 0;
+	bool m_postProcessReady  = false;
+
+	float m_bloomStrength    = 0.25f;
+	float m_bloomThreshold   = 0.75f;
+	float m_vignetteStrength = 0.25f;
+	float m_grainStrength    = 0.008f;
+	int m_bloomBlurPasses    = 4;
+
+	float m_weatherIntensity = 0.0f;
 
 	void createArrayTexture( int unit, int depth );
 	void uploadArrayTexture( int unit, int depth, const uint8_t* data );

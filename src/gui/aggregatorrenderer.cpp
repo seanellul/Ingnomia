@@ -98,6 +98,53 @@ TileDataUpdate AggregatorRenderer::aggregateTile( unsigned int tileID ) const
 	td.fluidLevel      = qMin( tile.fluidLevel, (unsigned char)10 );
 	td.vegetationLevel = qMin( tile.vegetationLevel, (unsigned char)100 );
 
+	// Compute ambient occlusion flags from neighbor solidity
+	{
+		Position pos( tileID );
+		const auto& world = g->w()->world();
+		unsigned char ao = 0;
+		int dimX = Global::dimX;
+		int dimY = Global::dimY;
+		int dimZ = Global::dimZ;
+
+		// Bit 0: tile above has solid wall
+		if ( pos.z + 1 < dimZ )
+		{
+			unsigned int aboveID = tileID + dimX * dimY;
+			if ( world[aboveID].wallType & WT_SOLIDWALL )
+				ao |= 0x01;
+		}
+		// Bit 1: north neighbor (y-1)
+		if ( pos.y > 0 )
+		{
+			unsigned int nID = tileID - dimX;
+			if ( world[nID].wallType & WT_SOLIDWALL )
+				ao |= 0x02;
+		}
+		// Bit 2: east neighbor (x+1)
+		if ( pos.x + 1 < dimX )
+		{
+			unsigned int eID = tileID + 1;
+			if ( world[eID].wallType & WT_SOLIDWALL )
+				ao |= 0x04;
+		}
+		// Bit 3: south neighbor (y+1)
+		if ( pos.y + 1 < dimY )
+		{
+			unsigned int sID = tileID + dimX;
+			if ( world[sID].wallType & WT_SOLIDWALL )
+				ao |= 0x08;
+		}
+		// Bit 4: west neighbor (x-1)
+		if ( pos.x > 0 )
+		{
+			unsigned int wID = tileID - 1;
+			if ( world[wID].wallType & WT_SOLIDWALL )
+				ao |= 0x10;
+		}
+		td.aoFlags = ao;
+	}
+
 	return TileDataUpdate { tileID, td };
 }
 
