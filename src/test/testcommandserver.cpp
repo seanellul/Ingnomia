@@ -5,6 +5,9 @@
 #include "../base/tile.h"
 #include "../game/game.h"
 #include "../game/newgamesettings.h"
+#include "../game/world.h"
+#include "../game/creaturemanager.h"
+#include "../game/gnomemanager.h"
 #include "../gui/eventconnector.h"
 #include "../gui/imguibridge.h"
 #include "../gui/mainwindow.h"
@@ -594,6 +597,13 @@ QJsonObject TestCommandServer::handleGetPerf()
 	response["total_tiles"] = Global::dimX * Global::dimY * Global::dimZ;
 	response["tile_memory_mb"] = (double)( sizeof( Tile ) * Global::dimX * Global::dimY * Global::dimZ ) / ( 1024.0 * 1024.0 );
 	response["current_tick"] = (qint64)GameState::tick;
+
+	// Entity counts — what scales with world size
+	QJsonObject counts;
+	counts["plants"] = (int)game->w()->plants().size();
+	counts["creatures"] = game->cm()->count();
+	counts["gnomes"] = game->gm()->numGnomes();
+	response["entity_counts"] = counts;
 
 	return response;
 }

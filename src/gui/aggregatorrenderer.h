@@ -43,6 +43,12 @@ struct TileData
 	unsigned char lightLevel      = 0;
 	unsigned char vegetationLevel = 0;
 	unsigned char aoFlags         = 0; // bits: 0=above, 1=north, 2=east, 3=south, 4=west
+
+	// Lighting extension (10th uint)
+	unsigned char lightGradient  = 0; // max abs light delta vs neighbors
+	unsigned char lightColorHint = 0; // 0=none, 1=torch/warm, 2=crystal, 3=lava (future)
+	unsigned char shadowFlags    = 0; // directional shadow bits: 0=N, 1=E, 2=S, 3=W
+	unsigned char reserved       = 0;
 };
 Q_DECLARE_TYPEINFO( TileData, Q_PRIMITIVE_TYPE );
 

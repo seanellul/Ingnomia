@@ -42,6 +42,7 @@ layout(location = 1) flat out uvec4  block1;
 layout(location = 2) flat out uvec4  block2;
 layout(location = 3) flat out uvec4  block3;
 layout(location = 4) flat out uvec2  vTileExtra; // x=tileZ, y=aoFlags
+layout(location = 5) flat out uvec4  block4;     // x=lightGradient, y=lightColorHint, z=shadowFlags, w=reserved
 
 uniform uvec3 uWorldSize;
 uniform mat4 uTransform;
@@ -49,15 +50,15 @@ uniform int uWorldRotation;
 uniform uvec3 uRenderMin;
 uniform uvec3 uRenderMax;
 
-// TileData layout (9 uints per tile):
+// TileData layout (10 uints per tile):
 // 0=flags, 1=flags2, 2=floorSpriteUID, 3=wallSpriteUID,
 // 4=itemSpriteUID, 5=creatureSpriteUID, 6=jobSpriteFloorUID,
-// 7=jobSpriteWallUID, 8=packedLevels
+// 7=jobSpriteWallUID, 8=packedLevels, 9=lightingExtra
 uniform usamplerBuffer uTileData;
 
 uint getTileUint(uint tileIndex, uint fieldOffset)
 {
-	return texelFetch(uTileData, int(tileIndex * 9u + fieldOffset)).r;
+	return texelFetch(uTileData, int(tileIndex * 10u + fieldOffset)).r;
 }
 
 uniform bool uWallsLowered;
@@ -286,6 +287,15 @@ void main()
 		block3 = uvec4(vFlags, vFlags2, vLightLevel, vVegetationLevel);
 		uint vAOFlags = ( packedLevels >> 24 ) & 0xffu;
 		vTileExtra = uvec2( tile.z, vAOFlags );
+
+		// Lighting extension: lightGradient, lightColorHint, shadowFlags, reserved
+		uint lightingExtra = getTileUint(index, 9u);
+		block4 = uvec4(
+			( lightingExtra >> 0 ) & 0xffu,   // lightGradient
+			( lightingExtra >> 8 ) & 0xffu,   // lightColorHint
+			( lightingExtra >> 16 ) & 0xffu,  // shadowFlags
+			( lightingExtra >> 24 ) & 0xffu   // reserved
+		);
 
 		vec3 worldPos = project( rotate( tile ), vVertexCoords.xy, uIsWall );
 		gl_Position = uTransform * vec4( worldPos, 1.0 );

@@ -145,6 +145,43 @@ TileDataUpdate AggregatorRenderer::aggregateTile( unsigned int tileID ) const
 		td.aoFlags = ao;
 	}
 
+	// Compute shadow flags and light gradient for lighting system
+	{
+		Position pos( tileID );
+		const auto& world = g->w()->world();
+		int dimX = Global::dimX;
+		int dimY = Global::dimY;
+		int myLight = (int)td.lightLevel;
+		int maxDiff = 0;
+		unsigned char shadow = 0;
+
+		auto checkNeighbor = [&]( unsigned int nID, unsigned char shadowBit )
+		{
+			int nLight = qMin( (int)world[nID].lightLevel, 20 );
+			maxDiff = qMax( maxDiff, qAbs( myLight - nLight ) );
+			// Shadow: neighbor is a view-blocking wall and is darker than us
+			// (meaning light comes from our side and the wall blocks it)
+			if ( ( world[nID].wallType & WT_VIEWBLOCKING ) && nLight < myLight )
+				shadow |= shadowBit;
+		};
+
+		// North (y-1)
+		if ( pos.y > 0 )
+			checkNeighbor( tileID - dimX, 0x01 );
+		// East (x+1)
+		if ( pos.x + 1 < dimX )
+			checkNeighbor( tileID + 1, 0x02 );
+		// South (y+1)
+		if ( pos.y + 1 < dimY )
+			checkNeighbor( tileID + dimX, 0x04 );
+		// West (x-1)
+		if ( pos.x > 0 )
+			checkNeighbor( tileID - 1, 0x08 );
+
+		td.lightGradient = qMin( maxDiff, 255 );
+		td.shadowFlags   = shadow;
+	}
+
 	return TileDataUpdate { tileID, td };
 }
 

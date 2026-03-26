@@ -102,11 +102,11 @@ private:
 	GLuint m_fullscreenVao   = 0;
 	bool m_postProcessReady  = false;
 
-	float m_bloomStrength    = 0.25f;
-	float m_bloomThreshold   = 0.75f;
+	float m_bloomStrength    = 0.40f;
+	float m_bloomThreshold   = 0.50f;
 	float m_vignetteStrength = 0.25f;
 	float m_grainStrength    = 0.008f;
-	int m_bloomBlurPasses    = 4;
+	int m_bloomBlurPasses    = 6;
 
 	float m_weatherIntensity = 0.0f;
 
@@ -149,11 +149,12 @@ private:
 	bool m_paintCreatures = true;
 
 	float m_daylight = 1.0;
+	float m_dpr      = 1.0f; // device pixel ratio for Retina displays
 
 	int m_countRenders = 0;
 
 	bool m_pause     = false;
-	float m_lightMin = 0.35f;
+	float m_lightMin = 0.03f;
 
 	bool m_reloadShaders = false;
 
