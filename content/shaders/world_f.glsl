@@ -42,6 +42,7 @@ layout(location = 0) noperspective in vec2 vTexCoords;
 layout(location = 1) flat in uvec4  block1;
 layout(location = 2) flat in uvec4  block2;
 layout(location = 3) flat in uvec4  block3;
+layout(location = 4) flat in uint   vTileZ;
 
 layout(location = 0) out vec4 fColor;
 
@@ -61,6 +62,10 @@ uniform float uLightMin;
 uniform bool uPaintFrontToBack;
 
 uniform bool uShowJobs;
+
+uniform float uViewLevel;
+uniform float uRenderDepth;
+uniform int uSeason;
 
 const float waterAlpha = 0.6;
 const float flSize =  ( 1.0 / 32. );
@@ -130,9 +135,11 @@ void main()
 			{
 				vec4 tmpTexel = getTexel( uUndiscoveredTex / 4 + 2, 0, 0 );
 
-				texel.rgb = mix( texel.rgb, tmpTexel.rgb, tmpTexel.a );
-				texel.a = max(texel.a , tmpTexel.a);
+				// Fully replace — don't show any content through fog of war
+				texel.rgb = tmpTexel.rgb;
+				texel.a = tmpTexel.a;
 			}
+			// Skip all further floor rendering for undiscovered tiles
 		}
 		else
 		{
@@ -293,9 +300,11 @@ void main()
 			{
 				vec4 tmpTexel = getTexel( uUndiscoveredTex / 4, 0, 0 );
 
-				texel.rgb = mix( texel.rgb, tmpTexel.rgb, tmpTexel.a );
-				texel.a = max(texel.a , tmpTexel.a);
+				// Fully replace — don't show any content through fog of war
+				texel.rgb = tmpTexel.rgb;
+				texel.a = tmpTexel.a;
 			}
+			// Skip all further wall rendering for undiscovered tiles
 		}
 		else
 		{
@@ -363,17 +372,21 @@ void main()
 		}
 
 	
-		spriteID = creatureSpriteID;
-		animFrame = 0;
-		if( spriteID != 0 )
+		// Only render creatures on discovered tiles
+		if( ( vFlags & TF_UNDISCOVERED ) == 0 || uDebug )
 		{
-			rot = creatureSpriteFlags & 3u;
-			rot = ( rot + uWorldRotation ) % 4;
-			
-			vec4 tmpTexel = getTexel( spriteID, rot, animFrame );
-			
-			texel.rgb = mix( texel.rgb, tmpTexel.rgb, tmpTexel.a );
-			texel.a = max(texel.a , tmpTexel.a);
+			spriteID = creatureSpriteID;
+			animFrame = 0;
+			if( spriteID != 0 )
+			{
+				rot = creatureSpriteFlags & 3u;
+				rot = ( rot + uWorldRotation ) % 4;
+
+				vec4 tmpTexel = getTexel( spriteID, rot, animFrame );
+
+				texel.rgb = mix( texel.rgb, tmpTexel.rgb, tmpTexel.a );
+				texel.a = max(texel.a , tmpTexel.a);
+			}
 		}
 		
 		////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -446,6 +459,14 @@ void main()
 		// Desaturate, then darken
 		texel.rgb = mix(brightness * vec3(1,1,1), texel.rgb, saturation) * lightMult;
 
+		// Underground cave color — deep purple tint in dark underground areas
+		if( !hasSunlight && light < 0.3 )
+		{
+			vec3 caveColor = vec3( 0.12, 0.08, 0.15 );
+			float caveBlend = ( 0.3 - light ) / 0.3 * 0.3;
+			texel.rgb = mix( texel.rgb, caveColor, caveBlend );
+		}
+
 		// Night blue tint — shift outdoor areas toward cool blue at night
 		float nightAmount = clamp( 1.0 - uDaylight, 0.0, 1.0 );
 		vec3 nightTint = vec3( 0.65, 0.72, 1.0 ); // cool blue moonlight
@@ -458,6 +479,32 @@ void main()
 			float warmth = min( torchLight, 1.0 ) * 0.35;
 			texel.rgb = mix( texel.rgb, texel.rgb * torchTint, warmth );
 		}
+
+		// Seasonal color grading
+		vec3 seasonGrade;
+		float seasonStrength;
+		if( uSeason == 0 )      { seasonGrade = vec3( 0.95, 1.05, 0.9 );  seasonStrength = 0.15; } // spring: green
+		else if( uSeason == 1 ) { seasonGrade = vec3( 1.05, 1.0, 0.9 );   seasonStrength = 0.1; }  // summer: warm
+		else if( uSeason == 2 ) { seasonGrade = vec3( 1.1, 0.9, 0.7 );    seasonStrength = 0.25; } // autumn: amber
+		else                    { seasonGrade = vec3( 0.85, 0.9, 1.1 );    seasonStrength = 0.2; }  // winter: blue-grey
+		texel.rgb = mix( texel.rgb, texel.rgb * seasonGrade, seasonStrength );
+
+		// Depth fog — fade lower z-levels toward atmospheric color
+		if( uRenderDepth > 0.0 )
+		{
+			float depthFade = clamp( ( uViewLevel - float(vTileZ) ) / uRenderDepth, 0.0, 1.0 );
+			vec3 fogColor = mix( vec3( 0.08, 0.06, 0.12 ), vec3( 0.6, 0.7, 0.85 ), uDaylight );
+			texel.rgb = mix( texel.rgb, fogColor, depthFade * 0.6 );
+		}
 	}
+
+	// Mouseover rim highlight
+	if( ( vFlags & TF_MOUSEOVER ) != 0 )
+	{
+		float edgeDist = min( min( vTexCoords.x, 1.0 - vTexCoords.x ), min( vTexCoords.y, 1.0 - vTexCoords.y ) );
+		float rim = smoothstep( 0.0, 0.08, edgeDist );
+		texel.rgb = mix( vec3( 1.0, 0.95, 0.7 ), texel.rgb, rim * 0.7 + 0.3 );
+	}
+
 	fColor = texel;
 }

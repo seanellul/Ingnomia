@@ -914,6 +914,11 @@ void WorldGenerator::fillFloorMushroomBiome( int zz, QVector<TerrainMaterial>& m
 						//tile.flags |= TileFlag::TF_GRASS;
 						tile.flags += TileFlag::TF_BIOME_MUSHROOM;
 					}
+					// Mark open underground tiles as undiscovered too (cavern floors, air pockets)
+					if ( m_fow )
+					{
+						tile.flags += TileFlag::TF_UNDISCOVERED;
+					}
 				}
 			}
 		}
