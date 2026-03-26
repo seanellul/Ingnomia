@@ -37,7 +37,7 @@ public:
 	static bool saveConfig();
 	static bool loadOriginalConfig( QJsonDocument& jd );
 
-	bool saveGameExists();
+	static bool saveGameExists();
 
 	QString save( bool autosave = false );
 	bool load( QString folder );

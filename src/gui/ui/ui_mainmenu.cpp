@@ -1,11 +1,13 @@
 #include "ui_mainmenu.h"
 #include "../imguibridge.h"
+#include "../imgui_impl_qt5.h"
 #include "../updatechecker.h"
 #include "../eventconnector.h"
 
 #include "../../base/config.h"
 #include "../../base/global.h"
 #include "../../base/db.h"
+#include "../../base/io.h"
 #include "../../version.h"
 
 #include <imgui.h>
@@ -17,21 +19,72 @@ void drawMainMenu( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
 	ImVec2 center( io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f );
+	auto& fonts = GetImGuiFonts();
+
+	// Dark gradient background
+	ImDrawList* bg = ImGui::GetBackgroundDrawList();
+	ImU32 topColor = IM_COL32( 8, 12, 18, 255 );
+	ImU32 botColor = IM_COL32( 14, 18, 28, 255 );
+	bg->AddRectFilledMultiColor( ImVec2( 0, 0 ), io.DisplaySize, topColor, topColor, botColor, botColor );
+
+	// Subtle vignette overlay
+	ImU32 vignetteColor = IM_COL32( 0, 0, 0, 60 );
+	float vignetteW = io.DisplaySize.x * 0.15f;
+	float vignetteH = io.DisplaySize.y * 0.15f;
+	bg->AddRectFilledMultiColor( ImVec2( 0, 0 ), ImVec2( vignetteW, io.DisplaySize.y ),
+		vignetteColor, IM_COL32( 0, 0, 0, 0 ), IM_COL32( 0, 0, 0, 0 ), vignetteColor );
+	bg->AddRectFilledMultiColor( ImVec2( io.DisplaySize.x - vignetteW, 0 ), io.DisplaySize,
+		IM_COL32( 0, 0, 0, 0 ), vignetteColor, vignetteColor, IM_COL32( 0, 0, 0, 0 ) );
+	bg->AddRectFilledMultiColor( ImVec2( 0, 0 ), ImVec2( io.DisplaySize.x, vignetteH ),
+		vignetteColor, vignetteColor, IM_COL32( 0, 0, 0, 0 ), IM_COL32( 0, 0, 0, 0 ) );
+	bg->AddRectFilledMultiColor( ImVec2( 0, io.DisplaySize.y - vignetteH ), io.DisplaySize,
+		IM_COL32( 0, 0, 0, 0 ), IM_COL32( 0, 0, 0, 0 ), vignetteColor, vignetteColor );
+
+	// Responsive menu sizing
+	float menuW = qBound( 300.0f, io.DisplaySize.x * 0.25f, 450.0f );
+	float menuH = qBound( 400.0f, io.DisplaySize.y * 0.55f, 550.0f );
+	float buttonWidth = menuW - 40.0f;
+	float buttonHeight = qBound( 35.0f, menuH * 0.08f, 48.0f );
+	float pad = ( menuW - buttonWidth ) * 0.5f;
 
 	ImGui::SetNextWindowPos( center, ImGuiCond_Always, ImVec2( 0.5f, 0.5f ) );
-	ImGui::SetNextWindowSize( ImVec2( 300, 300 ) );
+	ImGui::SetNextWindowSize( ImVec2( menuW, menuH ) );
+	ImGui::PushStyleColor( ImGuiCol_WindowBg, ImVec4( 0.06f, 0.08f, 0.10f, 0.88f ) );
+	ImGui::PushStyleColor( ImGuiCol_Border, ImVec4( 0.20f, 0.25f, 0.32f, 0.40f ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 20, 20 ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 1.0f );
 
-	ImGui::Begin( "Ingnomia", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar );
+	ImGui::Begin( "Ingnomia", nullptr,
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar );
 
-	ImGui::SetCursorPosX( ( 300 - ImGui::CalcTextSize( "INGNOMIA" ).x ) * 0.5f );
+	// Title
+	if ( fonts.title )
+		ImGui::PushFont( fonts.title );
+	ImVec2 titleSize = ImGui::CalcTextSize( "INGNOMIA" );
+	ImGui::SetCursorPosX( ( menuW - titleSize.x ) * 0.5f );
 	ImGui::TextUnformatted( "INGNOMIA" );
+	if ( fonts.title )
+		ImGui::PopFont();
 
-	// Version string
-	const char* ver = PROJECT_VERSION;
-	ImGui::SetCursorPosX( ( 300 - ImGui::CalcTextSize( ver ).x ) * 0.5f );
-	ImGui::TextDisabled( "%s", ver );
+	// Tagline
+	if ( fonts.uiSmall )
+		ImGui::PushFont( fonts.uiSmall );
+	const char* tagline = "A Colony Simulation";
+	ImGui::SetCursorPosX( ( menuW - ImGui::CalcTextSize( tagline ).x ) * 0.5f );
+	ImGui::TextDisabled( "%s", tagline );
+	if ( fonts.uiSmall )
+		ImGui::PopFont();
 
+	ImGui::Spacing();
+	ImGui::PushStyleColor( ImGuiCol_Separator, ImVec4( 0.25f, 0.30f, 0.38f, 0.30f ) );
 	ImGui::Separator();
+	ImGui::PopStyleColor();
+	ImGui::Spacing();
+
+	// Push UI font for buttons and body text
+	if ( fonts.ui )
+		ImGui::PushFont( fonts.ui );
 
 	// Update banner
 	if ( bridge.updateChecker && bridge.updateChecker->updateAvailable() )
@@ -39,55 +92,89 @@ void drawMainMenu( ImGuiBridge& bridge )
 		ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.3f, 1.0f, 0.3f, 1.0f ) );
 		QString updateText = QString( "Update available: v%1" ).arg( bridge.updateChecker->latestVersion() );
 		QByteArray updateBytes = updateText.toUtf8();
-		ImGui::SetCursorPosX( ( 300 - ImGui::CalcTextSize( updateBytes.constData() ).x ) * 0.5f );
+		ImGui::SetCursorPosX( ( menuW - ImGui::CalcTextSize( updateBytes.constData() ).x ) * 0.5f );
 		ImGui::TextUnformatted( updateBytes.constData() );
 		ImGui::PopStyleColor();
 
-		float dlBtnWidth = 160;
-		ImGui::SetCursorPosX( ( 300 - dlBtnWidth ) * 0.5f );
+		float dlBtnWidth = qMin( 180.0f, buttonWidth );
+		ImGui::SetCursorPosX( ( menuW - dlBtnWidth ) * 0.5f );
 		if ( ImGui::Button( "Download Update", ImVec2( dlBtnWidth, 28 ) ) )
 		{
 			QDesktopServices::openUrl( QUrl( bridge.updateChecker->downloadUrl() ) );
 		}
+		ImGui::Spacing();
 	}
 
-	ImGui::Spacing();
+	// Check for existing saves (throttled to once per second)
+	static bool hasSaves = false;
+	static double lastCheck = -10.0;
+	if ( ImGui::GetTime() - lastCheck > 1.0 )
+	{
+		hasSaves = IO::saveGameExists();
+		lastCheck = ImGui::GetTime();
+	}
 
-	float buttonWidth = 260;
-	ImGui::SetCursorPosX( ( 300 - buttonWidth ) * 0.5f );
-	if ( ImGui::Button( "New Game", ImVec2( buttonWidth, 40 ) ) )
+	// Button styling
+	ImGui::PushStyleVar( ImGuiStyleVar_FrameRounding, 4.0f );
+	ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( 8, 8 ) );
+
+	ImGui::SetCursorPosX( pad );
+	if ( ImGui::Button( "New Game", ImVec2( buttonWidth, buttonHeight ) ) )
 	{
 		bridge.appState = ImGuiBridge::AppState::NewGame;
 	}
 
-	ImGui::SetCursorPosX( ( 300 - buttonWidth ) * 0.5f );
-	if ( ImGui::Button( "Continue", ImVec2( buttonWidth, 40 ) ) )
+	if ( !hasSaves ) ImGui::BeginDisabled();
+	ImGui::SetCursorPosX( pad );
+	if ( ImGui::Button( "Continue", ImVec2( buttonWidth, buttonHeight ) ) )
 	{
 		bridge.cmdContinueLastGame();
 	}
+	if ( !hasSaves ) ImGui::EndDisabled();
 
-	ImGui::SetCursorPosX( ( 300 - buttonWidth ) * 0.5f );
-	if ( ImGui::Button( "Load Game", ImVec2( buttonWidth, 40 ) ) )
+	ImGui::SetCursorPosX( pad );
+	if ( ImGui::Button( "Load Game", ImVec2( buttonWidth, buttonHeight ) ) )
 	{
 		bridge.appState = ImGuiBridge::AppState::LoadGame;
 		Global::eventConnector->aggregatorLoadGame()->onRequestKingdoms();
 	}
 
-	ImGui::SetCursorPosX( ( 300 - buttonWidth ) * 0.5f );
-	if ( ImGui::Button( "Settings", ImVec2( buttonWidth, 40 ) ) )
+	ImGui::SetCursorPosX( pad );
+	if ( ImGui::Button( "Settings", ImVec2( buttonWidth, buttonHeight ) ) )
 	{
 		bridge.appState = ImGuiBridge::AppState::Settings;
 		Global::eventConnector->aggregatorSettings()->onRequestSettings();
 	}
 
 	ImGui::Spacing();
-	ImGui::SetCursorPosX( ( 300 - buttonWidth ) * 0.5f );
-	if ( ImGui::Button( "Exit", ImVec2( buttonWidth, 40 ) ) )
+	ImGui::Spacing();
+
+	ImGui::SetCursorPosX( pad );
+	if ( ImGui::Button( "Exit", ImVec2( buttonWidth, buttonHeight ) ) )
 	{
 		bridge.cmdEndGame();
 	}
 
+	ImGui::PopStyleVar( 2 ); // FrameRounding, FramePadding
+
+	if ( fonts.ui )
+		ImGui::PopFont();
+
+	// Version pinned to bottom
+	if ( fonts.uiSmall )
+		ImGui::PushFont( fonts.uiSmall );
+	const char* ver = PROJECT_VERSION;
+	float verHeight = ImGui::CalcTextSize( ver ).y;
+	ImGui::SetCursorPosY( menuH - verHeight - 12.0f );
+	ImGui::SetCursorPosX( ( menuW - ImGui::CalcTextSize( ver ).x ) * 0.5f );
+	ImGui::TextDisabled( "%s", ver );
+	if ( fonts.uiSmall )
+		ImGui::PopFont();
+
 	ImGui::End();
+
+	ImGui::PopStyleVar( 2 );  // WindowPadding, WindowBorderSize
+	ImGui::PopStyleColor( 2 ); // WindowBg, Border
 }
 
 void drawNewGame( ImGuiBridge& bridge )

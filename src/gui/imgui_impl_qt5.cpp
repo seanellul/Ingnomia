@@ -6,6 +6,15 @@
 #include <QWheelEvent>
 #include <QCursor>
 #include <QGuiApplication>
+#include <QCoreApplication>
+#include <QFileInfo>
+
+static ImGuiFonts s_fonts;
+
+ImGuiFonts& GetImGuiFonts()
+{
+	return s_fonts;
+}
 
 namespace
 {
@@ -90,6 +99,24 @@ void ImGuiQt5::Init( QOpenGLWindow* window )
 
 	style.ScaleAllSizes( dpr );
 	io.FontGlobalScale = 1.0f;
+
+	// Add ImGui's built-in default font first — it must be first in the atlas
+	// so it remains the default for all existing UI panels.
+	io.Fonts->AddFontDefault();
+
+	// Load custom fonts (used only via PushFont/PopFont in the main menu)
+	QString exePath = QCoreApplication::applicationDirPath();
+	std::string titlePath = ( exePath + "/content/xaml/Fonts/HermeneusOne-Regular.ttf" ).toStdString();
+	std::string uiPath    = ( exePath + "/content/xaml/Theme/Fonts/PT Root UI_Regular.otf" ).toStdString();
+
+	if ( QFileInfo::exists( QString::fromStdString( titlePath ) ) )
+		s_fonts.title = io.Fonts->AddFontFromFileTTF( titlePath.c_str(), 48.0f );
+
+	if ( QFileInfo::exists( QString::fromStdString( uiPath ) ) )
+	{
+		s_fonts.ui      = io.Fonts->AddFontFromFileTTF( uiPath.c_str(), 18.0f );
+		s_fonts.uiSmall = io.Fonts->AddFontFromFileTTF( uiPath.c_str(), 14.0f );
+	}
 }
 
 void ImGuiQt5::Shutdown()
