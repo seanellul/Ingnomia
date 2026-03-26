@@ -1,5 +1,6 @@
 #include "testcommandserver.h"
 
+#include "../base/config.h"
 #include "../base/global.h"
 #include "../base/gamestate.h"
 #include "../base/tile.h"
@@ -484,11 +485,17 @@ void TestCommandServer::onLoadGameDone( bool success )
 QJsonObject TestCommandServer::handleNewGame( const QJsonObject& cmd )
 {
 	int worldSize = cmd["world_size"].toInt( 100 );
+	int numGnomes = cmd["num_gnomes"].toInt( 0 ); // 0 = use default
 	QString seed = cmd["seed"].toString( "benchmark" );
 
 	auto ngs = Global::newGameSettings;
 	ngs->setWorldSize( worldSize );
 	ngs->setSeed( seed );
+	if ( numGnomes > 0 )
+	{
+		ngs->setNumGnomes( numGnomes );
+		Global::cfg->set( "numGnomes", numGnomes );
+	}
 
 	m_waitingForNewGame = true;
 	m_newGameTimer.start();
