@@ -4620,6 +4620,7 @@ INSERT INTO "Translation" ("ID","Text") VALUES ('$ItemName_KnifeBlade','knife bl
 INSERT INTO "Translation" ("ID","Text") VALUES ('$ItemName_KnifeHilt','knife hilt');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$ItemName_LeatherStrap','leather strap');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$ItemName_Leaves','leaves');
+INSERT INTO "Translation" ("ID","Text") VALUES ('$ItemName_Log','log');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$ItemName_LogFloor','log floor');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$ItemName_LogWall','log wall');
 INSERT INTO "Translation" ("ID","Text") VALUES ('$ItemName_Loom','loom');
