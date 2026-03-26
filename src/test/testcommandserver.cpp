@@ -1,6 +1,10 @@
 #include "testcommandserver.h"
 
 #include "../base/global.h"
+#include "../base/gamestate.h"
+#include "../base/tile.h"
+#include "../game/game.h"
+#include "../game/newgamesettings.h"
 #include "../gui/eventconnector.h"
 #include "../gui/imguibridge.h"
 #include "../gui/mainwindow.h"
@@ -151,6 +155,22 @@ void TestCommandServer::onCommand( const QJsonObject& cmd )
 	{
 		response = handleGetMetrics();
 	}
+	else if ( command == "new_game" )
+	{
+		response = handleNewGame( cmd );
+		if ( response.contains( "async" ) )
+			return;
+	}
+	else if ( command == "get_perf" )
+	{
+		response = handleGetPerf();
+	}
+	else if ( command == "benchmark" )
+	{
+		response = handleBenchmark( cmd );
+		if ( response.contains( "async" ) )
+			return;
+	}
 	else if ( command == "save_game" )
 	{
 		m_bridge->cmdSaveGame();
@@ -234,6 +254,7 @@ QJsonObject TestCommandServer::handleAdvanceTicks( const QJsonObject& cmd )
 
 	m_targetTicks = count;
 	m_currentTicks = 0;
+	m_startTick = GameState::tick;
 	m_waitingForTicks = true;
 
 	// Unpause
@@ -360,14 +381,69 @@ void TestCommandServer::onHeartbeat( int value )
 	if ( !m_waitingForTicks )
 		return;
 
-	m_currentTicks++;
+	m_currentTicks = (int)( GameState::tick - m_startTick );
 
 	if ( m_currentTicks >= m_targetTicks )
 	{
 		m_waitingForTicks = false;
-
-		// Pause
 		m_bridge->cmdSetPaused( true );
+
+		if ( m_benchmarkRunning )
+		{
+			// Defer result collection to let game thread flush timing data
+			int ticksRun = m_currentTicks;
+			QTimer::singleShot( 200, this, [this, ticksRun]() {
+				QJsonObject result;
+				int size = m_benchmarkSizes[m_benchmarkIndex].toInt();
+				result["world_size"] = size;
+				result["total_tiles"] = Global::dimX * Global::dimY * Global::dimZ;
+				result["tile_memory_mb"] = (double)( sizeof( Tile ) * Global::dimX * Global::dimY * Global::dimZ ) / ( 1024.0 * 1024.0 );
+				result["ticks_run"] = ticksRun;
+				result["current_tick"] = (qint64)GameState::tick;
+
+				auto* game = Global::eventConnector->game();
+				if ( game )
+				{
+					result["game_valid"] = true;
+					result["game_paused"] = game->paused();
+					const auto& t = game->lastTickTiming();
+					QJsonObject timing;
+					timing["creatures_us"] = t.creatures_us;
+					timing["gnomes_us"] = t.gnomes_us;
+					timing["jobs_us"] = t.jobs_us;
+					timing["naturalWorld_us"] = t.naturalWorld_us;
+					timing["passive_us"] = t.passive_us;
+					timing["events_us"] = t.events_us;
+					timing["total_us"] = t.total_us;
+					result["tick_timing"] = timing;
+				}
+				else
+				{
+					result["game_valid"] = false;
+				}
+
+				m_benchmarkResults.append( result );
+				m_benchmarkIndex++;
+
+				if ( m_benchmarkIndex < m_benchmarkSizes.size() )
+				{
+					int nextSize = m_benchmarkSizes[m_benchmarkIndex].toInt();
+					QJsonObject fakeCmd;
+					fakeCmd["world_size"] = nextSize;
+					fakeCmd["seed"] = "benchmark";
+					handleNewGame( fakeCmd );
+				}
+				else
+				{
+					m_benchmarkRunning = false;
+					QJsonObject response;
+					response["status"] = "ok";
+					response["results"] = m_benchmarkResults;
+					sendResponse( response );
+				}
+			});
+			return;
+		}
 
 		QJsonObject response;
 		response["status"] = "ok";
@@ -378,22 +454,170 @@ void TestCommandServer::onHeartbeat( int value )
 
 void TestCommandServer::onLoadGameDone( bool success )
 {
-	if ( !m_waitingForLoad )
-		return;
+	if ( m_waitingForLoad )
+	{
+		m_waitingForLoad = false;
 
-	m_waitingForLoad = false;
+		QJsonObject response;
+		if ( success )
+		{
+			response["status"] = "ok";
+			response["save_loaded"] = true;
+		}
+		else
+		{
+			response["status"] = "error";
+			response["message"] = "Failed to load save game";
+			response["save_loaded"] = false;
+		}
+		sendResponse( response );
+	}
+	else if ( m_waitingForNewGame )
+	{
+		onNewGameDone( success );
+	}
+}
+
+QJsonObject TestCommandServer::handleNewGame( const QJsonObject& cmd )
+{
+	int worldSize = cmd["world_size"].toInt( 100 );
+	QString seed = cmd["seed"].toString( "benchmark" );
+
+	auto ngs = Global::newGameSettings;
+	ngs->setWorldSize( worldSize );
+	ngs->setSeed( seed );
+
+	m_waitingForNewGame = true;
+	m_newGameTimer.start();
+
+	m_bridge->cmdStartNewGame();
+
+	QJsonObject response;
+	response["async"] = true;
+	return response;
+}
+
+void TestCommandServer::onNewGameDone( bool success )
+{
+	m_waitingForNewGame = false;
+	qint64 genTime = m_newGameTimer.elapsed();
+
+	if ( m_benchmarkRunning )
+	{
+		// Benchmark mode — advance ticks next
+		if ( success )
+		{
+			m_startTick = GameState::tick;
+			m_targetTicks = m_benchmarkTicksPerSize;
+			m_currentTicks = 0;
+			m_waitingForTicks = true;
+			m_bridge->cmdSetPaused( false );
+		}
+		else
+		{
+			// Skip this size, record failure
+			QJsonObject result;
+			result["world_size"] = m_benchmarkSizes[m_benchmarkIndex].toInt();
+			result["error"] = "generation failed";
+			m_benchmarkResults.append( result );
+			m_benchmarkIndex++;
+			// Continue to next size or finish
+			if ( m_benchmarkIndex < m_benchmarkSizes.size() )
+			{
+				int nextSize = m_benchmarkSizes[m_benchmarkIndex].toInt();
+				QJsonObject fakeCmd;
+				fakeCmd["world_size"] = nextSize;
+				fakeCmd["seed"] = "benchmark";
+				handleNewGame( fakeCmd );
+			}
+			else
+			{
+				m_benchmarkRunning = false;
+				QJsonObject response;
+				response["status"] = "ok";
+				response["results"] = m_benchmarkResults;
+				sendResponse( response );
+			}
+		}
+		return;
+	}
 
 	QJsonObject response;
 	if ( success )
 	{
 		response["status"] = "ok";
-		response["save_loaded"] = true;
+		response["world_size"] = Global::dimX;
+		response["total_tiles"] = Global::dimX * Global::dimY * Global::dimZ;
+		response["generation_ms"] = genTime;
+		response["memory_mb"] = (double)( sizeof( Tile ) * Global::dimX * Global::dimY * Global::dimZ ) / ( 1024.0 * 1024.0 );
 	}
 	else
 	{
 		response["status"] = "error";
-		response["message"] = "Failed to load save game";
-		response["save_loaded"] = false;
+		response["message"] = "World generation failed";
 	}
 	sendResponse( response );
+}
+
+QJsonObject TestCommandServer::handleGetPerf()
+{
+	QJsonObject response;
+	response["status"] = "ok";
+
+	auto* game = Global::eventConnector->game();
+	if ( !game )
+	{
+		response["status"] = "error";
+		response["message"] = "No game running";
+		return response;
+	}
+
+	response["game_paused"] = game->paused();
+
+	const auto& t = game->lastTickTiming();
+	QJsonObject timing;
+	timing["pathCollect_us"] = t.pathCollect_us;
+	timing["naturalWorld_us"] = t.naturalWorld_us;
+	timing["creatures_us"] = t.creatures_us;
+	timing["gnomes_us"] = t.gnomes_us;
+	timing["jobs_us"] = t.jobs_us;
+	timing["stockpiles_us"] = t.stockpiles_us;
+	timing["farming_us"] = t.farming_us;
+	timing["workshops_us"] = t.workshops_us;
+	timing["passive_us"] = t.passive_us;
+	timing["events_us"] = t.events_us;
+	timing["pathDispatch_us"] = t.pathDispatch_us;
+	timing["total_us"] = t.total_us;
+
+	response["tick_timing"] = timing;
+	response["world_size"] = Global::dimX;
+	response["total_tiles"] = Global::dimX * Global::dimY * Global::dimZ;
+	response["tile_memory_mb"] = (double)( sizeof( Tile ) * Global::dimX * Global::dimY * Global::dimZ ) / ( 1024.0 * 1024.0 );
+	response["current_tick"] = (qint64)GameState::tick;
+
+	return response;
+}
+
+QJsonObject TestCommandServer::handleBenchmark( const QJsonObject& cmd )
+{
+	m_benchmarkSizes = cmd["sizes"].toArray();
+	if ( m_benchmarkSizes.isEmpty() )
+	{
+		m_benchmarkSizes = QJsonArray{ 50, 100, 150, 200, 250, 300 };
+	}
+	m_benchmarkTicksPerSize = cmd["ticks_per_size"].toInt( 200 );
+	m_benchmarkIndex = 0;
+	m_benchmarkResults = QJsonArray();
+	m_benchmarkRunning = true;
+
+	// Start first size
+	int firstSize = m_benchmarkSizes[0].toInt();
+	QJsonObject fakeCmd;
+	fakeCmd["world_size"] = firstSize;
+	fakeCmd["seed"] = "benchmark";
+	handleNewGame( fakeCmd );
+
+	QJsonObject response;
+	response["async"] = true;
+	return response;
 }

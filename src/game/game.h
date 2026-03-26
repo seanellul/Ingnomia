@@ -22,6 +22,22 @@
 
 #include <QObject>
 
+struct TickTimingInfo
+{
+	qint64 pathCollect_us = 0;
+	qint64 naturalWorld_us = 0; // grass + water + plants (parallel)
+	qint64 creatures_us = 0;
+	qint64 gnomes_us = 0;
+	qint64 jobs_us = 0;
+	qint64 stockpiles_us = 0;
+	qint64 farming_us = 0;
+	qint64 workshops_us = 0;
+	qint64 passive_us = 0; // rooms + mechanisms + fluids + neighbors + sound (parallel)
+	qint64 events_us = 0;
+	qint64 pathDispatch_us = 0;
+	qint64 total_us = 0;
+};
+
 class Config;
 class NewGameSettings;
 
@@ -110,6 +126,8 @@ public:
 	PathFinder* pf();
 	SoundManager* sm();
 
+	const TickTimingInfo& lastTickTiming() const { return m_lastTickTiming; }
+
 private:
 	QScopedPointer<World> m_world;
 	QScopedPointer<SpriteFactory> m_sf;
@@ -140,6 +158,8 @@ private:
 
 	bool m_paused         = true;
 	GameSpeed m_gameSpeed = GameSpeed::Normal;
+
+	TickTimingInfo m_lastTickTiming;
 
 	QPointer<Inventory> m_inv;
 

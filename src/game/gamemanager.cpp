@@ -137,7 +137,8 @@ void GameManager::startNewGame()
 	
 	// check if folder exists, set new save folder name if yes
 	createNewGame();
-	
+
+	m_eventConnector->sendLoadGameDone( true );
 	m_eventConnector->sendResume();
 }
 

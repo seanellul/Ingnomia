@@ -255,7 +255,7 @@ void drawNewGame( ImGuiBridge& bridge )
 				snprintf( seed, sizeof( seed ), "%d", QRandomGenerator::global()->generate() );
 			}
 
-			ImGui::SliderInt( "World size", &worldSize, 50, 200 );
+			ImGui::SliderInt( "World size", &worldSize, 50, 400 );
 			ImGui::SliderInt( "Flatness", &flatness, 1, 20 );
 			ImGui::SliderInt( "Ocean size", &oceanSize, 0, 10 );
 			ImGui::SliderInt( "Rivers", &rivers, 0, 5 );

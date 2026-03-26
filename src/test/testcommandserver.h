@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QThread>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <QElapsedTimer>
 
 class ImGuiBridge;
 class MainWindow;
@@ -48,9 +50,13 @@ private:
 	QJsonObject handleBuild( const QJsonObject& cmd );
 	QJsonObject handleSpawnCreature( const QJsonObject& cmd );
 	QJsonObject handleGetMetrics();
+	QJsonObject handleNewGame( const QJsonObject& cmd );
+	QJsonObject handleGetPerf();
+	QJsonObject handleBenchmark( const QJsonObject& cmd );
 
 	void onHeartbeat( int value );
 	void onLoadGameDone( bool success );
+	void onNewGameDone( bool success );
 
 	ImGuiBridge* m_bridge;
 	MainWindow* m_window;
@@ -59,6 +65,16 @@ private:
 	// For advance_ticks command
 	int m_targetTicks = 0;
 	int m_currentTicks = 0;
+	quint64 m_startTick = 0; // GameState::tick at start of advance
 	bool m_waitingForTicks = false;
 	bool m_waitingForLoad = false;
+	bool m_waitingForNewGame = false;
+	QElapsedTimer m_newGameTimer;
+
+	// For benchmark command
+	bool m_benchmarkRunning = false;
+	QJsonArray m_benchmarkSizes;
+	int m_benchmarkTicksPerSize = 200;
+	int m_benchmarkIndex = 0;
+	QJsonArray m_benchmarkResults;
 };

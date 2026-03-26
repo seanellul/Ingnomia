@@ -209,9 +209,15 @@ void Game::loop()
 			bool profileTick = ( GameState::tick % 50 == 0 );
 
 			// Collect pathfinding results from previous tick's dispatch
+			// Use nsecsElapsed for microsecond precision (restart() only gives ms)
+			auto usElapsed = [&phase]() -> qint64 {
+				qint64 us = phase.nsecsElapsed() / 1000;
+				phase.restart();
+				return us;
+			};
 			phase.start();
 			m_pf->collectPaths();
-			qint64 tPathCollect = phase.restart();
+			qint64 tPathCollect = usElapsed();
 
 			// Phase 2: Parallel natural world processing
 			// Grass (vegetationLevel), water (fluidLevel), and plants (m_plants map) touch independent data
@@ -221,26 +227,26 @@ void Game::loop()
 			grassFuture.get();
 			waterFuture.get();
 			qint64 tGrass = 0; // Combined into parallel block
-			qint64 tPlants = phase.restart();
+			qint64 tPlants = usElapsed();
 
 			m_creatureManager->onTick( GameState::tick, sc, dc, hc, mc );
-			qint64 tCreatures = phase.restart();
+			qint64 tCreatures = usElapsed();
 
 			m_gnomeManager->onTick( GameState::tick, sc, dc, hc, mc );
 			ms2 = phase.elapsed();
-			qint64 tGnomes = phase.restart();
+			qint64 tGnomes = usElapsed();
 
 			m_jobManager->onTick();
-			qint64 tJobs = phase.restart();
+			qint64 tJobs = usElapsed();
 
 			m_spm->onTick( GameState::tick );
-			qint64 tStockpiles = phase.restart();
+			qint64 tStockpiles = usElapsed();
 
 			m_farmingManager->onTick( GameState::tick, sc, dc, hc, mc );
-			qint64 tFarming = phase.restart();
+			qint64 tFarming = usElapsed();
 
 			m_workshopManager->onTick( GameState::tick );
-			qint64 tWorkshops = phase.restart();
+			qint64 tWorkshops = usElapsed();
 
 			// Phase 3: Passive systems run in parallel with event/history processing
 			auto passiveFuture = std::async( std::launch::async, [this, sc, dc, hc, mc]{
@@ -253,21 +259,39 @@ void Game::loop()
 
 			m_inv->itemHistory()->onTick( dc );
 			m_eventManager->onTick( GameState::tick, sc, dc, hc, mc );
-			qint64 tEvents = phase.restart();
+			qint64 tEvents = usElapsed();
 
 			passiveFuture.get();
 			qint64 tRooms = 0;       // Combined into passive block
 			qint64 tMechanisms = 0;
 			qint64 tFluids = 0;
 			qint64 tNeighbors = 0;
-			qint64 tSound = phase.restart();
+			qint64 tSound = usElapsed();
 
 			// Water already processed in parallel block above
 			qint64 tWater = 0;
 
 			// Dispatch pathfinding workers (non-blocking — results collected next tick)
 			m_pf->dispatchPaths();
-			qint64 tPaths = phase.restart();
+			qint64 tPaths = usElapsed();
+
+			// Store timing for benchmark/perf queries
+			{
+				qint64 total = tPathCollect + tPlants + tCreatures + tGnomes + tJobs +
+					tStockpiles + tFarming + tWorkshops + tEvents + tSound + tPaths;
+				m_lastTickTiming.pathCollect_us = tPathCollect;
+				m_lastTickTiming.naturalWorld_us = tPlants; // includes parallel grass+water
+				m_lastTickTiming.creatures_us = tCreatures;
+				m_lastTickTiming.gnomes_us = tGnomes;
+				m_lastTickTiming.jobs_us = tJobs;
+				m_lastTickTiming.stockpiles_us = tStockpiles;
+				m_lastTickTiming.farming_us = tFarming;
+				m_lastTickTiming.workshops_us = tWorkshops;
+				m_lastTickTiming.passive_us = tSound; // includes parallel rooms+mechanisms+fluids+neighbors
+				m_lastTickTiming.events_us = tEvents;
+				m_lastTickTiming.pathDispatch_us = tPaths;
+				m_lastTickTiming.total_us = total;
+			}
 
 			if ( profileTick )
 			{

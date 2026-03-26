@@ -6,6 +6,76 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-26] World Size Performance Benchmarking & Larger Maps
+
+**Milestone**: 0.0 — Foundations & Performance
+**Files changed**: `src/game/game.h`, `src/game/game.cpp`, `src/game/gamemanager.cpp`, `src/test/testcommandserver.h`, `src/test/testcommandserver.cpp`, `src/gui/ui/ui_mainmenu.cpp`
+
+### Changes
+- **Per-system tick timing**: `TickTimingInfo` struct with microsecond precision for all subsystems (creatures, gnomes, jobs, naturalWorld, passive, events, pathfinding). Always-on, accessible via `Game::lastTickTiming()`.
+- **`new_game` test command**: Create worlds at any size programmatically via `{"cmd":"new_game","world_size":300}`
+- **`get_perf` test command**: Returns per-system tick breakdown, memory usage, tick count
+- **`benchmark` test command**: Automated sweep across multiple world sizes
+- **World size slider**: Extended from max 200 to max 400
+- **sendLoadGameDone signal**: Now fires after new game creation (was missing)
+
+### Benchmark Results (100 ticks, fresh worlds)
+| Size | Tiles | RAM | Gen Time | Tick Time |
+|------|-------|-----|----------|-----------|
+| 100 | 1.3M | 50MB | 6s | 2.4ms |
+| 200 | 5.2M | 198MB | 16s | 1.6ms |
+| 300 | 11.7M | 446MB | 31s | 5.2ms |
+| 400 | 20.8M | 793MB | 52s | 4.0ms |
+
+### Technical Details
+- Tick time dominated by creature AI, not world size — safe to increase map size
+- NaturalWorld processing (grass/water/plants) parallelized, stays under 3ms at 400
+- GPU render volume is viewport-bounded, unaffected by world size
+- Memory scales linearly: ~2MB per 100 tiles (Tile struct ~40 bytes)
+- Timing uses `QElapsedTimer::nsecsElapsed()` for μs precision
+
+---
+
+## [2026-03-25] Lighting & Shadow System — "Light vs Darkness"
+
+**Milestone**: 2.0 — Visual Identity
+**Files changed**: `mainwindowrenderer.h`, `mainwindowrenderer.cpp`, `world_f.glsl`, `world_v.glsl`, `aggregatorrenderer.h`, `aggregatorrenderer.cpp`
+
+### Changes
+- **True darkness rendering** — dropped `lightMin` from 0.35 to 0.03 with quadratic falloff curve. Unlit tiles are now near-black instead of 35% visible. This is the foundation of the "light vs darkness" game identity.
+- **Warm torch glow with HDR bloom** — torches now cast warm amber light (`vec3(1.0, 0.85, 0.55)`) with an additive HDR boost that pushes pixels above 1.0 for the bloom pipeline to catch, creating visible glow halos around light sources.
+- **Oppressive night atmosphere** — night outdoor tiles get a strong cold blue tint (`vec3(0.55, 0.62, 1.0)`) with quadratic ramp, creating dramatic contrast between warm indoor torch-lit areas and cold outdoor darkness.
+- **Fixed and re-enabled post-processing pipeline** — bloom/vignette/grain was disabled due to macOS Retina DPR mismatch. Fixed FBO sizing to use physical pixel dimensions (`devicePixelRatioF()`), re-enabled the full bright-extract → gaussian-blur → composite pipeline.
+- **Bloom tuning** — lowered threshold from 0.75 to 0.50 (catches torch glow), increased strength from 0.25 to 0.40, increased blur passes from 4 to 6 (wider halos). Dynamic vignette darkens edges more at night.
+- **Light boundary edge effect** — subtle warm glow (`vec3(0.6, 0.35, 0.1)`) at mid-light values creates a visible "circle of safety" at the edge of light radius (Don't Starve inspiration).
+- **Wall shadow casting** — expanded TileData from 9 to 10 uints per tile, added CPU-computed directional shadow flags (N/E/S/W). Fragment shader renders directional edge darkening from shadow-casting walls, rotation-aware, with smooth falloff. Shadows are most visible in partially lit areas.
+
+### Technical Details
+- Quadratic light curve (`light * light`) gives sharp falloff at light boundaries while preserving full brightness in well-lit areas
+- HDR additive glow (`texel.rgb += torchColor * warmth * 0.15`) is the key to making bloom work with light sources — without pushing above 1.0, the bright-extract pass has nothing to catch
+- TileData expanded to 10 uints: new fields are `lightGradient`, `lightColorHint`, `shadowFlags`, `reserved` (packed as 4 bytes in the 10th uint)
+- Shadow flags computed in `aggregateTile()`: for each cardinal neighbor, if the neighbor is `WT_VIEWBLOCKING` and has lower light level, a shadow bit is set
+- Post-processing FBO fix: logical window size (from Qt) vs physical pixel size (for GL framebuffers) must be multiplied by `devicePixelRatioF()` on Retina displays
+- Fog color now adapts to darkness — near-black at night instead of the previous blue-grey, preventing fog from looking brighter than the darkness itself
+
+---
+
+## [2026-03-25] Starting Items Configuration UI
+
+**Milestone**: 2.0 — Core Gameplay Polish
+**Files changed**: `src/gui/ui/ui_mainmenu.cpp`
+
+### Changes
+- **Starting items tab** — Replaced placeholder with full item picker UI. Left side shows all items from the DB grouped by category with collapsible tree nodes and a search filter. Right side shows current starting items list with remove buttons. Material dropdown(s) appear when an item is selected (supports multi-component items like pickaxes). Amount input with Add button.
+
+### Technical Details
+- All operations go through existing `NewGameSettings::addStartingItem()` / `removeStartingItem()` — no backend changes needed
+- Item data cached from `DB::selectRows("Items")` on first tab open, grouped by Category column
+- Translations via `S::s("$ItemName_...")` and `S::s("$MaterialName_...")` with raw ID fallback
+- Materials queried via `NewGameSettings::materialsForItem()` which handles both simple and component items
+
+---
+
 ## [2026-03-25] Main Menu Redesign — Custom Fonts, Styling, Continue Button Fix
 
 **Milestone**: 3.0 — Visual Polish & Atmosphere
