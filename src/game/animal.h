@@ -143,6 +143,7 @@ private:
 
 	unsigned int m_inJob = 0;
 	float m_hunger       = 50;
+	float m_hungerRate   = 0.01f; // hunger loss per minute-tick, varies by size
 	int m_foodValue      = 1;
 	QString m_diet;              // "Meat", "Vegetable", "Fruit", etc. from DB
 	bool m_starvingAggro = false; // becomes aggro when starving + can eat meat

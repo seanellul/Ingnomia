@@ -319,6 +319,22 @@ void Animal::setState( int state )
 		m_stateChangeTick = 0;
 	}
 
+	// Set hunger rate based on anatomy size — larger animals burn calories slower
+	// Base rate ~0.01/min → ~7 in-game days to starve from full (100 / 0.01 / 1440 ≈ 7 days)
+	QString anatomy = m_stateMap.value( "Anatomy" ).toString();
+	if ( anatomy == "AnimalBig" || anatomy == "BirdBig" )
+		m_hungerRate = 0.006f;    // ~11 days — bears, yaks
+	else if ( anatomy == "Animal" || anatomy == "Bird" )
+		m_hungerRate = 0.009f;    // ~7.7 days — wolves, deer
+	else if ( anatomy == "AnimalSmall" || anatomy == "BirdSmall" )
+		m_hungerRate = 0.012f;    // ~5.8 days — rabbits, chickens
+	else if ( anatomy == "Bug" || anatomy == "Spider" )
+		m_hungerRate = 0.015f;    // ~4.6 days — bugs (fast metabolism)
+	else if ( anatomy == "Snake" || anatomy == "Fish" )
+		m_hungerRate = 0.008f;    // ~8.7 days — cold-blooded, efficient
+	else
+		m_hungerRate = 0.01f;     // ~6.9 days — default
+
 	QString behaviorID = m_species + m_stateMap.value( "ID2" ).toString();
 
 	auto behaviorList = DB::selectRows( "Animals_States_Behavior", behaviorID );
@@ -385,7 +401,8 @@ CreatureTickResult Animal::onTick( quint64 tickNumber, bool seasonChanged, bool 
 		auto status = m_anatomy.status();
 		if ( status & AS_DEAD )
 		{
-			Global::logger().log( LogType::COMBAT, "The " + m_name + " died. Bummer!", m_id );
+			log( "Died from injuries." );
+			Global::logger().log( LogType::WILDLIFE, "The " + m_name + " died.", m_id );
 			die();
 			// TODO check for other statuses
 		}
@@ -414,7 +431,7 @@ CreatureTickResult Animal::onTick( quint64 tickNumber, bool seasonChanged, bool 
 
 	if ( minuteChanged && !isEgg() )
 	{
-		m_hunger = m_hunger - 0.075;
+		m_hunger = m_hunger - m_hungerRate;
 
 		// Starvation death
 		if ( m_hunger <= -20.0 )
@@ -453,7 +470,8 @@ CreatureTickResult Animal::onTick( quint64 tickNumber, bool seasonChanged, bool 
 	//           → 4) Hunt weaker animals → 5) LAST RESORT: attack gnome
 	// No cannibalism. After killing, eat the corpse before seeking more.
 	// =====================================================================
-	bool desperateMode = ( m_hunger < 20.0 && !m_tame && !isEgg() );
+	// Animals start food-seeking at 50% hunger (proactive), not 20% (desperate)
+	bool desperateMode = ( m_hunger < 50.0 && !m_tame && !isEgg() );
 
 	if ( desperateMode )
 	{
@@ -471,8 +489,8 @@ CreatureTickResult Animal::onTick( quint64 tickNumber, bool seasonChanged, bool 
 				m_eatingTicks++;
 			}
 
-			// Done eating (all parts consumed or hunger satisfied)
-			if ( m_corpsePartsNutrition.isEmpty() || m_hunger >= 80 )
+			// Done eating (all parts consumed or fully sated)
+			if ( m_corpsePartsNutrition.isEmpty() || m_hunger >= 100 )
 			{
 				// Destroy corpse, leave bones
 				Position corpsePos( g->inv()->getItemPos( m_corpseToEat ) );
@@ -667,7 +685,8 @@ CreatureTickResult Animal::onTick( quint64 tickNumber, bool seasonChanged, bool 
 						int attackSkill  = m_stateMap.value( "Attack" ).toInt();
 						int attackDamage = m_stateMap.value( "Damage" ).toInt();
 						m_facing = getFacing( m_position, tPos );
-						Global::logger().log( LogType::COMBAT, S::s( "$CreatureName_" + m_species ) + " attacks " + target->name() + "!", m_id, m_position.x, m_position.y, m_position.z );
+						log( "Attacks " + target->name() + "." );
+						Global::logger().log( LogType::WILDLIFE, S::s( "$CreatureName_" + m_species ) + " attacks " + target->name() + "!", m_id, m_position.x, m_position.y, m_position.z );
 						target->attack( DT_PIERCING, AH_LOW, attackSkill, attackDamage, m_position, m_id );
 						m_globalCooldown = 8;
 
@@ -696,12 +715,14 @@ CreatureTickResult Animal::onTick( quint64 tickNumber, bool seasonChanged, bool 
 							// Log the kill — different messages for gnome vs animal
 							if ( killedGnome )
 							{
+								log( "Killed " + target->name() + "!" );
 								Global::logger().log( LogType::DEATH, target->name() + " was killed by a " + S::s( "$CreatureName_" + m_species ) + "!", target->id(), tPos.x, tPos.y, tPos.z );
 								Global::logger().log( LogType::WILDLIFE, S::s( "$CreatureName_" + m_species ) + " killed " + target->name() + " and begins feeding.", m_id, tPos.x, tPos.y, tPos.z );
 							}
 							else
 							{
 								QString preyName = S::s( "$CreatureName_" + target->species() );
+								log( "Killed a " + preyName + "." );
 								Global::logger().log( LogType::WILDLIFE, S::s( "$CreatureName_" + m_species ) + " killed a " + preyName + ".", m_id, tPos.x, tPos.y, tPos.z );
 							}
 
@@ -1223,6 +1244,7 @@ BT_RESULT Animal::actionKillPrey( bool halt )
 		if ( prey->kill( true ) )
 		{
 			QString preyName = S::s( "$CreatureName_" + prey->species() );
+			log( "Killed a " + preyName + "." );
 			Global::logger().log( LogType::WILDLIFE, S::s( "$CreatureName_" + m_species ) + " killed a " + preyName + ".", m_id, prey->getPos().x, prey->getPos().y, prey->getPos().z );
 
 			m_corpseToEat = g->inv()->createItem( prey->getPos(), "AnimalCorpse", { prey->species() } );
@@ -1498,7 +1520,8 @@ BT_RESULT Animal::actionAttackTarget( bool halt )
 		{
 			if ( m_biteCooldown <= 0 )
 			{
-				Global::logger().log( LogType::COMBAT, m_name + " attacks " + creature->name(), m_id );
+				log( "Attacks " + creature->name() + "." );
+				Global::logger().log( LogType::WILDLIFE, m_name + " attacks " + creature->name(), m_id );
 				// attack with main hand
 
 				int attackSkill  = m_stateMap.value( "Attack" ).toInt();
@@ -1594,12 +1617,14 @@ bool Animal::attack( DamageType dt, AnatomyHeight da, int skill, int strength, P
 
 	if ( hit )
 	{
-		Global::logger().log( LogType::COMBAT, m_name + " took " + QString::number( strength ) + " damage.", m_id );
+		log( "Took " + QString::number( strength ) + " damage." );
+		Global::logger().log( LogType::WILDLIFE, m_name + " took " + QString::number( strength ) + " damage.", m_id );
 		m_anatomy.damage( &m_equipment, dt, da, ds, strength );
 	}
 	else
 	{
-		Global::logger().log( LogType::COMBAT, m_name + " dogded the attack. Skill:" + QString::number( skill ) + " Dodge: " + QString::number( dodge ), m_id );
+		log( "Dodged an attack." );
+		Global::logger().log( LogType::WILDLIFE, m_name + " dodged the attack.", m_id );
 	}
 
 	bool aeExists = false;
