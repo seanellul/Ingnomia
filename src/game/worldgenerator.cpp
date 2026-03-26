@@ -1012,16 +1012,21 @@ void WorldGenerator::fillFloor( int z, QVector<TerrainMaterial>& mats, QVector<i
 
 void WorldGenerator::discoverAll()
 {
-	for ( int z = m_dimZ - 2; z > 0; --z )
+	// Only discover surface tiles — walk down from sky until hitting solid stone.
+	// Underground caverns must stay undiscovered until the player digs to them.
+	for ( int y = 1; y < m_dimY - 1; ++y )
 	{
-		for ( int y = 1; y < m_dimY - 1; ++y )
+		for ( int x = 1; x < m_dimX - 1; ++x )
 		{
-			for ( int x = 1; x < m_dimX - 1; ++x )
+			for ( int z = m_dimZ - 2; z > 0; --z )
 			{
-				if ( !( w->wallType( Position( x, y, z ) ) & WT_SOLIDWALL ) )
+				auto wallType = w->wallType( Position( x, y, z ) );
+				if ( wallType & WT_SOLIDWALL )
 				{
-					w->discover( x, y, z );
+					// Hit solid stone — stop discovering this column
+					break;
 				}
+				w->discover( x, y, z );
 			}
 		}
 	}
