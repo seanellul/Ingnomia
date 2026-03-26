@@ -112,6 +112,7 @@ jobs:
         if: matrix.platform == 'windows'
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
+            -DDEFAULT_VERSION="${{ needs.prepare.outputs.version }}" `
             -DCMAKE_INSTALL_BINDIR="." `
             -DOPENAL_ROOT=openal_sdk `
             -DGIT_REPO="${{ github.repository }}" `
@@ -123,6 +124,7 @@ jobs:
         if: matrix.platform == 'macos'
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DDEFAULT_VERSION="${{ needs.prepare.outputs.version }}" \
             -DCMAKE_INSTALL_BINDIR="." \
             -DCMAKE_PREFIX_PATH=$(brew --prefix qt@5) \
             -DOPENAL_ROOT=$(brew --prefix openal-soft) \
@@ -136,6 +138,7 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DDEFAULT_VERSION="${{ needs.prepare.outputs.version }}" \
             -DCMAKE_INSTALL_BINDIR="." \
             -DGIT_REPO="${{ github.repository }}" \
             -DGIT_REF="${{ github.ref }}" \
