@@ -23,7 +23,7 @@ jobs:
       - name: Extract version and tag
         id: meta
         run: |
-          VERSION=$(grep -oP 'set\(DEFAULT_VERSION "\K[^"]+' CMakeLists.txt)
+          VERSION=$(sed -n 's/.*set(DEFAULT_VERSION "\([^"]*\)".*/\1/p' CMakeLists.txt)
           TAG="v${VERSION}+${GITHUB_RUN_NUMBER}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -48,13 +48,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact: Ingnomia-Windows
+            artifact: Masonry-Windows
             platform: windows
           - os: macos-14
-            artifact: Ingnomia-macOS
+            artifact: Masonry-macOS
             platform: macos
           - os: ubuntu-22.04
-            artifact: Ingnomia-Linux
+            artifact: Masonry-Linux
             platform: linux
     runs-on: ${{ matrix.os }}
 
@@ -147,17 +147,15 @@ jobs:
       - name: Install
         run: cmake --install build --prefix install --config ${{ env.BUILD_TYPE }}
 
-      # Windows: windeployqt + zip
+      # Windows: zip
       - name: Package (Windows)
         if: matrix.platform == 'windows'
         run: |
-          # windeployqt is run as a post-build step, files should already be in install/
-          # Copy content to install dir
           Copy-Item -Recurse -Force content\tilesheet install\content\tilesheet
           Copy-Item -Recurse -Force content\audio install\content\audio
-          Compress-Archive -Path install\* -DestinationPath Ingnomia-Windows.zip
+          Compress-Archive -Path install\* -DestinationPath Masonry-Windows.zip
 
-      # macOS: macdeployqt + codesign + zip
+      # macOS: app bundle + zip
       - name: Package (macOS)
         if: matrix.platform == 'macos'
         env:
@@ -165,29 +163,25 @@ jobs:
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
         run: |
-          # Create .app bundle structure
-          APP="install/Ingnomia.app"
+          APP="install/Masonry.app"
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
-          cp install/Ingnomia "$APP/Contents/MacOS/"
+          cp install/Masonry "$APP/Contents/MacOS/"
           cp -R install/content "$APP/Contents/Resources/content"
-
-          # Copy tilesheets and audio into app bundle
           cp -R content/tilesheet "$APP/Contents/Resources/content/tilesheet"
           cp -R content/audio "$APP/Contents/Resources/content/audio"
 
-          # Create Info.plist
           cat > "$APP/Contents/Info.plist" << 'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>CFBundleExecutable</key>
-            <string>Ingnomia</string>
+            <string>Masonry</string>
             <key>CFBundleIdentifier</key>
-            <string>com.ingnomia.game</string>
+            <string>com.masonry.game</string>
             <key>CFBundleName</key>
-            <string>Ingnomia</string>
+            <string>Masonry</string>
             <key>CFBundleVersion</key>
             <string>${{ needs.prepare.outputs.version }}</string>
             <key>CFBundleShortVersionString</key>
@@ -200,10 +194,8 @@ jobs:
           </plist>
           PLIST
 
-          # Run macdeployqt
           $(brew --prefix qt@5)/bin/macdeployqt "$APP" || true
 
-          # Codesign if certificate is available
           if [ -n "$MACOS_CERTIFICATE" ]; then
             echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
             security create-keychain -p actions build.keychain
@@ -214,25 +206,22 @@ jobs:
             /usr/bin/codesign --force --deep --sign "$MACOS_SIGNING_IDENTITY" "$APP"
           fi
 
-          # Zip the app bundle
-          cd install && zip -r ../Ingnomia-macOS.zip Ingnomia.app
+          cd install && zip -r ../Masonry-macOS.zip Masonry.app
 
-      # Linux: tar.gz (AppImage can be added later)
+      # Linux: tar.gz
       - name: Package (Linux)
         if: matrix.platform == 'linux'
         run: |
-          # Copy content assets
           cp -R content/tilesheet install/content/tilesheet
           cp -R content/audio install/content/audio
-          # Create launch script
-          cat > install/ingnomia.sh << 'LAUNCH'
+          cat > install/masonry.sh << 'LAUNCH'
           #!/bin/bash
           SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
           export LD_LIBRARY_PATH="$SCRIPT_DIR:$LD_LIBRARY_PATH"
-          exec "$SCRIPT_DIR/Ingnomia" "$@"
+          exec "$SCRIPT_DIR/Masonry" "$@"
           LAUNCH
-          chmod +x install/ingnomia.sh install/Ingnomia
-          tar -czf Ingnomia-Linux.tar.gz -C install .
+          chmod +x install/masonry.sh install/Masonry
+          tar -czf Masonry-Linux.tar.gz -C install .
 
       # ── Upload artifact ────────────────────────────────────────────
       - name: Upload build artifact
@@ -240,9 +229,9 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: |
-            Ingnomia-Windows.zip
-            Ingnomia-macOS.zip
-            Ingnomia-Linux.tar.gz
+            Masonry-Windows.zip
+            Masonry-macOS.zip
+            Masonry-Linux.tar.gz
           if-no-files-found: ignore
 
   # ── Create GitHub Release ─────────────────────────────────────────────
@@ -268,7 +257,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
-          name: "Ingnomia ${{ needs.prepare.outputs.version }} (Build #${{ github.run_number }})"
+          name: "Masonry ${{ needs.prepare.outputs.version }} (Build #${{ github.run_number }})"
           body: |
             ## What's New
 
@@ -278,9 +267,9 @@ jobs:
             **Build**: #${{ github.run_number }} | **Commit**: ${{ github.sha }}
 
             ### Downloads
-            - **Windows**: `Ingnomia-Windows.zip` — extract and run `Ingnomia.exe`
-            - **macOS**: `Ingnomia-macOS.zip` — extract, right-click Ingnomia.app → Open (first time)
-            - **Linux**: `Ingnomia-Linux.tar.gz` — extract and run `./ingnomia.sh`
+            - **Windows**: `Masonry-Windows.zip` — extract and run `Masonry.exe`
+            - **macOS**: `Masonry-macOS.zip` — extract, right-click Masonry.app → Open (first time)
+            - **Linux**: `Masonry-Linux.tar.gz` — extract and run `./masonry.sh`
           files: release/*
           draft: false
           prerelease: true
