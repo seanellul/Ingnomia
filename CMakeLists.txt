@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.16.0)
 # Disable release-builds without debug info
 set(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo CACHE STRING INTERNAL FORCE)
 
-# Project version, 4 numbers representation
-set(DEFAULT_VERSION "1.0.0.0" CACHE STRING "Version" FORCE)
+# Project version: Major.Minor.Patch.Build
+# See docs/VERSIONING.md for the scheme
+set(DEFAULT_VERSION "0.0.1.0" CACHE STRING "Version" FORCE)
 # Set from CI only
 set(BUILD_ID "0" CACHE INTERNAL "")
 set(GIT_REPO "" CACHE INTERNAL "")

@@ -23,8 +23,11 @@ jobs:
       - name: Extract version and tag
         id: meta
         run: |
-          VERSION=$(sed -n 's/.*set(DEFAULT_VERSION "\([^"]*\)".*/\1/p' CMakeLists.txt)
-          TAG="v${VERSION}+${GITHUB_RUN_NUMBER}"
+          # Read base version (Major.Minor.Patch.Build) from CMakeLists.txt
+          BASE=$(sed -n 's/.*set(DEFAULT_VERSION "\([^"]*\)".*/\1/p' CMakeLists.txt)
+          # Replace the .Build component with the CI run number
+          VERSION=$(echo "$BASE" | sed "s/\.[0-9]*$/.${GITHUB_RUN_NUMBER}/")
+          TAG="v${VERSION}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
