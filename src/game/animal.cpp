@@ -488,7 +488,9 @@ CreatureTickResult Animal::onTick( quint64 tickNumber, bool seasonChanged, bool 
 		}
 
 		// ---- Need to find food. Use priority chain (only when no active path). ----
-		if ( m_currentPath.empty() && m_desperateAction != DesperateAction::Eating && m_hunger < 10.0 )
+		// Throttle: only re-evaluate every 100 ticks to prevent log spam and wasted pathfinding
+		if ( m_currentPath.empty() && m_desperateAction != DesperateAction::Eating && m_hunger < 10.0
+			&& ( tickNumber % 100 == ( m_id % 100 ) ) )
 		{
 			m_desperateAction = DesperateAction::None;
 			m_currentAttackTarget = 0;
