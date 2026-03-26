@@ -155,7 +155,7 @@ void drawMainMenu( ImGuiBridge& bridge )
 	ImGui::SetCursorPosX( pad );
 	if ( ImGui::Button( "Exit", ImVec2( buttonWidth, buttonHeight ) ) )
 	{
-		bridge.cmdEndGame();
+		Global::eventConnector->onExit();
 	}
 
 	ImGui::PopStyleVar( 2 ); // FrameRounding, FramePadding
