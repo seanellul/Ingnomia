@@ -284,6 +284,10 @@ bool EventManager::checkRequirements( Event& event )
 			return true;
 		case EventRequire::QUERY:
 		{
+			// Only show the query dialog once — check if already sent
+			if ( data.contains( "QuerySent" ) )
+				return false;
+
 			QString msg = im.value( "Message" ).toString();
 
 			if ( !msg.isEmpty() )
@@ -292,6 +296,10 @@ bool EventManager::checkRequirements( Event& event )
 
 				Global::eventConnector->onEvent( event.id, im.value( "Title" ).toString(), msg, im.value( "Pause" ).toBool(), true );
 			}
+
+			// Mark as sent so we don't re-send every tick
+			data.insert( "QuerySent", true );
+			event.data = data;
 
 			if ( data.contains( "Expires" ) )
 			{
