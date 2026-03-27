@@ -32,6 +32,14 @@ struct ItemsSummary
 	//QList<unsigned int> ids;
 };
 
+struct GuiStockpileBrief
+{
+	unsigned int id = 0;
+	QString name;
+	int priority = 0;
+	bool suspended = false;
+};
+
 struct GuiStockpileInfo
 {
 	unsigned int stockpileID = 0;
@@ -42,6 +50,7 @@ struct GuiStockpileInfo
 	bool suspended         = false;
 	bool allowPullFromHere = false;
 	bool pullFromOthers    = false;
+	bool limitWithMaterial = false;
 	int capacity           = 0;
 	int itemCount          = 0;
 	int reserved           = 0;
@@ -49,6 +58,7 @@ struct GuiStockpileInfo
 	Filter filter;
 
 	QList<ItemsSummary> summary;
+	QMap<QString, StockpileItemLimit> limits;
 };
 
 Q_DECLARE_METATYPE( GuiStockpileInfo )
@@ -82,10 +92,22 @@ public slots:
 
 	void onSetBasicOptions( unsigned int stockpileID, QString name, int priority, bool suspended, bool pull, bool allowPull );
 	void onSetActive( unsigned int stockpileID, bool active, QString category, QString group, QString item, QString material );
+	void onSetLimitWithMaterial( unsigned int stockpileID, bool value );
+	void onCopySettings( unsigned int stockpileID );
+	void onPasteSettings( unsigned int stockpileID );
+	void onMovePriorityUp( unsigned int stockpileID );
+	void onMovePriorityDown( unsigned int stockpileID );
 
 	void onCloseWindow();
+
+	bool hasClipboard() const { return !m_clipboard.isEmpty(); }
+	QList<GuiStockpileBrief> allStockpileBriefs();
+
 signals:
 	void signalOpenStockpileWindow( unsigned int stockpileID );
 	void signalUpdateInfo( const GuiStockpileInfo& info );
 	void signalUpdateContent( const GuiStockpileInfo& info );
+
+private:
+	QVariantMap m_clipboard;
 };

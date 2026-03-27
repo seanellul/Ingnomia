@@ -1,5 +1,7 @@
 #include "ui_sidepanels.h"
 #include "../imguibridge.h"
+#include "../eventconnector.h"
+#include "../aggregatorstockpile.h"
 #include "../strings.h"
 #include "../../base/global.h"
 #include "../../base/gamestate.h"
@@ -94,6 +96,31 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 	{
 		bridge.cmdStockpileSetOptions( bridge.activeStockpileID, sp.name, sp.priority, sp.suspended, sp.pullFromOthers, allowPull );
 	}
+
+	// Limit with material
+	bool limitWithMat = sp.limitWithMaterial;
+	if ( ImGui::Checkbox( "Count by material", &limitWithMat ) )
+	{
+		bridge.cmdStockpileSetLimitWithMaterial( bridge.activeStockpileID, limitWithMat );
+	}
+	if ( ImGui::IsItemHovered() )
+	{
+		ImGui::SetTooltip( "When enabled, item limits count each material separately" );
+	}
+
+	// Copy / Paste settings
+	if ( ImGui::Button( "Copy Settings" ) )
+	{
+		bridge.cmdStockpileCopySettings( bridge.activeStockpileID );
+	}
+	ImGui::SameLine();
+	bool hasClip = Global::eventConnector->aggregatorStockpile()->hasClipboard();
+	if ( !hasClip ) ImGui::BeginDisabled();
+	if ( ImGui::Button( "Paste Settings" ) )
+	{
+		bridge.cmdStockpilePasteSettings( bridge.activeStockpileID );
+	}
+	if ( !hasClip ) ImGui::EndDisabled();
 
 	ImGui::Separator();
 	ImGui::Text( "Capacity: %d / %d items (%d reserved)", sp.itemCount, sp.capacity, sp.reserved );
@@ -357,6 +384,67 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 
 	ImGui::EndTabItem();
 	} // end Filters tab
+
+	// =========================================================================
+	// TAB 3: All Stockpiles — priority ordering
+	// =========================================================================
+	if ( ImGui::BeginTabItem( "All Stockpiles" ) )
+	{
+		auto briefs = Global::eventConnector->aggregatorStockpile()->allStockpileBriefs();
+
+		if ( briefs.isEmpty() )
+		{
+			ImGui::TextDisabled( "No stockpiles placed" );
+		}
+		else
+		{
+			ImGui::Text( "Reorder stockpile priorities:" );
+			ImGui::BeginChild( "SPList", ImVec2( 0, 0 ), false );
+
+			for ( int i = 0; i < briefs.size(); ++i )
+			{
+				auto& b = briefs[i];
+				ImGui::PushID( (int)b.id );
+
+				// Up/down buttons
+				if ( i > 0 )
+				{
+					if ( ImGui::SmallButton( "^" ) )
+					{
+						bridge.cmdStockpileMovePriorityUp( b.id );
+					}
+				}
+				else
+				{
+					ImGui::Dummy( ImVec2( ImGui::CalcTextSize( "^" ).x + ImGui::GetStyle().FramePadding.x * 2, 0 ) );
+				}
+				ImGui::SameLine();
+				if ( i < briefs.size() - 1 )
+				{
+					if ( ImGui::SmallButton( "v" ) )
+					{
+						bridge.cmdStockpileMovePriorityDown( b.id );
+					}
+				}
+				else
+				{
+					ImGui::Dummy( ImVec2( ImGui::CalcTextSize( "v" ).x + ImGui::GetStyle().FramePadding.x * 2, 0 ) );
+				}
+
+				ImGui::SameLine();
+				bool isActive = ( b.id == bridge.activeStockpileID );
+				if ( isActive ) ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 1.0f, 0.9f, 0.3f, 1.0f ) );
+				ImGui::Text( "[%d] %s%s", b.priority, b.name.toStdString().c_str(), b.suspended ? " (suspended)" : "" );
+				if ( isActive ) ImGui::PopStyleColor();
+
+				ImGui::PopID();
+			}
+
+			ImGui::EndChild();
+		}
+
+		ImGui::EndTabItem();
+	} // end All Stockpiles tab
 
 	ImGui::EndTabBar();
 	} // end TabBar

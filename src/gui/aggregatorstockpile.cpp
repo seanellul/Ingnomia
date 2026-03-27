@@ -84,7 +84,9 @@ bool AggregatorStockpile::aggregate( unsigned int stockpileID )
 		m_info.allowPullFromHere = sp->allowsPull();
 		m_info.pullFromOthers    = sp->pullsOthers();
 
-		m_info.filter = sp->filter();
+		m_info.limitWithMaterial = sp->limitWithMaterial();
+		m_info.limits            = sp->limits();
+		m_info.filter            = sp->filter();
 
 		// Calculate total capacity, items, and reserved across all fields
 		int totalCap = 0, totalItems = 0, totalReserved = 0;
@@ -207,6 +209,77 @@ void AggregatorStockpile::onSetActive( unsigned int stockpileID, bool active, QS
 		}
 		onUpdateStockpileInfo( stockpileID );
 	}
+}
+
+void AggregatorStockpile::onSetLimitWithMaterial( unsigned int stockpileID, bool value )
+{
+	if( !g ) return;
+	auto sp = g->spm()->getStockpile( stockpileID );
+	if ( sp )
+	{
+		sp->setLimitWithMaterial( value );
+		if ( aggregate( stockpileID ) )
+		{
+			emit signalUpdateInfo( m_info );
+		}
+	}
+}
+
+void AggregatorStockpile::onCopySettings( unsigned int stockpileID )
+{
+	if( !g ) return;
+	auto sp = g->spm()->getStockpile( stockpileID );
+	if ( sp )
+	{
+		m_clipboard = sp->serialize().toMap();
+	}
+}
+
+void AggregatorStockpile::onPasteSettings( unsigned int stockpileID )
+{
+	if( !g ) return;
+	if ( m_clipboard.isEmpty() ) return;
+	auto sp = g->spm()->getStockpile( stockpileID );
+	if ( sp )
+	{
+		sp->pasteSettings( m_clipboard );
+		if ( aggregate( stockpileID ) )
+		{
+			emit signalUpdateInfo( m_info );
+		}
+	}
+}
+
+void AggregatorStockpile::onMovePriorityUp( unsigned int stockpileID )
+{
+	if( !g ) return;
+	g->spm()->movePriorityUp( stockpileID );
+}
+
+void AggregatorStockpile::onMovePriorityDown( unsigned int stockpileID )
+{
+	if( !g ) return;
+	g->spm()->movePriorityDown( stockpileID );
+}
+
+QList<GuiStockpileBrief> AggregatorStockpile::allStockpileBriefs()
+{
+	QList<GuiStockpileBrief> result;
+	if( !g ) return result;
+	for ( auto id : g->spm()->allStockpilesOrdered() )
+	{
+		auto sp = g->spm()->getStockpile( id );
+		if ( sp )
+		{
+			GuiStockpileBrief b;
+			b.id        = id;
+			b.name      = sp->name();
+			b.priority  = sp->priority();
+			b.suspended = !sp->active();
+			result.append( b );
+		}
+	}
+	return result;
 }
 
 void AggregatorStockpile::onCloseWindow()

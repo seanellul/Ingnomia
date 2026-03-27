@@ -473,6 +473,31 @@ void ImGuiBridge::cmdStockpileSetOptions( unsigned int spID, const QString& name
 	Global::eventConnector->aggregatorStockpile()->onSetBasicOptions( spID, name, priority, suspended, pullOthers, pullFrom );
 }
 
+void ImGuiBridge::cmdStockpileSetLimitWithMaterial( unsigned int spID, bool value )
+{
+	Global::eventConnector->aggregatorStockpile()->onSetLimitWithMaterial( spID, value );
+}
+
+void ImGuiBridge::cmdStockpileCopySettings( unsigned int spID )
+{
+	Global::eventConnector->aggregatorStockpile()->onCopySettings( spID );
+}
+
+void ImGuiBridge::cmdStockpilePasteSettings( unsigned int spID )
+{
+	Global::eventConnector->aggregatorStockpile()->onPasteSettings( spID );
+}
+
+void ImGuiBridge::cmdStockpileMovePriorityUp( unsigned int spID )
+{
+	Global::eventConnector->aggregatorStockpile()->onMovePriorityUp( spID );
+}
+
+void ImGuiBridge::cmdStockpileMovePriorityDown( unsigned int spID )
+{
+	Global::eventConnector->aggregatorStockpile()->onMovePriorityDown( spID );
+}
+
 void ImGuiBridge::cmdCloseStockpileWindow()
 {
 	showStockpileWindow = false;

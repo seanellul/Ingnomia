@@ -268,6 +268,11 @@ public:
 	// Stockpile
 	void cmdStockpileSetActive( unsigned int spID, bool active, const QString& category, const QString& group, const QString& item, const QString& material );
 	void cmdStockpileSetOptions( unsigned int spID, const QString& name, int priority, bool suspended, bool pullOthers, bool pullFrom );
+	void cmdStockpileSetLimitWithMaterial( unsigned int spID, bool value );
+	void cmdStockpileCopySettings( unsigned int spID );
+	void cmdStockpilePasteSettings( unsigned int spID );
+	void cmdStockpileMovePriorityUp( unsigned int spID );
+	void cmdStockpileMovePriorityDown( unsigned int spID );
 	void cmdCloseStockpileWindow();
 
 	// Workshop
