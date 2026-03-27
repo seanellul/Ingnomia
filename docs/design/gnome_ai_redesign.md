@@ -1,6 +1,6 @@
 # RFC: Gnome AI & Job System Redesign
 
-> **Status**: Draft v2 — revised after cross-game analysis and architecture review
+> **Status**: Implemented (Phases A-F, H) — Phase G (roles/skill caps) deferred
 > **Goal**: Scale gnome colonies to 1000 without degrading tick performance
 > **Prior art studied**: Dwarf Fortress, RimWorld, Songs of Syx, Factorio, Oxygen Not Included
 > **Output**: Implementation blueprint for phased delivery with per-phase benchmarking
