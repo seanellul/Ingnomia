@@ -6,6 +6,29 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-26] Blindness Wiring, Food Variety, Stockpile UX, Armored Enemies
+
+**Milestone**: 2.3, 2.4, 1.2, 3.2 — Multi-system feature batch
+**Files changed**: `anatomy.cpp`, `gnome.h`, `gnome.cpp`, `gnomeactions.cpp`, `aggregatorstockpile.h`, `aggregatorstockpile.cpp`, `imguibridge.h`, `imguibridge.cpp`, `ui_sidepanels.cpp`, `monster.h`, `monster.cpp`, `creature.h`, `eventmanager.cpp`, `ingnomia.db.sql`
+
+### Changes
+- **Wire blindness to eye damage (2.3d)** — High head hits now have 15% chance to strike an eye (1 HP). Destroying one eye sets AS_HALFBLIND, both sets AS_BLIND. Eyes heal naturally, blindness clears when healed. Also fixed `heal()` bug: `m_status | AS_WOUNDED` → `m_status & AS_WOUNDED`.
+- **Food variety mood thoughts (2.4a)** — Track last 9 meals per gnome. 3+ unique foods → "Varied diet" +3 mood. Only 1 food type → "Same food again" -2 mood. Serialized in saves.
+- **Drink quality mood thoughts (2.4b)** — Drink value thresholds: 21+ = +1 "decent", 40+ = +2 "nice", 60+ = +3 "excellent". Water-level (≤20) is neutral baseline.
+- **Stockpile "Count by material" checkbox (1.2)** — Exposes existing `m_limitWithmaterial` toggle in ImGui panel with tooltip.
+- **Stockpile copy/paste settings (1.2)** — Copy/Paste buttons using existing `serialize()`/`pasteSettings()` backend. Clipboard stored in aggregator.
+- **All Stockpiles priority tab (1.2)** — New tab showing all stockpiles with up/down reorder buttons, using existing `movePriorityUp/Down()`.
+- **Armored enemies (3.2b)** — `GoblinArmored` with Armor=2 flat damage reduction. Raids mix armored goblins based on difficulty (Normal+) and year (10% per year, capped at 50%). Armor absorption logged in combat. DB schema extended with Armor column.
+
+### Technical Details
+- Anatomy eye targeting: 0-7% → left eye, 8-14% → right eye, 15-99% → head. Only targets undestroyed eyes.
+- Fixed `unsigned char` mask bug in `statusChanged()` — now uses `unsigned int` since `AnatomyStatus` is `unsigned int`.
+- `m_recentMeals` is a rolling QStringList trimmed to 9 entries (approximately 3 in-game days of meals).
+- Armored goblin percent formula: `min(50, year * 10 + (difficulty - 2) * 10)`. Only applies at difficulty >= Normal (2).
+- GoblinArmored reuses Goblin sprites — same visual, different gameplay via armor value.
+
+---
+
 ## [2026-03-25] Fix wildlife log spam and categorization
 
 **Milestone**: 2.0 — UI/UX
