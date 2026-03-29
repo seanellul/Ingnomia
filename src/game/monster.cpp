@@ -40,8 +40,10 @@ Monster::Monster( QString species, int level, Position& pos, Gender gender, Game
 
 	QVariantMap mvm = DB::selectRow( "Monsters", species );
 
-	m_btName     = mvm.value( "BehaviorTree" ).toString();
-	m_armorValue = mvm.value( "Armor" ).toInt();
+	m_btName      = mvm.value( "BehaviorTree" ).toString();
+	m_armorValue  = mvm.value( "Armor" ).toInt();
+	m_attackRange = mvm.value( "AttackRange" ).toInt();
+	m_rangedDamage = mvm.value( "RangedDamage" ).toInt();
 
 	updateSprite();
 
@@ -52,8 +54,10 @@ Monster::Monster( QVariantMap in, Game* game ) :
 	Creature( in, game ),
 	m_level( in.value( "Level" ).toInt() )
 {
-	m_type       = CreatureType::MONSTER;
-	m_armorValue = in.value( "Armor" ).toInt();
+	m_type         = CreatureType::MONSTER;
+	m_armorValue   = in.value( "Armor" ).toInt();
+	m_attackRange  = in.value( "AttackRange" ).toInt();
+	m_rangedDamage = in.value( "RangedDamage" ).toInt();
 
 	updateSprite();
 }
@@ -64,6 +68,11 @@ void Monster::serialize( QVariantMap& out )
 	if ( m_armorValue > 0 )
 	{
 		out.insert( "Armor", m_armorValue );
+	}
+	if ( m_attackRange > 0 )
+	{
+		out.insert( "AttackRange", m_attackRange );
+		out.insert( "RangedDamage", m_rangedDamage );
 	}
 	Creature::serialize( out );
 }
@@ -168,11 +177,13 @@ void Monster::initTaskMap()
 	m_behaviors.insert( "IsNight", std::bind( &Monster::conditionIsNight, this, _1 ) );
 
 	m_behaviors.insert( "TargetAdjacent", std::bind( &Monster::conditionTargetAdjacent, this, _1 ) );
+	m_behaviors.insert( "TargetInRange", std::bind( &Monster::conditionTargetInRange, this, _1 ) );
 
 	m_behaviors.insert( "RandomMove", std::bind( &Monster::actionRandomMove, this, _1 ) );
 	m_behaviors.insert( "Move", std::bind( &Monster::actionMove, this, _1 ) );
 	m_behaviors.insert( "GetTarget", std::bind( &Monster::actionGetTarget, this, _1 ) );
 	m_behaviors.insert( "AttackTarget", std::bind( &Monster::actionAttackTarget, this, _1 ) );
+	m_behaviors.insert( "RangedAttack", std::bind( &Monster::actionRangedAttack, this, _1 ) );
 }
 
 void Monster::generateAggroList()
@@ -473,4 +484,49 @@ bool Monster::attack( DamageType dt, AnatomyHeight da, int skill, int strength, 
 	}
 
 	return true;
+}
+
+BT_RESULT Monster::conditionTargetInRange( bool halt )
+{
+	Q_UNUSED( halt );
+	if ( m_attackRange <= 0 )
+		return BT_RESULT::FAILURE;
+
+	Creature* creature = g->gm()->gnome( m_currentAttackTarget );
+	if ( !creature || creature->isDead() )
+		return BT_RESULT::FAILURE;
+
+	Position cPos = creature->getPos();
+	if ( m_position.z != cPos.z )
+		return BT_RESULT::FAILURE;
+
+	int dist = qMax( abs( m_position.x - cPos.x ), abs( m_position.y - cPos.y ) );
+	if ( dist <= m_attackRange )
+		return BT_RESULT::SUCCESS;
+
+	return BT_RESULT::FAILURE;
+}
+
+BT_RESULT Monster::actionRangedAttack( bool halt )
+{
+	Q_UNUSED( halt );
+	Creature* creature = g->gm()->gnome( m_currentAttackTarget );
+	if ( !creature || creature->isDead() )
+	{
+		m_currentAttackTarget = 0;
+		return BT_RESULT::FAILURE;
+	}
+
+	m_facing = getFacing( m_position, creature->getPos() );
+
+	if ( m_rightHandCooldown <= 0 )
+	{
+		int damage = qMax( 1, m_rangedDamage );
+		AnatomyHeight ah = m_anatomy.randomAttackHeight();
+		Global::logger().log( LogType::COMBAT, m_name + " shoots at " + creature->name() + " for " + QString::number( damage ) + " damage", m_id );
+		bool hit = creature->attack( DT_PIERCING, ah, getSkillLevel( "Unarmed" ), damage, m_position, m_id );
+		g->em()->recordCombatEvent( false, false, hit );
+		m_rightHandCooldown = 15; // slightly faster than melee cooldown
+	}
+	return BT_RESULT::RUNNING;
 }

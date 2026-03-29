@@ -47,8 +47,11 @@ private:
 
 	BT_RESULT actionMove( bool halt );
 	BT_RESULT actionAttackTarget( bool halt );
+	BT_RESULT actionRangedAttack( bool halt );
 	BT_RESULT actionGetTarget( bool halt );
+	BT_RESULT conditionTargetInRange( bool halt );
 
-	
 	int m_level;
+	int m_attackRange   = 0; // 0 = melee only, >0 = ranged attack range in tiles
+	int m_rangedDamage  = 0; // damage per ranged hit
 };

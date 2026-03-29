@@ -122,9 +122,9 @@ Biggest source of frustration across all suggestions.
 
 - [x] Auto-accept new item types — data layer with `m_autoAcceptNew` flag (default: true)
 - [x] "For trade" stockpile designation — data layer with `m_forTrade` flag, serialized
-- [ ] Stockpile limit: count items across materials (existing `m_limitWithmaterial` toggle, needs UI)
-- [ ] Copy/paste stockpile settings between stockpiles (needs UI)
-- [ ] Drag-and-drop stockpile priority ordering (needs UI)
+- [x] Stockpile limit: count items across materials — `m_limitWithmaterial` toggle exposed in ImGui panel
+- [x] Copy/paste stockpile settings between stockpiles — Copy/Paste buttons using existing serialize/pasteSettings
+- [x] Drag-and-drop stockpile priority ordering — All Stockpiles tab with up/down reorder buttons
 
 ### 1.3 — Workshop Production Limits (#48) (DONE)
 `craft-to` mode was added in v0.4.0 ("jobs suspend when number reached") and workshop assignment was added in v0.6.1. But the community still wanted "craft until N **in stockpile**" which is different from "craft N total."
@@ -201,16 +201,16 @@ Anatomy/wound system exists (`anatomy.cpp`). Hospital/bandage code exists.
 - [ ] 2 roles: Medic (diagnosis + treatment) and Caretaker (transport + feeding) — needs BT work
 - [ ] Supply chain: bandages (cloth), splints (wood), herbal medicine (farming) — items exist, crafting recipes needed
 - [x] 3 starter diseases defined: Infection, Plague, Food Poisoning — DB table with severity/immunity/treatment rates
-- [ ] Wire blindness flags (HALFBLIND/BLIND already in enums but not connected to eye damage)
+- [x] Wire blindness flags — HALFBLIND/BLIND connected to eye damage, eyes heal naturally
 - [ ] Disease contraction and progression logic — needs integration with gnome health tick
 
 ### 2.4 — Food & Farming QoL (#28, #39, #41, #46)
 - [x] Food exclusion list — `m_foodExclusions` on Gnome, serialized, with DB food policies
 - [x] "Preserve Seeds" food policy defined in DB (enforcement in kitchen BT deferred)
 - [x] Groves include existing trees — `includeExistingTrees` flag on GroveProperties (default: true)
-- [ ] Food variety bonus: 3+ different foods in 3 days = +3 mood; same food repeatedly = -2 mood
-- [ ] Drink hierarchy: water < milk < beer < wine, better drinks = bigger mood boost
-- [ ] Simple meal chain: raw (-mood) → simple cooked (neutral) → quality meal (2+ ingredients, +mood)
+- [x] Food variety bonus: 3+ different foods in 3 days = +3 mood; same food repeatedly = -2 mood
+- [x] Drink hierarchy: water < milk < beer < wine, better drinks = bigger mood boost
+- [x] Simple meal chain: raw (-2 mood) → simple cooked (+1) → quality meal (EatValue≥40, +4 mood)
 - [ ] "Paint" mode for bulk farm/grove/pasture crop changes
 
 ---
@@ -235,8 +235,8 @@ Gnomoria had no ranged, flying, or trap-disarming enemies. Players solved every 
 
 - [x] **Scaling formula** — `(year + gnomeCount/4) × difficulty multiplier`. Night raids get 1.3x bonus.
 - [x] **Raid incoming notification** — DANGER log when raid dispatched
-- [ ] Ranged enemies (needs DB + BT XML)
-- [ ] Armored enemies (needs DB + BT XML)
+- [x] Ranged enemies — GoblinRanged with range 5, piercing damage, MonsterRanged BT
+- [x] Armored enemies — GoblinArmored with Armor=2 flat damage reduction, mixed into raids by difficulty/year
 - [ ] Trap-disarming enemies (needs DB + BT XML)
 - [ ] Flying enemies (needs pathfinder flag + DB + BT XML)
 - [ ] Upward-digging monsters (needs BT action + DB)

@@ -439,6 +439,26 @@ BT_RESULT Gnome::actionEat( bool halt )
 		}
 	}
 
+	// Meal quality mood thoughts (Milestone 2.4 — meal chain)
+	// Raw food = negative mood, simple cooked = neutral, quality cooked (high EatValue) = positive
+	QString itemGroup = g->inv()->itemGroup( carriedItem );
+	if ( itemGroup == "Raw" )
+	{
+		addThought( "AteRawFood", "Had to eat raw food", -2, Global::util->ticksPerDay, 1 );
+	}
+	else if ( itemGroup == "Cooked" )
+	{
+		// Quality meals (2+ ingredients, higher EatValue) get a bonus
+		if ( nutrition >= 40 )
+		{
+			addThought( "QualityMeal", "Had a quality meal!", 4, Global::util->ticksPerDay, 1 );
+		}
+		else
+		{
+			addThought( "CookedMeal", "Had a decent cooked meal", 1, Global::util->ticksPerDay, 1 );
+		}
+	}
+
 	g->inv()->destroyObject( carriedItem );
 	m_carriedItems.clear();
 
@@ -600,42 +620,45 @@ BT_RESULT Gnome::actionGetJob( bool halt )
 
 	// Phase B: Try pending queue first (pushed jobs, O(1) pop)
 	{
-		int attempts = 0;
-		while ( !m_pendingJobs.isEmpty() && attempts < 3 )
+		// Drain all stale entries before attempting claims
+		while ( !m_pendingJobs.isEmpty() )
+		{
+			auto frontJob = g->jm()->getJob( m_pendingJobs.first() );
+			if ( !frontJob || frontJob->isWorked() || frontJob->isCanceled() )
+			{
+				m_pendingJobs.removeFirst();
+				continue;
+			}
+			break;
+		}
+		if ( !m_pendingJobs.isEmpty() )
 		{
 			unsigned int pendingID = m_pendingJobs.takeFirst();
 			auto pendingJob = g->jm()->getJob( pendingID );
-			if ( !pendingJob || pendingJob->isWorked() || pendingJob->isCanceled() )
+			if ( pendingJob )
 			{
-				++attempts;
-				continue;
-			}
-			// Quick reachability check
-			unsigned int regionID = g->w()->regionMap().regionID( m_position );
-			if ( pendingJob->possibleWorkPositions().isEmpty() )
-			{
-				++attempts;
-				continue;
-			}
-			bool reachable = false;
-			for ( const auto& wp : pendingJob->possibleWorkPositions() )
-			{
-				if ( g->w()->regionMap().checkConnectedRegions( regionID, g->w()->regionMap().regionID( wp ) ) )
+				// Quick reachability check
+				unsigned int regionID = g->w()->regionMap().regionID( m_position );
+				bool reachable = false;
+				if ( !pendingJob->possibleWorkPositions().isEmpty() )
 				{
-					reachable = true;
-					break;
+					for ( const auto& wp : pendingJob->possibleWorkPositions() )
+					{
+						if ( g->w()->regionMap().checkConnectedRegions( regionID, g->w()->regionMap().regionID( wp ) ) )
+						{
+							reachable = true;
+							break;
+						}
+					}
+				}
+				if ( reachable )
+				{
+					// Claim it
+					m_jobID = pendingID;
+					m_job = pendingJob;
+					goto jobClaimed;
 				}
 			}
-			if ( !reachable )
-			{
-				++attempts;
-				continue;
-			}
-
-			// Claim it
-			m_jobID = pendingID;
-			m_job = pendingJob;
-			goto jobClaimed;
 		}
 	}
 
@@ -702,8 +725,8 @@ jobClaimed:
 	}
 	else
 	{
-		// didn't get a suitable job — with push model, shorter cooldown is fine
-		m_jobCooldown = 20;
+		// didn't get a suitable job — cooldown before retrying
+		m_jobCooldown = 50;
 		return BT_RESULT::FAILURE;
 	}
 

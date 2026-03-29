@@ -6,6 +6,100 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-31] UI Design System — Typography, Style, Visual Hierarchy
+
+**Milestone**: 0.0 — UI/UX
+**Files changed**: `src/gui/imgui_impl_qt5.h`, `src/gui/imgui_impl_qt5.cpp`, `src/gui/ui/ui_helpers.h` (NEW), `src/gui/ui/ui_helpers.cpp` (NEW), `src/gui/ui/ui_sidepanels.cpp`, `src/gui/ui/ui_gamehud.cpp`, `src/gui/ui/ui_tileinfo.cpp`
+
+### Changes
+- **Typography system** — PT Root UI 16px is now the default in-game font (was ImGui's built-in 13px). Added 20px medium weight for section headers. Main menu retains its 18px/48px fonts.
+- **Global style refinements** — Increased WindowPadding (12,10), FramePadding (8,5), ItemSpacing (8,6). Rounded corners 4px for windows, 3px for frames. Added TableHeaderBg/TableBorder colors.
+- **Section header helper** — New `sectionHeader()` function draws full-width tinted bars with medium font text. Creates visual anchors for scanning panel content.
+- **Panel sizing pass** — All panels adjusted for 16px font: wider columns, taller toolbar (55px), larger buttons (36px height), expanded table column widths.
+- **Kingdom panel upgrade** — Replaced deprecated `ImGui::Columns()` with `BeginTable()`, added row striping and totals row.
+
+### Technical Details
+- Font hierarchy: 48px title → 20px section headers → 16px default → 14px captions/log entries
+- `io.FontDefault` set after font loading — all panels automatically get the new font without per-panel changes
+- `style.ScaleAllSizes(dpr)` handles DPI scaling for all new values
+- `sectionHeader()` uses `ImDrawList::AddRectFilled` for background bar, pushes `uiMedium` font for text
+
+---
+
+## [2026-03-31] Add Meal Quality Mood Thoughts
+
+**Milestone**: 2.4 — Food & Farming QoL
+**Files changed**: `src/game/gnomeactions.cpp`
+
+### Changes
+- **Meal chain mood system** — Raw food (`ItemGroup='Raw'`) gives -2 mood ("Had to eat raw food"). Simple cooked food gives +1 ("Had a decent cooked meal"). Quality cooked food (EatValue >= 40, e.g., Sandwich, Omelettes) gives +4 ("Had a quality meal!"). All thoughts last 1 day.
+- Incentivizes building kitchens and cooking food rather than eating raw produce.
+
+### Technical Details
+- Uses existing `g->inv()->itemGroup(carriedItem)` to distinguish Raw vs Cooked at eat time.
+- EatValue threshold of 40 separates simple cooked (Bread=25, Cheese=25, Sausage=30) from quality meals (Omelettes=40-50, Sandwich=50).
+- Works alongside existing food variety and drink quality mood systems.
+
+---
+
+## [2026-03-31] Schedule Tab Overhaul — Paint System, "Anything" Activity, UI Fixes
+
+**Milestone**: 0.0 — UI/UX
+**Files changed**: `src/base/enums.h`, `src/game/gnomeconditions.cpp`, `src/game/gnome.cpp`, `src/gui/imguibridge.h`, `src/gui/ui/ui_sidepanels.cpp`, `src/gui/imguibridge.cpp`, `src/gui/aggregatorpopulation.cpp`
+
+### Changes
+- **New "Anything" schedule activity** — Gnomes self-manage needs: eat when hunger < 60, drink when thirst < 60, sleep when sleep need < 50, otherwise work. Default for new gnomes. More realistic than forced work-only.
+- **Paint-brush schedule UI** — Toolbar with 5 activity buttons (Anything/Work/Eat/Sleep/Train). Select one, then click-and-drag across cells to paint. Replaces tedious click-cycling.
+- **Skill toggle & profession fix** — Connected `signalUpdateSingleGnome` to bridge so skill checkbox and profession changes persist. `onSetSkillActive` now emits update signal.
+- **Sorting fix** — Group header sorting uses max skill level across all skills in group, not just the first. Headers use clickable Selectables.
+- **White skill level numbers** — Changed from grey `TextDisabled` to white `Text`.
+
+### Technical Details
+- `ScheduleActivity::Anything` added to enum, serialized as "anything". Old saves with "none" map to Anything (backwards-compatible).
+- BT: hunger/thirst trigger at < 60 during Anything (between proactive 90 and emergency 30). Sleep triggers at < 50.
+- Paint uses `ImGui::IsItemHovered() && ImGui::IsMouseDown(0)` for drag detection.
+
+---
+
+## [2026-03-31] Add Ranged Goblin Enemy Type
+
+**Milestone**: 3.2 — Enemy Diversity
+**Files changed**: `src/game/monster.h`, `src/game/monster.cpp`, `src/game/eventmanager.cpp`, `content/ai/monster_ranged.xml` (NEW), `content/db/ingnomia.db.sql`
+
+### Changes
+- **Ranged goblin enemy** — `GoblinRanged` with range 5 tiles, 3 piercing damage. Uses new `MonsterRanged` behavior tree that attempts ranged attacks at distance, falls back to melee when adjacent.
+- **`TargetInRange` condition** — Chebyshev distance check on same Z-level against `m_attackRange`.
+- **`RangedAttack` action** — Fires DT_PIERCING at random anatomy height with 15-tick cooldown (slightly faster than melee).
+- **Raid integration** — Ranged goblins mixed into raids at Normal+ difficulty. Formula: `min(30, year * 5 + (difficulty - 2) * 5)` percent. Ranged and armored rolls are exclusive (armor checked first).
+- **DB schema** — Added `AttackRange` and `RangedDamage` columns to Monsters table. GoblinRanged: range 5, damage 3, armor 0.
+
+### Technical Details
+- BT structure: GetTarget → (TargetInRange → RangedAttack) | (Move → TargetInRange → RangedAttack) | (melee fallback) | RandomMove
+- Reuses Goblin sprites — same visual, different gameplay via ranged behavior and damage type.
+- Ranged+armored combined cap: at year 5 Normal difficulty, ~50% armored + ~25% ranged = 75% special goblins. Remaining 25% are standard melee.
+
+---
+
+## [2026-03-31] Fix Gnome AI Regression — Needs Decay, Sleep System Removal, Job Cleanup
+
+**Milestone**: 0.3 — Performance / Bug Fix
+**Files changed**: `src/game/gnome.cpp`, `src/game/gnome.h`, `src/game/gnomemanager.cpp`, `src/game/gnomemanager.h`, `src/game/gnomeactions.cpp`, `src/game/jobmanager.cpp`, `src/game/creature.h`, `src/game/canwork.cpp`
+
+### Changes
+- **Fix needs freeze during cheap ticks** — `evalNeeds()` only ran on full ticks (1-in-10 via bucket system), and need decay was gated by `minuteChanged` (also ~1-in-10). Needs now decay in `cheapTick()` when `minuteChanged` fires, with a force-full-tick trigger when hunger/thirst/sleep drops below 30.
+- **Remove sleep/wake system (Phase D)** — Sleeping gnomes were skipped entirely in the tick loop, freezing their needs forever. The safety net checked `hunger < 20` but frozen needs never crossed the threshold. Removed `sleepGnome()`, `wakeGnome()`, `safetyNetScan()`, `m_isSleeping`, `m_idleTickCount`, and the idle-sleep trigger. Bucket stagger still provides the performance win.
+- **Reset `m_gnomeState` in `cleanUpJob()`** — State was never set to IDLE after job finish/abort, causing idle gnomes to stay in WORKING state and bypass cheap tick optimization. Added explicit IDLE case in cheapTick that waits for job cooldown before forcing full tick.
+- **Fix pending job queue stale drain** — Old code tried 3 entries then gave up. New code drains all stale (worked/canceled) entries before attempting the first valid claim.
+- **Rebalance job cooldown** — Bumped from 20 back to 50 ticks (was 100 pre-optimization). Prevents hammering the expensive pull-based `getJob()` scan.
+- **Cap overflow pool** — `m_overflowPool` capped at 500 entries to prevent unbounded growth from jobs targeting skills no gnome has.
+
+### Technical Details
+- Cheap tick need decay is identical to the `evalNeeds()` decay loop but skips the mood/thought system (that still only runs on full ticks). No double-decay: `onTick()` dispatcher routes to exactly one of `cheapTick` or `fullTick`.
+- IDLE gnomes on cheap tick only force full tick when `m_jobCooldown <= 0`, allowing proper cooldown wait without wasting BT evaluation cycles.
+- Sleep system removal costs ~2x tick time for idle gnomes vs sleeping, but correctness is more important than the optimization. Can be reintroduced later with proper need decay for sleeping gnomes.
+
+---
+
 ## [2026-03-31] Population UI Overhaul — Skills, Professions, Schedule, Social
 
 **Milestone**: 0.0 — UI/UX

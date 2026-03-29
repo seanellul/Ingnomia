@@ -1225,7 +1225,8 @@ void JobManager::pushJobToGnomes( unsigned int jobID )
 	auto eligibleGnomes = m_gnomesBySkill.values( skill );
 	if ( eligibleGnomes.isEmpty() )
 	{
-		m_overflowPool.append( jobID );
+		if ( m_overflowPool.size() < 500 )
+			m_overflowPool.append( jobID );
 		return;
 	}
 
@@ -1262,7 +1263,8 @@ void JobManager::pushJobToGnomes( unsigned int jobID )
 
 	if ( candidates.isEmpty() )
 	{
-		m_overflowPool.append( jobID );
+		if ( m_overflowPool.size() < 500 )
+			m_overflowPool.append( jobID );
 		return;
 	}
 
@@ -1291,12 +1293,6 @@ void JobManager::pushJobToGnomes( unsigned int jobID )
 		while ( gn->pendingJobs().size() > 10 )
 		{
 			gn->pendingJobs().removeLast();
-		}
-
-		// Wake sleeping gnomes when a job is pushed to them
-		if ( gn->isSleeping() )
-		{
-			g->gm()->wakeGnome( gn );
 		}
 	}
 }

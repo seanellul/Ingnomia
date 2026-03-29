@@ -60,6 +60,11 @@ BT_RESULT Gnome::conditionIsHungry( bool halt )
 		setThoughtBubble( "Hungry" );
 		return BT_RESULT::SUCCESS;
 	}
+	if ( activity == ScheduleActivity::Anything && m_needs["Hunger"].toFloat() < 60 )
+	{
+		setThoughtBubble( "Hungry" );
+		return BT_RESULT::SUCCESS;
+	}
 
 	if ( m_needs["Hunger"].toFloat() < 30 )
 	{
@@ -94,6 +99,11 @@ BT_RESULT Gnome::conditionIsThirsty( bool halt )
 	unsigned int hour = qMin( 23, GameState::hour );
 	auto activity      = m_schedule[hour];
 	if ( activity == ScheduleActivity::Eat && m_needs["Thirst"].toFloat() < 90 )
+	{
+		setThoughtBubble( "Thirsty" );
+		return BT_RESULT::SUCCESS;
+	}
+	if ( activity == ScheduleActivity::Anything && m_needs["Thirst"].toFloat() < 60 )
 	{
 		setThoughtBubble( "Thirsty" );
 		return BT_RESULT::SUCCESS;
@@ -133,6 +143,11 @@ BT_RESULT Gnome::conditionIsSleepy( bool halt )
 	unsigned int hour = qMin( 23, GameState::hour );
 	auto activity      = m_schedule[hour];
 	if ( activity == ScheduleActivity::Sleep )
+	{
+		setThoughtBubble( "Tired" );
+		return BT_RESULT::SUCCESS;
+	}
+	if ( activity == ScheduleActivity::Anything && m_needs["Sleep"].toFloat() < 50 )
 	{
 		setThoughtBubble( "Tired" );
 		return BT_RESULT::SUCCESS;

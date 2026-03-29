@@ -158,21 +158,39 @@ void AggregatorPopulation::onRequestPopulationUpdate()
 	}
 	else
 	{
-		std::sort( m_populationInfo.gnomes.begin(), m_populationInfo.gnomes.end(), [=]( const GuiGnomeInfo& lhs, const GuiGnomeInfo& rhs ){ 
+		// Build list of skill IDs to sort by — if m_sortMode is a group ID, use all skills in that group
+		QStringList sortSkillIDs;
+		for( const auto& skill : m_skillIds )
+		{
+			if( skill.group == m_sortMode )
+			{
+				sortSkillIDs.append( skill.sid );
+			}
+		}
+		if( sortSkillIDs.isEmpty() )
+		{
+			// Not a group ID — treat as individual skill ID
+			sortSkillIDs.append( m_sortMode );
+		}
+
+		std::sort( m_populationInfo.gnomes.begin(), m_populationInfo.gnomes.end(), [=]( const GuiGnomeInfo& lhs, const GuiGnomeInfo& rhs ){
 			auto lg = g->gm()->gnome( lhs.id );
 			if( lg )
 			{
 				auto rg = g->gm()->gnome( rhs.id );
 				if( rg )
 				{
+					// Get max level across all skills in the sort set
+					int lMax = 0, rMax = 0;
+					for( const auto& sid : sortSkillIDs )
+					{
+						lMax = qMax( lMax, lg->getSkillLevel( sid ) );
+						rMax = qMax( rMax, rg->getSkillLevel( sid ) );
+					}
 					if( m_revertSort )
-					{
-						return lg->getSkillLevel( m_sortMode ) < rg->getSkillLevel( m_sortMode );
-					}
+						return lMax < rMax;
 					else
-					{
-						return lg->getSkillLevel( m_sortMode ) > rg->getSkillLevel( m_sortMode );
-					}
+						return lMax > rMax;
 				}
 			}
 			return false;

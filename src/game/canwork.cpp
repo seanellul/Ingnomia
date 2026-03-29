@@ -369,6 +369,7 @@ void CanWork::cleanUpJob( bool finished )
 	m_jobID         = 0;
 	m_job.reset();
 	m_jobChanged    = true;
+	m_gnomeState    = GnomeState::IDLE;
 
 	if ( spriteNeedsUpdate )
 	{
