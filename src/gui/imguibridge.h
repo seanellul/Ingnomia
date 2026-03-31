@@ -206,6 +206,8 @@ public:
 	QStringList professionList;
 	QList<GuiSkillInfo> professionSkills;
 	QString editingProfession;
+	bool skillsShowIndividual = false;
+	unsigned int selectedGnomeID = 0;
 
 	// =========================================================================
 	// Military data
@@ -314,6 +316,7 @@ public:
 	void cmdSetHourForAll( int hour, ScheduleActivity activity );
 	void cmdRequestProfessions();
 	void cmdRequestSkills( const QString& profession );
+	void cmdSetGroupActive( unsigned int gnomeID, const QString& groupID, bool value );
 	void cmdUpdateProfession( const QString& name, const QString& newName, const QStringList& skills );
 	void cmdDeleteProfession( const QString& name );
 	void cmdNewProfession();
@@ -417,6 +420,7 @@ public slots:
 
 	// Population
 	void onPopulationUpdate( const GuiPopulationInfo& info );
+	void onUpdateSingleGnome( const GuiGnomeInfo& gnome );
 	void onScheduleUpdate( const GuiScheduleInfo& info );
 	void onProfessionList( const QStringList& professions );
 	void onProfessionSkills( QString profession, const QList<GuiSkillInfo>& skills );

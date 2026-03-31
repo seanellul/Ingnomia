@@ -105,9 +105,13 @@ ImGuiBridge::ImGuiBridge( QObject* parent )
 	// Population
 	// =========================================================================
 	connect( ec->aggregatorPopulation(), &AggregatorPopulation::signalPopulationUpdate, this, &ImGuiBridge::onPopulationUpdate, Qt::QueuedConnection );
+	connect( ec->aggregatorPopulation(), &AggregatorPopulation::signalUpdateSingleGnome, this, &ImGuiBridge::onUpdateSingleGnome, Qt::QueuedConnection );
 	connect( ec->aggregatorPopulation(), &AggregatorPopulation::signalScheduleUpdate, this, &ImGuiBridge::onScheduleUpdate, Qt::QueuedConnection );
 	connect( ec->aggregatorPopulation(), &AggregatorPopulation::signalProfessionList, this, &ImGuiBridge::onProfessionList, Qt::QueuedConnection );
 	connect( ec->aggregatorPopulation(), &AggregatorPopulation::signalProfessionSkills, this, &ImGuiBridge::onProfessionSkills, Qt::QueuedConnection );
+	connect( ec->aggregatorPopulation(), &AggregatorPopulation::signalSelectEditProfession, this, [this]( const QString name ){
+		editingProfession = name;
+	}, Qt::QueuedConnection );
 
 	// =========================================================================
 	// Military
@@ -353,6 +357,17 @@ void ImGuiBridge::onGlobalTreeInfo( const QList<GuiPlant>& info ) { globalTrees 
 
 // Population
 void ImGuiBridge::onPopulationUpdate( const GuiPopulationInfo& info ) { populationInfo = info; }
+void ImGuiBridge::onUpdateSingleGnome( const GuiGnomeInfo& gnome )
+{
+	for ( int i = 0; i < populationInfo.gnomes.size(); ++i )
+	{
+		if ( populationInfo.gnomes[i].id == gnome.id )
+		{
+			populationInfo.gnomes[i] = gnome;
+			return;
+		}
+	}
+}
 void ImGuiBridge::onScheduleUpdate( const GuiScheduleInfo& info ) { scheduleInfo = info; }
 void ImGuiBridge::onProfessionList( const QStringList& profs ) { professionList = profs; }
 void ImGuiBridge::onProfessionSkills( QString profession, const QList<GuiSkillInfo>& skills )
@@ -634,6 +649,7 @@ void ImGuiBridge::cmdSetAllHours( unsigned int gid, ScheduleActivity act ) { Glo
 void ImGuiBridge::cmdSetHourForAll( int h, ScheduleActivity act ) { Global::eventConnector->aggregatorPopulation()->onSetHourForAll( h, act ); }
 void ImGuiBridge::cmdRequestProfessions() { Global::eventConnector->aggregatorPopulation()->onRequestProfessions(); }
 void ImGuiBridge::cmdRequestSkills( const QString& prof ) { Global::eventConnector->aggregatorPopulation()->onRequestSkills( prof ); }
+void ImGuiBridge::cmdSetGroupActive( unsigned int gid, const QString& groupID, bool value ) { Global::eventConnector->aggregatorPopulation()->onSetGroupActive( gid, groupID, value ); }
 void ImGuiBridge::cmdUpdateProfession( const QString& name, const QString& newName, const QStringList& skills ) { Global::eventConnector->aggregatorPopulation()->onUpdateProfession( name, newName, skills ); }
 void ImGuiBridge::cmdDeleteProfession( const QString& name ) { Global::eventConnector->aggregatorPopulation()->onDeleteProfession( name ); }
 void ImGuiBridge::cmdNewProfession() { Global::eventConnector->aggregatorPopulation()->onNewProfession(); }

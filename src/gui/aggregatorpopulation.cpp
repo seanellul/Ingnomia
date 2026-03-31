@@ -216,6 +216,7 @@ void AggregatorPopulation::onSetSkillActive( unsigned int gnomeID, QString skill
 	if( gnome )
 	{
 		gnome->setSkillActive( skillID, value );
+		onUpdateSingleGnome( gnomeID );
 	}
 }
 
@@ -348,17 +349,34 @@ void AggregatorPopulation::onRequestSkills( QString profession )
 	if( !g ) return;
 	m_profSkills.clear();
 
-	auto skillIDs = g->gm()->professionSkills( profession );
-	for( auto skillID : skillIDs )
+	auto activeSkillIDs = g->gm()->professionSkills( profession );
+
+	// Return ALL skills, marking which ones are active in this profession
+	for( const auto& skill : m_skillIds )
 	{
-		GuiSkillInfo gsi;
-		gsi.sid = skillID;
-		gsi.name = S::s( "$SkillName_" + skillID );		
-		
+		GuiSkillInfo gsi = skill;
+		gsi.active = activeSkillIDs.contains( skill.sid );
 		m_profSkills.append( gsi );
 	}
 
 	emit signalProfessionSkills( profession, m_profSkills );
+}
+
+void AggregatorPopulation::onSetGroupActive( unsigned int gnomeID, QString groupID, bool value )
+{
+	if( !g ) return;
+	auto gnome = g->gm()->gnome( gnomeID );
+	if( gnome )
+	{
+		for( const auto& skill : m_skillIds )
+		{
+			if( skill.group == groupID )
+			{
+				gnome->setSkillActive( skill.sid, value );
+			}
+		}
+		onUpdateSingleGnome( gnomeID );
+	}
 }
 
 void AggregatorPopulation::onUpdateProfession( QString name, QString newName, QStringList skills )

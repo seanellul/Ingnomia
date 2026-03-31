@@ -453,13 +453,68 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 }
 
 // =============================================================================
+// Population panel — helper: parse "R G B A" color string to ImVec4
+// =============================================================================
+static ImVec4 parseGroupColor( const QString& colorStr )
+{
+	auto parts = colorStr.split( ' ' );
+	if ( parts.size() >= 3 )
+	{
+		float r = parts[0].toFloat() / 255.0f;
+		float g = parts[1].toFloat() / 255.0f;
+		float b = parts[2].toFloat() / 255.0f;
+		float a = parts.size() >= 4 ? parts[3].toFloat() / 255.0f : 1.0f;
+		return ImVec4( r, g, b, a );
+	}
+	return ImVec4( 0.6f, 0.6f, 0.6f, 1.0f );
+}
+
+// Cached group index built from skill data
+struct SkillGroupIndex
+{
+	struct Group
+	{
+		QString id;
+		QString name;
+		ImVec4 color;
+		QList<int> skillIndices; // indices into gnome.skills[]
+	};
+	QList<Group> groups;
+	bool built = false;
+};
+
+static SkillGroupIndex s_groupIndex;
+
+static void buildGroupIndex( const QList<GuiSkillInfo>& skills )
+{
+	s_groupIndex.groups.clear();
+	QMap<QString, int> groupMap; // groupID -> index in groups list
+
+	for ( int i = 0; i < skills.size(); ++i )
+	{
+		const auto& skill = skills[i];
+		if ( !groupMap.contains( skill.group ) )
+		{
+			SkillGroupIndex::Group g;
+			g.id = skill.group;
+			g.name = skill.group; // use group ID as display name
+			g.color = parseGroupColor( skill.color );
+			groupMap[skill.group] = s_groupIndex.groups.size();
+			s_groupIndex.groups.append( g );
+		}
+		s_groupIndex.groups[groupMap[skill.group]].skillIndices.append( i );
+	}
+	s_groupIndex.built = true;
+}
+
+// =============================================================================
 // Population panel
 // =============================================================================
 void drawPopulationPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.8f, io.DisplaySize.y * 0.75f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
 	ImGui::Begin( "Population", &open, 0 );
@@ -468,58 +523,274 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 
 	if ( ImGui::BeginTabBar( "PopTabs" ) )
 	{
+		// =================================================================
+		// SKILLS TAB
+		// =================================================================
 		if ( ImGui::BeginTabItem( "Skills" ) )
 		{
-			// Column headers
-			if ( !bridge.populationInfo.gnomes.isEmpty() && !bridge.populationInfo.gnomes[0].skills.isEmpty() )
+			if ( bridge.populationInfo.gnomes.isEmpty() || bridge.populationInfo.gnomes[0].skills.isEmpty() )
 			{
-				ImGui::Columns( bridge.populationInfo.gnomes[0].skills.size() + 2 );
-				ImGui::Text( "Name" ); ImGui::NextColumn();
-				ImGui::Text( "Profession" ); ImGui::NextColumn();
-
-				for ( const auto& skill : bridge.populationInfo.gnomes[0].skills )
-				{
-					// Vertical-ish text (abbreviated)
-					ImGui::Text( "%s", skill.name.left( 4 ).toStdString().c_str() );
-					ImGui::NextColumn();
-				}
-				ImGui::Separator();
-
-				for ( const auto& gnome : bridge.populationInfo.gnomes )
-				{
-					ImGui::Text( "%s", gnome.name.toStdString().c_str() );
-					ImGui::NextColumn();
-
-					ImGui::Text( "%s", gnome.profession.toStdString().c_str() );
-					ImGui::NextColumn();
-
-					for ( const auto& skill : gnome.skills )
-					{
-						ImGui::PushID( ( QString::number( gnome.id ) + skill.sid ).toStdString().c_str() );
-						bool active = skill.active;
-						if ( ImGui::Checkbox( "", &active ) )
-						{
-							bridge.cmdSetSkillActive( gnome.id, skill.sid, active );
-						}
-						if ( ImGui::IsItemHovered() )
-						{
-							ImGui::SetTooltip( "%s: Level %d", skill.name.toStdString().c_str(), skill.level );
-						}
-						ImGui::PopID();
-						ImGui::NextColumn();
-					}
-				}
-
-				ImGui::Columns( 1 );
+				ImGui::TextDisabled( "No gnomes" );
+				ImGui::EndTabItem();
 			}
 			else
 			{
-				ImGui::TextDisabled( "No gnomes" );
-			}
+				// Build group index from first gnome's skills
+				if ( !s_groupIndex.built )
+				{
+					buildGroupIndex( bridge.populationInfo.gnomes[0].skills );
+				}
 
-			ImGui::EndTabItem();
+				// Toolbar
+				if ( ImGui::Button( bridge.skillsShowIndividual ? "Group View" : "Individual View" ) )
+				{
+					bridge.skillsShowIndividual = !bridge.skillsShowIndividual;
+				}
+
+				ImGui::Separator();
+
+				if ( bridge.skillsShowIndividual )
+				{
+					// ---- INDIVIDUAL SKILLS VIEW ----
+					int numSkills = bridge.populationInfo.gnomes[0].skills.size();
+					int numCols = numSkills + 2;
+
+					if ( ImGui::BeginTable( "SkillsIndiv", numCols,
+						ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY |
+						ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit |
+						ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable ) )
+					{
+						ImGui::TableSetupScrollFreeze( 2, 1 );
+						ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 120.0f );
+						ImGui::TableSetupColumn( "Prof", 0, 90.0f );
+
+						for ( const auto& skill : bridge.populationInfo.gnomes[0].skills )
+						{
+							ImGui::TableSetupColumn( skill.name.left( 5 ).toStdString().c_str(), 0, 42.0f );
+						}
+						ImGui::TableHeadersRow();
+
+						for ( const auto& gnome : bridge.populationInfo.gnomes )
+						{
+							ImGui::TableNextRow();
+							ImGui::PushID( gnome.id );
+
+							// Name
+							ImGui::TableNextColumn();
+							bool isSelected = ( bridge.selectedGnomeID == gnome.id );
+							if ( ImGui::Selectable( gnome.name.toStdString().c_str(), isSelected ) )
+							{
+								bridge.selectedGnomeID = gnome.id;
+							}
+
+							// Profession combo
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth( -1 );
+							if ( ImGui::BeginCombo( "##prof", gnome.profession.toStdString().c_str(), ImGuiComboFlags_NoArrowButton ) )
+							{
+								for ( const auto& prof : bridge.professionList )
+								{
+									bool sel = ( gnome.profession == prof );
+									if ( ImGui::Selectable( prof.toStdString().c_str(), sel ) )
+									{
+										bridge.cmdSetProfession( gnome.id, prof );
+									}
+								}
+								ImGui::EndCombo();
+							}
+
+							// Individual skill cells
+							for ( int si = 0; si < gnome.skills.size(); ++si )
+							{
+								ImGui::TableNextColumn();
+								const auto& skill = gnome.skills[si];
+								ImGui::PushID( si );
+
+								bool active = skill.active;
+								if ( ImGui::Checkbox( "", &active ) )
+								{
+									bridge.cmdSetSkillActive( gnome.id, skill.sid, active );
+								}
+								if ( skill.level > 0 )
+								{
+									ImGui::SameLine();
+									ImGui::Text( "%d", skill.level );
+								}
+								if ( ImGui::IsItemHovered() )
+								{
+									ImGui::SetTooltip( "%s: Level %d (XP: %.0f)", skill.name.toStdString().c_str(), skill.level, skill.xpValue );
+								}
+								ImGui::PopID();
+							}
+
+							ImGui::PopID();
+						}
+						ImGui::EndTable();
+					}
+				}
+				else
+				{
+					// ---- GROUP VIEW (default, RimWorld-style) ----
+					int numGroups = s_groupIndex.groups.size();
+					int numCols = numGroups + 2;
+
+					if ( ImGui::BeginTable( "SkillsGroup", numCols,
+						ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY |
+						ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit |
+						ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable ) )
+					{
+						ImGui::TableSetupScrollFreeze( 2, 1 );
+						ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 120.0f );
+						ImGui::TableSetupColumn( "Prof", 0, 90.0f );
+
+						for ( const auto& grp : s_groupIndex.groups )
+						{
+							ImGui::TableSetupColumn( grp.name.toStdString().c_str(), 0, 70.0f );
+						}
+
+						// Custom colored headers with click-to-sort
+						ImGui::TableNextRow( ImGuiTableRowFlags_Headers );
+
+						ImGui::TableNextColumn();
+						if ( ImGui::Selectable( "Name", false, ImGuiSelectableFlags_None ) )
+						{
+							bridge.cmdSortGnomes( "Name" );
+						}
+
+						ImGui::TableNextColumn();
+						if ( ImGui::Selectable( "Prof", false, ImGuiSelectableFlags_None ) )
+						{
+							bridge.cmdSortGnomes( "Prof" );
+						}
+
+						for ( int gi = 0; gi < numGroups; ++gi )
+						{
+							ImGui::TableNextColumn();
+							const auto& grp = s_groupIndex.groups[gi];
+							ImGui::PushStyleColor( ImGuiCol_Text, grp.color );
+							if ( ImGui::Selectable( grp.name.toStdString().c_str(), false, ImGuiSelectableFlags_None ) )
+							{
+								if ( !grp.skillIndices.isEmpty() )
+								{
+									const auto& skills = bridge.populationInfo.gnomes[0].skills;
+									bridge.cmdSortGnomes( skills[grp.skillIndices[0]].sid );
+								}
+							}
+							ImGui::PopStyleColor();
+
+							// Tooltip listing individual skills in group
+							if ( ImGui::IsItemHovered() && !bridge.populationInfo.gnomes.isEmpty() )
+							{
+								ImGui::BeginTooltip();
+								const auto& skills = bridge.populationInfo.gnomes[0].skills;
+								for ( int idx : grp.skillIndices )
+								{
+									if ( idx < skills.size() )
+										ImGui::Text( "%s", skills[idx].name.toStdString().c_str() );
+								}
+								ImGui::EndTooltip();
+							}
+						}
+
+						// Gnome rows
+						for ( const auto& gnome : bridge.populationInfo.gnomes )
+						{
+							ImGui::TableNextRow();
+							ImGui::PushID( gnome.id );
+
+							// Name column
+							ImGui::TableNextColumn();
+							bool isSelected = ( bridge.selectedGnomeID == gnome.id );
+							if ( ImGui::Selectable( gnome.name.toStdString().c_str(), isSelected ) )
+							{
+								bridge.selectedGnomeID = gnome.id;
+							}
+
+							// Profession combo
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth( -1 );
+							if ( ImGui::BeginCombo( "##prof", gnome.profession.toStdString().c_str(), ImGuiComboFlags_NoArrowButton ) )
+							{
+								for ( const auto& prof : bridge.professionList )
+								{
+									bool sel = ( gnome.profession == prof );
+									if ( ImGui::Selectable( prof.toStdString().c_str(), sel ) )
+									{
+										bridge.cmdSetProfession( gnome.id, prof );
+									}
+								}
+								ImGui::EndCombo();
+							}
+
+							// Group columns
+							for ( int gi = 0; gi < numGroups; ++gi )
+							{
+								ImGui::TableNextColumn();
+								const auto& grp = s_groupIndex.groups[gi];
+								ImGui::PushID( gi );
+
+								// Determine group state: any active? max level?
+								bool anyActive = false;
+								int maxLevel = 0;
+								for ( int idx : grp.skillIndices )
+								{
+									if ( idx < gnome.skills.size() )
+									{
+										if ( gnome.skills[idx].active ) anyActive = true;
+										if ( gnome.skills[idx].level > maxLevel ) maxLevel = gnome.skills[idx].level;
+									}
+								}
+
+								// Checkbox for group toggle
+								bool groupActive = anyActive;
+								if ( ImGui::Checkbox( "", &groupActive ) )
+								{
+									bridge.cmdSetGroupActive( gnome.id, grp.id, groupActive );
+								}
+
+								// Level badge next to checkbox
+								if ( maxLevel > 0 )
+								{
+									ImGui::SameLine();
+									ImGui::Text( "%d", maxLevel );
+								}
+
+								// Tooltip with individual skills
+								if ( ImGui::IsItemHovered() )
+								{
+									ImGui::BeginTooltip();
+									ImGui::TextColored( grp.color, "%s", grp.name.toStdString().c_str() );
+									ImGui::Separator();
+									for ( int idx : grp.skillIndices )
+									{
+										if ( idx < gnome.skills.size() )
+										{
+											const auto& sk = gnome.skills[idx];
+											ImGui::Text( "%s %s Lv %d (XP: %.0f)",
+												sk.active ? "[x]" : "[ ]",
+												sk.name.toStdString().c_str(),
+												sk.level, sk.xpValue );
+										}
+									}
+									ImGui::EndTooltip();
+								}
+
+								ImGui::PopID();
+							}
+
+							ImGui::PopID();
+						}
+						ImGui::EndTable();
+					}
+				}
+
+				ImGui::EndTabItem();
+			}
 		}
 
+		// =================================================================
+		// SCHEDULE TAB
+		// =================================================================
 		if ( ImGui::BeginTabItem( "Schedule" ) )
 		{
 			if ( bridge.scheduleInfo.schedules.isEmpty() )
@@ -529,15 +800,33 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 			}
 			else
 			{
-				if ( ImGui::BeginTable( "ScheduleTable", 25, ImGuiTableFlags_ScrollX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit ) )
+				// Legend
+				auto drawLegend = []( const char* label, ImVec4 col ) {
+					ImGui::PushStyleColor( ImGuiCol_Button, col );
+					ImGui::SmallButton( label );
+					ImGui::PopStyleColor();
+					ImGui::SameLine();
+				};
+				drawLegend( "W", ImVec4( 0.2f, 0.5f, 0.2f, 1.0f ) ); ImGui::Text( "Work" ); ImGui::SameLine( 0, 16 );
+				drawLegend( "E", ImVec4( 0.7f, 0.4f, 0.0f, 1.0f ) ); ImGui::Text( "Eat" ); ImGui::SameLine( 0, 16 );
+				drawLegend( "S", ImVec4( 0.0f, 0.3f, 0.7f, 1.0f ) ); ImGui::Text( "Sleep" ); ImGui::SameLine( 0, 16 );
+				drawLegend( "T", ImVec4( 0.7f, 0.0f, 0.0f, 1.0f ) ); ImGui::Text( "Train" );
+				ImGui::Spacing();
+
+				if ( ImGui::BeginTable( "ScheduleTable", 26,
+					ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY |
+					ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit |
+					ImGuiTableFlags_RowBg ) )
 				{
-					ImGui::TableSetupColumn( "Name", 0, 120.0f );
+					ImGui::TableSetupScrollFreeze( 1, 1 );
+					ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 120.0f );
 					for ( int h = 0; h < 24; ++h )
 					{
 						char hdr[4];
 						snprintf( hdr, sizeof( hdr ), "%02d", h );
 						ImGui::TableSetupColumn( hdr, 0, 28.0f );
 					}
+					ImGui::TableSetupColumn( "All", 0, 32.0f );
 					ImGui::TableHeadersRow();
 
 					for ( const auto& gnome : bridge.scheduleInfo.schedules )
@@ -578,10 +867,56 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 								}
 								bridge.cmdSetSchedule( gnome.id, h, next );
 							}
+							// Right-click context menu
+							if ( ImGui::BeginPopupContextItem() )
+							{
+								if ( ImGui::MenuItem( "Work" ) ) bridge.cmdSetSchedule( gnome.id, h, ScheduleActivity::None );
+								if ( ImGui::MenuItem( "Eat" ) ) bridge.cmdSetSchedule( gnome.id, h, ScheduleActivity::Eat );
+								if ( ImGui::MenuItem( "Sleep" ) ) bridge.cmdSetSchedule( gnome.id, h, ScheduleActivity::Sleep );
+								if ( ImGui::MenuItem( "Train" ) ) bridge.cmdSetSchedule( gnome.id, h, ScheduleActivity::Training );
+								ImGui::EndPopup();
+							}
 							ImGui::PopStyleColor();
 							ImGui::PopID();
 						}
+
+						// "All" column: set all hours for this gnome
+						ImGui::TableNextColumn();
+						ImGui::PushID( gnome.id * 100 + 99 );
+						if ( ImGui::SmallButton( "W##all" ) )
+						{
+							bridge.cmdSetAllHours( gnome.id, ScheduleActivity::None );
+						}
+						if ( ImGui::IsItemHovered() )
+						{
+							ImGui::SetTooltip( "Set all hours to Work" );
+						}
+						ImGui::PopID();
 					}
+
+					// "All gnomes" row at bottom
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::TextDisabled( "All" );
+					for ( int h = 0; h < 24; ++h )
+					{
+						ImGui::TableNextColumn();
+						ImGui::PushID( 999900 + h );
+						if ( ImGui::SmallButton( "W" ) )
+						{
+							bridge.cmdSetHourForAll( h, ScheduleActivity::None );
+						}
+						if ( ImGui::BeginPopupContextItem() )
+						{
+							if ( ImGui::MenuItem( "All Work" ) ) bridge.cmdSetHourForAll( h, ScheduleActivity::None );
+							if ( ImGui::MenuItem( "All Eat" ) ) bridge.cmdSetHourForAll( h, ScheduleActivity::Eat );
+							if ( ImGui::MenuItem( "All Sleep" ) ) bridge.cmdSetHourForAll( h, ScheduleActivity::Sleep );
+							if ( ImGui::MenuItem( "All Train" ) ) bridge.cmdSetHourForAll( h, ScheduleActivity::Training );
+							ImGui::EndPopup();
+						}
+						ImGui::PopID();
+					}
+
 					ImGui::EndTable();
 				}
 			}
@@ -589,6 +924,9 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 			ImGui::EndTabItem();
 		}
 
+		// =================================================================
+		// PERSONALITY TAB (unchanged)
+		// =================================================================
 		if ( ImGui::BeginTabItem( "Personality" ) )
 		{
 			for ( const auto& gnome : bridge.populationInfo.gnomes )
@@ -655,17 +993,16 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 						ImGui::Spacing();
 					}
 
-					// Traits section — only show notable traits (|value| > 25)
+					// Traits section
 					ImGui::TextColored( ImVec4( 0.7f, 0.85f, 1.0f, 1.0f ), "Personality Traits" );
 					ImGui::Indent( 10.0f );
 					bool hasNotable = false;
 					for ( const auto& trait : gnome.traits )
 					{
 						if ( trait.label.isEmpty() )
-							continue; // not extreme enough to show
+							continue;
 
 						hasNotable = true;
-						// Color based on positive/negative
 						float barFrac = ( trait.value + 50.0f ) / 100.0f;
 						ImVec4 barColor;
 						if ( trait.value > 0 )
@@ -701,46 +1038,74 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 			ImGui::EndTabItem();
 		}
 
+		// =================================================================
+		// SOCIAL TAB
+		// =================================================================
 		if ( ImGui::BeginTabItem( "Social" ) )
 		{
+			// Summary
+			int friendships = 0, rivalries = 0, withRels = 0;
 			for ( const auto& gnome : bridge.populationInfo.gnomes )
 			{
-				if ( gnome.relationships.isEmpty() ) continue;
+				if ( !gnome.relationships.isEmpty() ) ++withRels;
+				for ( const auto& rel : gnome.relationships )
+				{
+					if ( rel.opinion > 20 ) ++friendships;
+					else if ( rel.opinion < -20 ) ++rivalries;
+				}
+			}
+			if ( withRels > 0 )
+			{
+				ImGui::Text( "%d gnomes with relationships | %d friendships | %d rivalries", withRels, friendships, rivalries );
+				ImGui::Separator();
+			}
 
+			// Show all gnomes, even those without relationships
+			for ( const auto& gnome : bridge.populationInfo.gnomes )
+			{
 				if ( ImGui::TreeNode( gnome.name.toStdString().c_str() ) )
 				{
-					for ( const auto& rel : gnome.relationships )
+					if ( gnome.relationships.isEmpty() )
 					{
-						// Color: green for positive, red for negative, yellow for neutral
-						ImVec4 color;
-						if ( rel.opinion > 20 )
-							color = ImVec4( 0.2f, 0.7f, 0.3f, 1.0f );
-						else if ( rel.opinion < -20 )
-							color = ImVec4( 0.8f, 0.2f, 0.2f, 1.0f );
-						else
-							color = ImVec4( 0.7f, 0.7f, 0.3f, 1.0f );
+						ImGui::TextDisabled( "No notable relationships" );
+					}
+					else
+					{
+						for ( const auto& rel : gnome.relationships )
+						{
+							ImVec4 color;
+							if ( rel.opinion > 20 )
+								color = ImVec4( 0.2f, 0.7f, 0.3f, 1.0f );
+							else if ( rel.opinion < -20 )
+								color = ImVec4( 0.8f, 0.2f, 0.2f, 1.0f );
+							else
+								color = ImVec4( 0.7f, 0.7f, 0.3f, 1.0f );
 
-						ImGui::TextColored( color, "%s", rel.label.toStdString().c_str() );
-						ImGui::SameLine();
-						ImGui::Text( " %s (%+d)", rel.name.toStdString().c_str(), rel.opinion );
+							ImGui::TextColored( color, "%s", rel.label.toStdString().c_str() );
+							ImGui::SameLine();
+							ImGui::Text( " %s (%+d)", rel.name.toStdString().c_str(), rel.opinion );
+						}
 					}
 					ImGui::TreePop();
 					ImGui::Separator();
 				}
 			}
 
-			bool anyRelationships = false;
-			for ( const auto& gnome : bridge.populationInfo.gnomes )
+			if ( bridge.populationInfo.gnomes.isEmpty() )
 			{
-				if ( !gnome.relationships.isEmpty() ) { anyRelationships = true; break; }
+				ImGui::TextDisabled( "No gnomes" );
 			}
-			if ( !anyRelationships )
+			else if ( withRels == 0 )
 			{
-				ImGui::TextDisabled( "No relationships yet — gnomes develop opinions over time" );
+				ImGui::Spacing();
+				ImGui::TextDisabled( "No relationships yet -- gnomes develop opinions over time" );
 			}
 			ImGui::EndTabItem();
 		}
 
+		// =================================================================
+		// PROFESSIONS TAB
+		// =================================================================
 		if ( ImGui::BeginTabItem( "Professions" ) )
 		{
 			if ( bridge.professionList.isEmpty() )
@@ -748,41 +1113,143 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 				bridge.cmdRequestProfessions();
 			}
 
-			if ( ImGui::Button( "New Profession" ) )
+			// Left panel: profession list
+			ImGui::BeginChild( "ProfList", ImVec2( 200, 0 ), true );
 			{
-				bridge.cmdNewProfession();
-				bridge.cmdRequestProfessions();
-			}
-
-			for ( const auto& prof : bridge.professionList )
-			{
-				if ( ImGui::Selectable( prof.toStdString().c_str(), bridge.editingProfession == prof ) )
+				if ( ImGui::Button( "New", ImVec2( 90, 0 ) ) )
 				{
-					bridge.cmdRequestSkills( prof );
+					bridge.cmdNewProfession();
+					bridge.cmdRequestProfessions();
 				}
-			}
-
-			if ( !bridge.editingProfession.isEmpty() && !bridge.professionSkills.isEmpty() )
-			{
-				ImGui::Separator();
-				ImGui::Text( "Edit: %s", bridge.editingProfession.toStdString().c_str() );
-
-				for ( auto& skill : bridge.professionSkills )
+				ImGui::SameLine();
+				if ( ImGui::Button( "Delete", ImVec2( 90, 0 ) ) )
 				{
-					bool active = skill.active;
-					if ( ImGui::Checkbox( skill.name.toStdString().c_str(), &active ) )
+					if ( !bridge.editingProfession.isEmpty() )
 					{
-						skill.active = active;
-						// Collect all active skills and update
-						QStringList activeSkills;
-						for ( const auto& s : bridge.professionSkills )
-						{
-							if ( s.active ) activeSkills.append( s.sid );
-						}
-						bridge.cmdUpdateProfession( bridge.editingProfession, bridge.editingProfession, activeSkills );
+						bridge.cmdDeleteProfession( bridge.editingProfession );
+						bridge.editingProfession.clear();
+						bridge.professionSkills.clear();
+					}
+				}
+				ImGui::Separator();
+
+				for ( const auto& prof : bridge.professionList )
+				{
+					if ( ImGui::Selectable( prof.toStdString().c_str(), bridge.editingProfession == prof ) )
+					{
+						bridge.cmdRequestSkills( prof );
 					}
 				}
 			}
+			ImGui::EndChild();
+
+			ImGui::SameLine();
+
+			// Right panel: skill editor
+			ImGui::BeginChild( "ProfEdit", ImVec2( 0, 0 ), true );
+			{
+				if ( !bridge.editingProfession.isEmpty() && !bridge.professionSkills.isEmpty() )
+				{
+					// Rename field
+					static char renameBuf[128] = {};
+					static QString lastProf;
+					if ( lastProf != bridge.editingProfession )
+					{
+						lastProf = bridge.editingProfession;
+						strncpy( renameBuf, bridge.editingProfession.toStdString().c_str(), sizeof( renameBuf ) - 1 );
+						renameBuf[sizeof( renameBuf ) - 1] = '\0';
+					}
+					ImGui::Text( "Editing:" );
+					ImGui::SameLine();
+					ImGui::SetNextItemWidth( 200 );
+					if ( ImGui::InputText( "##profname", renameBuf, sizeof( renameBuf ), ImGuiInputTextFlags_EnterReturnsTrue ) )
+					{
+						QString newName = QString( renameBuf );
+						if ( !newName.isEmpty() && newName != bridge.editingProfession )
+						{
+							QStringList activeSkills;
+							for ( const auto& s : bridge.professionSkills )
+							{
+								if ( s.active ) activeSkills.append( s.sid );
+							}
+							bridge.cmdUpdateProfession( bridge.editingProfession, newName, activeSkills );
+							bridge.editingProfession = newName;
+							bridge.cmdRequestProfessions();
+						}
+					}
+
+					// Assign to selected gnome
+					if ( bridge.selectedGnomeID != 0 )
+					{
+						ImGui::SameLine();
+						if ( ImGui::Button( "Assign to Selected Gnome" ) )
+						{
+							bridge.cmdSetProfession( bridge.selectedGnomeID, bridge.editingProfession );
+						}
+					}
+
+					ImGui::Separator();
+
+					// Skills grouped by group
+					if ( s_groupIndex.built )
+					{
+						for ( const auto& grp : s_groupIndex.groups )
+						{
+							ImGui::PushStyleColor( ImGuiCol_Text, grp.color );
+							bool groupOpen = ImGui::TreeNodeEx( grp.name.toStdString().c_str(), ImGuiTreeNodeFlags_DefaultOpen );
+							ImGui::PopStyleColor();
+
+							if ( groupOpen )
+							{
+								for ( int idx : grp.skillIndices )
+								{
+									if ( idx < bridge.professionSkills.size() )
+									{
+										auto& skill = bridge.professionSkills[idx];
+										ImGui::PushID( idx );
+										bool active = skill.active;
+										if ( ImGui::Checkbox( skill.name.toStdString().c_str(), &active ) )
+										{
+											skill.active = active;
+											QStringList activeSkills;
+											for ( const auto& s : bridge.professionSkills )
+											{
+												if ( s.active ) activeSkills.append( s.sid );
+											}
+											bridge.cmdUpdateProfession( bridge.editingProfession, bridge.editingProfession, activeSkills );
+										}
+										ImGui::PopID();
+									}
+								}
+								ImGui::TreePop();
+							}
+						}
+					}
+					else
+					{
+						// Fallback: flat list
+						for ( auto& skill : bridge.professionSkills )
+						{
+							bool active = skill.active;
+							if ( ImGui::Checkbox( skill.name.toStdString().c_str(), &active ) )
+							{
+								skill.active = active;
+								QStringList activeSkills;
+								for ( const auto& s : bridge.professionSkills )
+								{
+									if ( s.active ) activeSkills.append( s.sid );
+								}
+								bridge.cmdUpdateProfession( bridge.editingProfession, bridge.editingProfession, activeSkills );
+							}
+						}
+					}
+				}
+				else
+				{
+					ImGui::TextDisabled( "Select a profession to edit" );
+				}
+			}
+			ImGui::EndChild();
 
 			ImGui::EndTabItem();
 		}

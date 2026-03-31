@@ -6,6 +6,25 @@ Every change to the codebase must be logged here. This is the master record of a
 
 ---
 
+## [2026-03-31] Population UI Overhaul — Skills, Professions, Schedule, Social
+
+**Milestone**: 0.0 — UI/UX
+**Files changed**: `src/gui/ui/ui_sidepanels.cpp`, `src/gui/aggregatorpopulation.h`, `src/gui/aggregatorpopulation.cpp`, `src/gui/imguibridge.h`, `src/gui/imguibridge.cpp`
+
+### Changes
+- **Skills tab rewrite** — Replaced unusable 40+ column `ImGui::Columns()` grid with `ImGui::BeginTable()` using 14 skill group columns (RimWorld-style). Group view shows checkbox + max level per group with color-coded headers. Toggle to Individual View for per-skill control. Frozen Name/Profession columns. In-row profession combo dropdown. Sortable headers. Hover tooltips with detailed skill breakdown.
+- **Professions tab bug fix** — Fixed `onRequestSkills()` which only returned skills already in the profession (impossible to add new ones). Now returns all skills with active flags. Connected disconnected `signalSelectEditProfession` signal. New split-panel UI with left profession list and right skill editor grouped by skill group with TreeNodes. Added rename field and "Assign to Selected Gnome" button.
+- **Schedule tab polish** — Added color-coded legend bar (W/E/S/T). Added frozen Name column. Added "All" column per gnome and "All" row for batch operations. Right-click context menu for direct activity selection instead of cycling.
+- **Social tab polish** — Now shows all gnomes (not just those with relationships). Added summary header (friendship/rivalry counts). Better empty state messaging.
+- **Group toggle infrastructure** — New `onSetGroupActive` aggregator slot and `cmdSetGroupActive` bridge command to toggle all skills in a group at once.
+
+### Technical Details
+- Group index built lazily from first gnome's skill data and cached in static `SkillGroupIndex`. Groups derived from existing `GuiSkillInfo.group` field — no new DB queries needed.
+- Profession skill editor reuses the same group index for organized display with colored TreeNodeEx headers.
+- `ImGui::BeginTable()` with `TableSetupScrollFreeze(2,1)` provides proper horizontal/vertical scrolling with pinned columns.
+
+---
+
 ## [2026-03-26] Mega Optimization: Phases A-F, H — Gnome AI Redesign
 
 **Milestone**: 0.0 — Foundations & Performance

@@ -170,12 +170,6 @@ void GnomeManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayChang
 	// Process social interactions between nearby gnomes
 	processSocialInteractions( tickNumber );
 
-	// Safety net: check sleeping gnomes' critical needs every 100 ticks
-	if ( tickNumber % 100 == 0 )
-	{
-		safetyNetScan( tickNumber );
-	}
-
 	QList<unsigned int> deadGnomes;
 	QList<unsigned int> deadOrGoneSpecial;
 
@@ -185,11 +179,6 @@ void GnomeManager::onTick( quint64 tickNumber, bool seasonChanged, bool dayChang
 	for ( int i = 0; i < m_gnomes.size(); ++i )
 	{
 		Gnome* gn = m_gnomes[i];
-
-		if ( gn->isSleeping() )
-		{
-			continue;
-		}
 
 		CreatureTickResult tr = gn->onTick( tickNumber, seasonChanged, dayChanged, hourChanged, minuteChanged );
 

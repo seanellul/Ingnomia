@@ -147,6 +147,8 @@ public slots:
 	void onRequestProfessions();
 	void onRequestSkills( QString profession );
 
+	void onSetGroupActive( unsigned int gnomeID, QString groupID, bool value );
+
 	void onUpdateProfession( QString name, QString newName, QStringList skills );
 	void onDeleteProfession( QString name );
 	void onNewProfession();

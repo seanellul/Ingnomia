@@ -834,12 +834,12 @@ CreatureTickResult Gnome::onTick( quint64 tickNumber, bool seasonChanged, bool d
 	{
 		return fullTick( tickNumber, seasonChanged, dayChanged, hourChanged, minuteChanged );
 	}
-	return cheapTick( tickNumber );
+	return cheapTick( tickNumber, minuteChanged );
 }
 
 // Cheap tick: survival checks, movement along cached path, work timer check
-// No BT evaluation, no need evaluation, no job search
-CreatureTickResult Gnome::cheapTick( quint64 tickNumber )
+// No BT evaluation, no job search — but DOES decay needs on minuteChanged
+CreatureTickResult Gnome::cheapTick( quint64 tickNumber, bool minuteChanged )
 {
 	processCooldowns( tickNumber );
 
@@ -863,6 +863,34 @@ CreatureTickResult Gnome::cheapTick( quint64 tickNumber )
 		m_expires    = GameState::tick + Global::util->ticksPerDay * 2;
 		m_lastOnTick = tickNumber;
 		return CreatureTickResult::DEAD;
+	}
+
+	// Decay needs on cheap ticks too — otherwise needs only update 1/N_BUCKETS of the time
+	if ( minuteChanged )
+	{
+		for ( auto need : Global::needIDs )
+		{
+			float decay  = Global::needDecays.value( need );
+			float oldVal = m_needs[need].toFloat();
+			float newVal = qMax( -100.f, qMin( 150.f, oldVal + decay ) );
+			m_needs.insert( need, newVal );
+
+			if ( need == "Hunger" || need == "Thirst" )
+			{
+				if ( newVal <= -100.f )
+				{
+					die();
+				}
+			}
+		}
+		// Force full tick if needs are getting critical — gnome should seek food/drink
+		float hunger = m_needs.contains( "Hunger" ) ? m_needs["Hunger"].toFloat() : 50;
+		float thirst = m_needs.contains( "Thirst" ) ? m_needs["Thirst"].toFloat() : 50;
+		float sleepN = m_needs.contains( "Sleep" ) ? m_needs["Sleep"].toFloat() : 50;
+		if ( hunger < 30 || thirst < 30 || sleepN < 30 )
+		{
+			m_forceFullTick = true;
+		}
 	}
 
 	Position oldPos = m_position;
@@ -1095,21 +1123,6 @@ CreatureTickResult Gnome::fullTick( quint64 tickNumber, bool seasonChanged, bool
 	{
 		m_idleTickCount = 0;
 		return CreatureTickResult::JOBCHANGED;
-	}
-
-	// Phase D: sleep trigger — if idle with no job and no pending jobs for 30+ ticks
-	if ( !m_job && m_pendingJobs.isEmpty() )
-	{
-		m_idleTickCount++;
-		if ( m_idleTickCount >= 30 )
-		{
-			m_idleTickCount = 0;
-			g->gm()->sleepGnome( this );
-		}
-	}
-	else
-	{
-		m_idleTickCount = 0;
 	}
 
 	return CreatureTickResult::OK;
