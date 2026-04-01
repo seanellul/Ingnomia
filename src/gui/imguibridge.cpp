@@ -701,9 +701,10 @@ void ImGuiBridge::cmdInventorySetActive( bool active, const GuiWatchedItem& item
 
 // Debug commands
 void ImGuiBridge::cmdSpawnCreature( const QString& type ) { Global::eventConnector->aggregatorDebug()->onSpawnCreature( type ); }
-void ImGuiBridge::cmdSpawnMonster( const QString& species, int amount ) { Global::eventConnector->aggregatorDebug()->onSpawnMonster( species, amount ); }
-void ImGuiBridge::cmdSpawnAnimal( const QString& species, int amount ) { Global::eventConnector->aggregatorDebug()->onSpawnAnimal( species, amount ); }
-void ImGuiBridge::cmdSpawnItem( const QString& itemSID, const QString& material, int amount ) { Global::eventConnector->aggregatorDebug()->onSpawnItem( itemSID, material, amount ); }
+void ImGuiBridge::cmdSpawnGnome( unsigned int tileID ) { Global::eventConnector->aggregatorDebug()->onSpawnGnome( tileID ); }
+void ImGuiBridge::cmdSpawnMonster( const QString& species, int amount, unsigned int tileID ) { Global::eventConnector->aggregatorDebug()->onSpawnMonster( species, amount, tileID ); }
+void ImGuiBridge::cmdSpawnAnimal( const QString& species, int amount, unsigned int tileID ) { Global::eventConnector->aggregatorDebug()->onSpawnAnimal( species, amount, tileID ); }
+void ImGuiBridge::cmdSpawnItem( const QString& itemSID, const QString& material, int amount, unsigned int tileID ) { Global::eventConnector->aggregatorDebug()->onSpawnItem( itemSID, material, amount, tileID ); }
 void ImGuiBridge::cmdSetWindowSize( int w, int h ) { Global::eventConnector->aggregatorDebug()->onSetWindowSize( w, h ); }
 
 // Settings commands

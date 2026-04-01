@@ -578,72 +578,79 @@ void EventManager::onDebugEvent( EventType type, QVariantMap args )
 	m_eventList.append( e );
 }
 
-void EventManager::onDebugSpawnMonster( QString species, int amount )
+// Resolve a tileID to a walkable position, with fallback to map center
+static Position resolveSpawnPos( Position pos, Game* g )
 {
-	bool found = false;
-	Position pos = Global::util->borderPos( found );
-	if ( !found ) return;
+	if ( g->w()->isWalkable( pos ) )
+		return pos;
+	// Search outward for a walkable tile
+	for ( int r = 1; r < 10; ++r )
+	{
+		for ( int dx = -r; dx <= r; ++dx )
+		{
+			for ( int dy = -r; dy <= r; ++dy )
+			{
+				Position test( pos.x + dx, pos.y + dy, pos.z );
+				if ( g->w()->isWalkable( test ) )
+					return test;
+			}
+		}
+	}
+	return pos;
+}
+
+void EventManager::onDebugSpawnGnome( unsigned int tileID )
+{
+	Position pos = ( tileID > 0 ) ? Position( tileID ) : Position( Global::dimX / 2, Global::dimY / 2, GameState::viewLevel );
+	pos = resolveSpawnPos( pos, g );
+	g->m_gnomeManager->addGnome( pos );
+	Global::logger().log( LogType::DEBUG, "Debug: spawned gnome at " + pos.toString(), 0 );
+}
+
+void EventManager::onDebugSpawnMonster( QString species, int amount, unsigned int tileID )
+{
+	Position pos;
+	if ( tileID > 0 )
+	{
+		pos = resolveSpawnPos( Position( tileID ), g );
+	}
+	else
+	{
+		bool found = false;
+		pos = Global::util->borderPos( found );
+		if ( !found ) return;
+	}
 
 	for ( int i = 0; i < amount; ++i )
 	{
 		g->m_creatureManager->addCreature( CreatureType::MONSTER, species, pos, Gender::MALE, true, false, 1 );
 	}
-	Global::logger().log( LogType::DEBUG, "Debug: spawned " + QString::number( amount ) + " " + species, 0 );
+	Global::logger().log( LogType::DEBUG, "Debug: spawned " + QString::number( amount ) + " " + species + " at " + pos.toString(), 0 );
 }
 
-void EventManager::onDebugSpawnAnimal( QString species, int amount )
+void EventManager::onDebugSpawnAnimal( QString species, int amount, unsigned int tileID )
 {
-	Position pos( Global::dimX / 2, Global::dimY / 2, GameState::viewLevel );
-	// Find a walkable tile near center
-	for ( int r = 0; r < 10; ++r )
-	{
-		for ( int dx = -r; dx <= r; ++dx )
-		{
-			for ( int dy = -r; dy <= r; ++dy )
-			{
-				Position test( pos.x + dx, pos.y + dy, pos.z );
-				if ( g->w()->isWalkable( test ) )
-				{
-					pos = test;
-					goto foundPos;
-				}
-			}
-		}
-	}
-foundPos:
+	Position pos = ( tileID > 0 ) ? Position( tileID ) : Position( Global::dimX / 2, Global::dimY / 2, GameState::viewLevel );
+	pos = resolveSpawnPos( pos, g );
+
 	for ( int i = 0; i < amount; ++i )
 	{
 		Gender gender = ( rand() % 2 == 0 ) ? Gender::MALE : Gender::FEMALE;
 		g->m_creatureManager->addCreature( CreatureType::ANIMAL, species, pos, gender, true, false, 1 );
 	}
-	Global::logger().log( LogType::DEBUG, "Debug: spawned " + QString::number( amount ) + " " + species, 0 );
+	Global::logger().log( LogType::DEBUG, "Debug: spawned " + QString::number( amount ) + " " + species + " at " + pos.toString(), 0 );
 }
 
-void EventManager::onDebugSpawnItem( QString itemSID, QString material, int amount )
+void EventManager::onDebugSpawnItem( QString itemSID, QString material, int amount, unsigned int tileID )
 {
-	Position pos( Global::dimX / 2, Global::dimY / 2, GameState::viewLevel );
-	// Find a walkable tile near center
-	for ( int r = 0; r < 10; ++r )
-	{
-		for ( int dx = -r; dx <= r; ++dx )
-		{
-			for ( int dy = -r; dy <= r; ++dy )
-			{
-				Position test( pos.x + dx, pos.y + dy, pos.z );
-				if ( g->w()->isWalkable( test ) )
-				{
-					pos = test;
-					goto foundItemPos;
-				}
-			}
-		}
-	}
-foundItemPos:
+	Position pos = ( tileID > 0 ) ? Position( tileID ) : Position( Global::dimX / 2, Global::dimY / 2, GameState::viewLevel );
+	pos = resolveSpawnPos( pos, g );
+
 	for ( int i = 0; i < amount; ++i )
 	{
 		g->inv()->createItem( pos, itemSID, material );
 	}
-	Global::logger().log( LogType::DEBUG, "Debug: spawned " + QString::number( amount ) + " " + itemSID + " (" + material + ")", 0 );
+	Global::logger().log( LogType::DEBUG, "Debug: spawned " + QString::number( amount ) + " " + itemSID + " (" + material + ") at " + pos.toString(), 0 );
 }
 
 QList<Mission>& EventManager::missions()
