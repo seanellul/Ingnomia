@@ -81,6 +81,18 @@ public:
 	quint64 lastLogCount = 0; // track new log entries for toast generation
 	static constexpr int MAX_TOASTS = 5; // max visible toasts at once
 
+	// Grouped combat toast — single updating entry instead of per-event spam
+	struct CombatToast
+	{
+		bool active             = false;
+		QString latestEvent;
+		int eventCount          = 0;
+		quint64 lastUpdateTick  = 0;
+		unsigned int entityID   = 0;
+		int posX = 0, posY = 0, posZ = 0;
+	};
+	CombatToast combatToast;
+
 	// Camera navigation request (set by UI, consumed by MainWindow)
 	bool pendingCameraNav = false;
 	Position cameraNavTarget;
