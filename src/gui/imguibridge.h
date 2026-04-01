@@ -208,6 +208,7 @@ public:
 	QString editingProfession;
 	bool skillsShowIndividual = false;
 	unsigned int selectedGnomeID = 0;
+	ScheduleActivity schedulePaintBrush = ScheduleActivity::Anything;
 
 	// =========================================================================
 	// Military data

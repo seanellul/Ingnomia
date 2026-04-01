@@ -73,7 +73,7 @@ Gnome::Gnome( Position& pos, QString name, Gender gender, Game* game ) :
 
 	for ( int i = 0; i < 24; ++i )
 	{
-		m_schedule.append( ScheduleActivity::None );
+		m_schedule.append( ScheduleActivity::Anything );
 	}
 
 	log( GameState::currentYearAndSeason );
@@ -140,10 +140,12 @@ Gnome::Gnome( QVariantMap& in, Game* game ) :
 		for( auto vs : list )
 		{
 			auto ss = vs.toString();
-			ScheduleActivity sa = ScheduleActivity::None;
+			ScheduleActivity sa = ScheduleActivity::Anything;
 			if ( ss == "eat" ) sa = ScheduleActivity::Eat;
 			else if ( ss == "sleep" ) sa = ScheduleActivity::Sleep;
 			else if ( ss == "train" ) sa = ScheduleActivity::Training;
+			else if ( ss == "work" ) sa = ScheduleActivity::None;
+			else if ( ss == "anything" ) sa = ScheduleActivity::Anything;
 
 			m_schedule.append( sa );
 		}
@@ -152,7 +154,7 @@ Gnome::Gnome( QVariantMap& in, Game* game ) :
 	{
 		for ( int i = 0; i < 24; ++i )
 		{
-			m_schedule.append( ScheduleActivity::None );
+			m_schedule.append( ScheduleActivity::Anything );
 		}
 	}
 
@@ -236,6 +238,9 @@ void Gnome::serialize( QVariantMap& out )
 	{
 		switch ( sa )
 		{
+			case ScheduleActivity::None:
+				vSchedule.append( "work" );
+				break;
 			case ScheduleActivity::Eat:
 				vSchedule.append( "eat" );
 				break;
@@ -245,8 +250,11 @@ void Gnome::serialize( QVariantMap& out )
 			case ScheduleActivity::Training:
 				vSchedule.append( "train" );
 				break;
+			case ScheduleActivity::Anything:
+				vSchedule.append( "anything" );
+				break;
 			default:
-				vSchedule.append( "none" );
+				vSchedule.append( "anything" );
 		}
 	}
 	out.insert( "Schedule", vSchedule );
@@ -920,8 +928,16 @@ CreatureTickResult Gnome::cheapTick( quint64 tickNumber, bool minuteChanged )
 			}
 			break;
 
+		case GnomeState::IDLE:
+			// Idle gnome waiting for job cooldown — force full tick when cooldown expires
+			if ( m_jobCooldown <= 0 )
+			{
+				m_forceFullTick = true;
+			}
+			break;
+
 		default:
-			// IDLE, THINKING, NEEDS, COMBAT — should only happen on full tick
+			// THINKING, NEEDS, COMBAT — need full BT evaluation
 			m_forceFullTick = true;
 			break;
 	}
@@ -1121,7 +1137,6 @@ CreatureTickResult Gnome::fullTick( quint64 tickNumber, bool seasonChanged, bool
 
 	if ( m_jobChanged )
 	{
-		m_idleTickCount = 0;
 		return CreatureTickResult::JOBCHANGED;
 	}
 
@@ -1828,7 +1843,7 @@ ScheduleActivity Gnome::schedule( unsigned char hour )
 	{
 		return m_schedule[hour];
 	}
-	return ScheduleActivity::None;
+	return ScheduleActivity::Anything;
 }
 
 void Gnome::setSchedule( unsigned char hour, ScheduleActivity activity )
@@ -1842,7 +1857,7 @@ void Gnome::setSchedule( unsigned char hour, ScheduleActivity activity )
 		m_schedule.clear();
 		for ( int i = 0; i < 24; ++i )
 		{
-			m_schedule.append( ScheduleActivity::None );
+			m_schedule.append( ScheduleActivity::Anything );
 		}
 		m_schedule[hour] = activity;
 	}

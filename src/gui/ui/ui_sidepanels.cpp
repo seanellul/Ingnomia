@@ -1,4 +1,5 @@
 #include "ui_sidepanels.h"
+#include "ui_helpers.h"
 #include "../imguibridge.h"
 #include "../eventconnector.h"
 #include "../aggregatorstockpile.h"
@@ -14,30 +15,50 @@
 void drawKingdomPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowPos( ImVec2( 5, 55 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Kingdom - Inventory", &open, 0 );
+	ImGui::Begin( "Kingdom", &open, 0 );
 
 	if ( !open ) bridge.activeSidePanel = ImGuiBridge::SidePanel::None;
 
-	ImGui::Columns( 4, "invCols" );
-	ImGui::Text( "Category" ); ImGui::NextColumn();
-	ImGui::Text( "In Stock" ); ImGui::NextColumn();
-	ImGui::Text( "Total" ); ImGui::NextColumn();
-	ImGui::Text( "" ); ImGui::NextColumn();
-	ImGui::Separator();
+	sectionHeader( "Inventory" );
 
-	for ( const auto& cat : bridge.inventoryCategories )
+	if ( ImGui::BeginTable( "InvTable", 3,
+		ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp ) )
 	{
-		ImGui::Text( "%s", cat.name.toStdString().c_str() ); ImGui::NextColumn();
-		ImGui::Text( "%d", cat.countInStockpiles ); ImGui::NextColumn();
-		ImGui::Text( "%d", cat.countTotal ); ImGui::NextColumn();
-		ImGui::Text( "" ); ImGui::NextColumn();
+		ImGui::TableSetupColumn( "Category", 0, 3.0f );
+		ImGui::TableSetupColumn( "In Stock", 0, 1.0f );
+		ImGui::TableSetupColumn( "Total", 0, 1.0f );
+		ImGui::TableHeadersRow();
+
+		int totalStock = 0, totalAll = 0;
+		for ( const auto& cat : bridge.inventoryCategories )
+		{
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text( "%s", cat.name.toStdString().c_str() );
+			ImGui::TableNextColumn();
+			ImGui::Text( "%d", cat.countInStockpiles );
+			ImGui::TableNextColumn();
+			ImGui::Text( "%d", cat.countTotal );
+			totalStock += cat.countInStockpiles;
+			totalAll += cat.countTotal;
+		}
+
+		// Totals row
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::TextColored( ImVec4( 0.7f, 0.85f, 1.0f, 1.0f ), "Total" );
+		ImGui::TableNextColumn();
+		ImGui::TextColored( ImVec4( 0.7f, 0.85f, 1.0f, 1.0f ), "%d", totalStock );
+		ImGui::TableNextColumn();
+		ImGui::TextColored( ImVec4( 0.7f, 0.85f, 1.0f, 1.0f ), "%d", totalAll );
+
+		ImGui::EndTable();
 	}
 
-	ImGui::Columns( 1 );
 	ImGui::End();
 }
 
@@ -49,10 +70,10 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::SetNextWindowPos( ImVec2( 5, 130 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( 370, io.DisplaySize.y - 200 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 400, io.DisplaySize.y - 200 ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
-	ImGui::Begin( "Stockpile Management", &open, 0 );
+	ImGui::Begin( "Stockpile", &open, 0 );
 
 	if ( !open )
 	{
@@ -60,6 +81,8 @@ void drawStockpilePanel( ImGuiBridge& bridge )
 	}
 
 	auto& sp = bridge.stockpileInfo;
+
+	sectionHeader( "Settings" );
 
 	// Name
 	static char name[128];
@@ -513,8 +536,8 @@ static void buildGroupIndex( const QList<GuiSkillInfo>& skills )
 void drawPopulationPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.8f, io.DisplaySize.y * 0.75f ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowPos( ImVec2( 5, 55 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.82f, io.DisplaySize.y * 0.78f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
 	ImGui::Begin( "Population", &open, 0 );
@@ -561,12 +584,12 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 						ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable ) )
 					{
 						ImGui::TableSetupScrollFreeze( 2, 1 );
-						ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 120.0f );
-						ImGui::TableSetupColumn( "Prof", 0, 90.0f );
+						ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 145.0f );
+						ImGui::TableSetupColumn( "Prof", 0, 110.0f );
 
 						for ( const auto& skill : bridge.populationInfo.gnomes[0].skills )
 						{
-							ImGui::TableSetupColumn( skill.name.left( 5 ).toStdString().c_str(), 0, 42.0f );
+							ImGui::TableSetupColumn( skill.name.left( 5 ).toStdString().c_str(), 0, 50.0f );
 						}
 						ImGui::TableHeadersRow();
 
@@ -640,12 +663,12 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 						ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable ) )
 					{
 						ImGui::TableSetupScrollFreeze( 2, 1 );
-						ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 120.0f );
-						ImGui::TableSetupColumn( "Prof", 0, 90.0f );
+						ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 145.0f );
+						ImGui::TableSetupColumn( "Prof", 0, 110.0f );
 
 						for ( const auto& grp : s_groupIndex.groups )
 						{
-							ImGui::TableSetupColumn( grp.name.toStdString().c_str(), 0, 70.0f );
+							ImGui::TableSetupColumn( grp.name.toStdString().c_str(), 0, 82.0f );
 						}
 
 						// Custom colored headers with click-to-sort
@@ -670,11 +693,7 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 							ImGui::PushStyleColor( ImGuiCol_Text, grp.color );
 							if ( ImGui::Selectable( grp.name.toStdString().c_str(), false, ImGuiSelectableFlags_None ) )
 							{
-								if ( !grp.skillIndices.isEmpty() )
-								{
-									const auto& skills = bridge.populationInfo.gnomes[0].skills;
-									bridge.cmdSortGnomes( skills[grp.skillIndices[0]].sid );
-								}
+								bridge.cmdSortGnomes( grp.id );
 							}
 							ImGui::PopStyleColor();
 
@@ -800,17 +819,67 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 			}
 			else
 			{
-				// Legend
-				auto drawLegend = []( const char* label, ImVec4 col ) {
-					ImGui::PushStyleColor( ImGuiCol_Button, col );
-					ImGui::SmallButton( label );
-					ImGui::PopStyleColor();
-					ImGui::SameLine();
+				// Activity color/label helpers
+				auto activityColor = []( ScheduleActivity a ) -> ImVec4 {
+					switch ( a )
+					{
+						case ScheduleActivity::Anything: return ImVec4( 0.35f, 0.35f, 0.45f, 1.0f );
+						case ScheduleActivity::None:     return ImVec4( 0.2f, 0.5f, 0.2f, 1.0f );
+						case ScheduleActivity::Eat:      return ImVec4( 0.7f, 0.4f, 0.0f, 1.0f );
+						case ScheduleActivity::Sleep:    return ImVec4( 0.0f, 0.3f, 0.7f, 1.0f );
+						case ScheduleActivity::Training: return ImVec4( 0.7f, 0.0f, 0.0f, 1.0f );
+						default: return ImVec4( 0.3f, 0.3f, 0.3f, 1.0f );
+					}
 				};
-				drawLegend( "W", ImVec4( 0.2f, 0.5f, 0.2f, 1.0f ) ); ImGui::Text( "Work" ); ImGui::SameLine( 0, 16 );
-				drawLegend( "E", ImVec4( 0.7f, 0.4f, 0.0f, 1.0f ) ); ImGui::Text( "Eat" ); ImGui::SameLine( 0, 16 );
-				drawLegend( "S", ImVec4( 0.0f, 0.3f, 0.7f, 1.0f ) ); ImGui::Text( "Sleep" ); ImGui::SameLine( 0, 16 );
-				drawLegend( "T", ImVec4( 0.7f, 0.0f, 0.0f, 1.0f ) ); ImGui::Text( "Train" );
+				auto activityLabel = []( ScheduleActivity a ) -> const char* {
+					switch ( a )
+					{
+						case ScheduleActivity::Anything: return "A";
+						case ScheduleActivity::None:     return "W";
+						case ScheduleActivity::Eat:      return "E";
+						case ScheduleActivity::Sleep:    return "S";
+						case ScheduleActivity::Training: return "T";
+						default: return "?";
+					}
+				};
+
+				// Paint brush selector toolbar
+				ImGui::Text( "Paint:" );
+				ImGui::SameLine();
+
+				struct BrushOption { ScheduleActivity act; const char* label; const char* tooltip; };
+				BrushOption brushes[] = {
+					{ ScheduleActivity::Anything, "Anything",  "Self-manage: eat/sleep when needed, work otherwise" },
+					{ ScheduleActivity::None,     "Work",      "Work only — ignore needs until critical" },
+					{ ScheduleActivity::Eat,      "Eat",       "Proactively eat and drink" },
+					{ ScheduleActivity::Sleep,    "Sleep",     "Go to bed" },
+					{ ScheduleActivity::Training, "Train",     "Train at training ground" },
+				};
+
+				for ( const auto& b : brushes )
+				{
+					bool selected = ( bridge.schedulePaintBrush == b.act );
+					ImVec4 col = activityColor( b.act );
+					if ( selected )
+					{
+						col.x = qMin( col.x + 0.3f, 1.0f );
+						col.y = qMin( col.y + 0.3f, 1.0f );
+						col.z = qMin( col.z + 0.3f, 1.0f );
+					}
+					ImGui::PushStyleColor( ImGuiCol_Button, selected ? col : activityColor( b.act ) );
+					ImGui::PushStyleColor( ImGuiCol_ButtonHovered, col );
+					if ( ImGui::Button( b.label ) )
+					{
+						bridge.schedulePaintBrush = b.act;
+					}
+					ImGui::PopStyleColor( 2 );
+					if ( ImGui::IsItemHovered() )
+					{
+						ImGui::SetTooltip( "%s", b.tooltip );
+					}
+					ImGui::SameLine();
+				}
+				ImGui::NewLine();
 				ImGui::Spacing();
 
 				if ( ImGui::BeginTable( "ScheduleTable", 26,
@@ -819,14 +888,14 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 					ImGuiTableFlags_RowBg ) )
 				{
 					ImGui::TableSetupScrollFreeze( 1, 1 );
-					ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 120.0f );
+					ImGui::TableSetupColumn( "Name", ImGuiTableColumnFlags_NoHide, 145.0f );
 					for ( int h = 0; h < 24; ++h )
 					{
 						char hdr[4];
 						snprintf( hdr, sizeof( hdr ), "%02d", h );
-						ImGui::TableSetupColumn( hdr, 0, 28.0f );
+						ImGui::TableSetupColumn( hdr, 0, 36.0f );
 					}
-					ImGui::TableSetupColumn( "All", 0, 32.0f );
+					ImGui::TableSetupColumn( "All", 0, 40.0f );
 					ImGui::TableHeadersRow();
 
 					for ( const auto& gnome : bridge.scheduleInfo.schedules )
@@ -839,57 +908,44 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 						{
 							ImGui::TableNextColumn();
 							ImGui::PushID( gnome.id * 100 + h );
-							const char* label = "W";
-							ImVec4 btnCol( 0.3f, 0.3f, 0.3f, 1.0f );
-							if ( h < gnome.schedule.size() )
+
+							ScheduleActivity act = ( h < gnome.schedule.size() ) ? gnome.schedule[h] : ScheduleActivity::Anything;
+							ImVec4 col = activityColor( act );
+							const char* lbl = activityLabel( act );
+
+							// Draw colored cell button
+							ImGui::PushStyleColor( ImGuiCol_Button, col );
+							ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( col.x + 0.15f, col.y + 0.15f, col.z + 0.15f, 1.0f ) );
+							ImGui::SmallButton( lbl );
+							ImGui::PopStyleColor( 2 );
+
+							// Click to paint single cell
+							if ( ImGui::IsItemClicked( ImGuiMouseButton_Left ) )
 							{
-								switch ( gnome.schedule[h] )
-								{
-									case ScheduleActivity::None: label = "W"; btnCol = ImVec4( 0.2f, 0.5f, 0.2f, 1.0f ); break;
-									case ScheduleActivity::Eat: label = "E"; btnCol = ImVec4( 0.7f, 0.4f, 0.0f, 1.0f ); break;
-									case ScheduleActivity::Sleep: label = "S"; btnCol = ImVec4( 0.0f, 0.3f, 0.7f, 1.0f ); break;
-									case ScheduleActivity::Training: label = "T"; btnCol = ImVec4( 0.7f, 0.0f, 0.0f, 1.0f ); break;
-								}
+								bridge.cmdSetSchedule( gnome.id, h, bridge.schedulePaintBrush );
 							}
-							ImGui::PushStyleColor( ImGuiCol_Button, btnCol );
-							if ( ImGui::SmallButton( label ) )
+
+							// Drag painting: if mouse is held and hovering this cell, paint it
+							if ( ImGui::IsItemHovered() && ImGui::IsMouseDown( ImGuiMouseButton_Left ) && act != bridge.schedulePaintBrush )
 							{
-								ScheduleActivity next = ScheduleActivity::None;
-								if ( h < gnome.schedule.size() )
-								{
-									switch ( gnome.schedule[h] )
-									{
-										case ScheduleActivity::None: next = ScheduleActivity::Eat; break;
-										case ScheduleActivity::Eat: next = ScheduleActivity::Sleep; break;
-										case ScheduleActivity::Sleep: next = ScheduleActivity::Training; break;
-										default: next = ScheduleActivity::None; break;
-									}
-								}
-								bridge.cmdSetSchedule( gnome.id, h, next );
+								bridge.cmdSetSchedule( gnome.id, h, bridge.schedulePaintBrush );
 							}
-							// Right-click context menu
-							if ( ImGui::BeginPopupContextItem() )
-							{
-								if ( ImGui::MenuItem( "Work" ) ) bridge.cmdSetSchedule( gnome.id, h, ScheduleActivity::None );
-								if ( ImGui::MenuItem( "Eat" ) ) bridge.cmdSetSchedule( gnome.id, h, ScheduleActivity::Eat );
-								if ( ImGui::MenuItem( "Sleep" ) ) bridge.cmdSetSchedule( gnome.id, h, ScheduleActivity::Sleep );
-								if ( ImGui::MenuItem( "Train" ) ) bridge.cmdSetSchedule( gnome.id, h, ScheduleActivity::Training );
-								ImGui::EndPopup();
-							}
-							ImGui::PopStyleColor();
+
 							ImGui::PopID();
 						}
 
-						// "All" column: set all hours for this gnome
+						// "All" column: set all hours for this gnome to paint brush
 						ImGui::TableNextColumn();
 						ImGui::PushID( gnome.id * 100 + 99 );
-						if ( ImGui::SmallButton( "W##all" ) )
+						ImGui::PushStyleColor( ImGuiCol_Button, activityColor( bridge.schedulePaintBrush ) );
+						if ( ImGui::SmallButton( activityLabel( bridge.schedulePaintBrush ) ) )
 						{
-							bridge.cmdSetAllHours( gnome.id, ScheduleActivity::None );
+							bridge.cmdSetAllHours( gnome.id, bridge.schedulePaintBrush );
 						}
+						ImGui::PopStyleColor();
 						if ( ImGui::IsItemHovered() )
 						{
-							ImGui::SetTooltip( "Set all hours to Work" );
+							ImGui::SetTooltip( "Set all hours to selected activity" );
 						}
 						ImGui::PopID();
 					}
@@ -902,20 +958,16 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 					{
 						ImGui::TableNextColumn();
 						ImGui::PushID( 999900 + h );
-						if ( ImGui::SmallButton( "W" ) )
+						ImGui::PushStyleColor( ImGuiCol_Button, activityColor( bridge.schedulePaintBrush ) );
+						if ( ImGui::SmallButton( activityLabel( bridge.schedulePaintBrush ) ) )
 						{
-							bridge.cmdSetHourForAll( h, ScheduleActivity::None );
+							bridge.cmdSetHourForAll( h, bridge.schedulePaintBrush );
 						}
-						if ( ImGui::BeginPopupContextItem() )
-						{
-							if ( ImGui::MenuItem( "All Work" ) ) bridge.cmdSetHourForAll( h, ScheduleActivity::None );
-							if ( ImGui::MenuItem( "All Eat" ) ) bridge.cmdSetHourForAll( h, ScheduleActivity::Eat );
-							if ( ImGui::MenuItem( "All Sleep" ) ) bridge.cmdSetHourForAll( h, ScheduleActivity::Sleep );
-							if ( ImGui::MenuItem( "All Train" ) ) bridge.cmdSetHourForAll( h, ScheduleActivity::Training );
-							ImGui::EndPopup();
-						}
+						ImGui::PopStyleColor();
 						ImGui::PopID();
 					}
+					// "All" column in "All" row
+					ImGui::TableNextColumn();
 
 					ImGui::EndTable();
 				}
@@ -1266,8 +1318,8 @@ void drawPopulationPanel( ImGuiBridge& bridge )
 void drawMilitaryPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( 500, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowPos( ImVec2( 5, 55 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 550, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
 	ImGui::Begin( "Military", &open, 0 );
@@ -1380,7 +1432,7 @@ void drawMilitaryPanel( ImGuiBridge& bridge )
 
 							// Attitude dropdown
 							int att = (int)prio.attitude;
-							ImGui::PushItemWidth( 80 );
+							ImGui::PushItemWidth( 110 );
 							if ( ImGui::Combo( "##att", &att, attitudeNames, 4 ) )
 							{
 								bridge.cmdSetAttitude( squad.id, prio.id, att );
@@ -1492,7 +1544,7 @@ void drawMilitaryPanel( ImGuiBridge& bridge )
 							int typeIdx = slot.possibleTypesForSlot.indexOf( slot.armorType );
 							if ( typeIdx < 0 ) typeIdx = 0;
 
-							ImGui::PushItemWidth( 120 );
+							ImGui::PushItemWidth( 150 );
 							if ( ImGui::BeginCombo( "##type", slot.armorType.toStdString().c_str() ) )
 							{
 								for ( int t = 0; t < slot.possibleTypesForSlot.size(); ++t )
@@ -1539,8 +1591,8 @@ void drawMilitaryPanel( ImGuiBridge& bridge )
 void drawNeighborsPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowPos( ImVec2( 5, 55 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.65f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
 	ImGui::Begin( "Neighbors & Missions", &open, 0 );
@@ -1642,7 +1694,7 @@ void drawWorkshopPanel( ImGuiBridge& bridge )
 
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::SetNextWindowPos( ImVec2( 5, 130 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( 400, io.DisplaySize.y - 200 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 440, io.DisplaySize.y - 200 ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
 	ImGui::Begin( "Workshop", &open );
@@ -2198,8 +2250,8 @@ void drawCreatureInfoPanel( ImGuiBridge& bridge )
 		return;
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 340, 150 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( 330, io.DisplaySize.y - 220 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 360, 150 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 350, io.DisplaySize.y - 220 ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
 	ImGui::Begin( "Creature Info", &open );
@@ -2724,8 +2776,8 @@ void drawDebugPanel( ImGuiBridge& bridge )
 void drawEventLogPanel( ImGuiBridge& bridge )
 {
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos( ImVec2( 5, 50 ), ImGuiCond_FirstUseEver );
-	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.6f, io.DisplaySize.y * 0.7f ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowPos( ImVec2( 5, 55 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.65f ), ImGuiCond_FirstUseEver );
 
 	bool open = true;
 	ImGui::Begin( "Event Log", &open, 0 );

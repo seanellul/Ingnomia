@@ -124,7 +124,7 @@ void drawBuildItemList( ImGuiBridge& bridge, float subcatPanelRight )
 	ImGuiIO& io = ImGui::GetIO();
 	float panelX = subcatPanelRight + 5;
 	float panelY = 80;
-	float panelW = 420;
+	float panelW = 450;
 	float panelH = io.DisplaySize.y - panelY - 70;
 
 	ImGui::SetNextWindowPos( ImVec2( panelX, panelY ) );
@@ -277,10 +277,10 @@ void drawGameHUD( ImGuiBridge& bridge )
 	// =========================================================================
 	// Top-left: Kingdom info + resources (compact, 2 lines)
 	// =========================================================================
-	float topBarHeight = 40;
+	float topBarHeight = 48;
 	ImGui::SetNextWindowPos( ImVec2( 0, 0 ) );
-	ImGui::SetNextWindowSize( ImVec2( 380, topBarHeight ) );
-	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 8, 2 ) );
+	ImGui::SetNextWindowSize( ImVec2( 420, topBarHeight ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 10, 4 ) );
 	ImGui::Begin( "##topleft", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
@@ -315,9 +315,9 @@ void drawGameHUD( ImGuiBridge& bridge )
 	// =========================================================================
 	// Top-right: Time, Z-level, speed controls (compact, 2 lines)
 	// =========================================================================
-	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 260, 0 ) );
-	ImGui::SetNextWindowSize( ImVec2( 260, 0 ) );
-	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 8, 4 ) );
+	ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - 290, 0 ) );
+	ImGui::SetNextWindowSize( ImVec2( 290, 0 ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 10, 4 ) );
 	ImGui::Begin( "##topright", nullptr,
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar );
@@ -401,9 +401,10 @@ void drawGameHUD( ImGuiBridge& bridge )
 	// =========================================================================
 	// Bottom toolbar
 	// =========================================================================
-	float toolbarHeight = 50;
+	float toolbarHeight = 55;
 	ImGui::SetNextWindowPos( ImVec2( 0, io.DisplaySize.y - toolbarHeight ) );
 	ImGui::SetNextWindowSize( ImVec2( io.DisplaySize.x, toolbarHeight ) );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 10, 9 ) );
 	ImGui::Begin( "##toolbar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
 
 	float gap = 40.0f; // gap between left and right button groups
@@ -422,7 +423,7 @@ void drawGameHUD( ImGuiBridge& bridge )
 		if ( i > 0 ) ImGui::SameLine();
 		bool active = ( bridge.currentToolbar == toolbarButtons[i].selection );
 		if ( active ) ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.3f, 0.5f, 0.7f, 1.0f ) );
-		if ( ImGui::Button( toolbarButtons[i].label, ImVec2( buttonW, 30 ) ) )
+		if ( ImGui::Button( toolbarButtons[i].label, ImVec2( buttonW, 36 ) ) )
 		{
 			if ( active )
 			{
@@ -444,60 +445,63 @@ void drawGameHUD( ImGuiBridge& bridge )
 	float rightStart = padding + leftWidth + gap;
 	float rightButtonW = ( rightWidth - spacing * 5 ) / 6.0f;
 	ImGui::SameLine( rightStart );
-	if ( ImGui::Button( "Kingdom", ImVec2( rightButtonW, 30 ) ) )
+	if ( ImGui::Button( "Kingdom", ImVec2( rightButtonW, 36 ) ) )
 	{
 		bridge.activeSidePanel = bridge.activeSidePanel == ImGuiBridge::SidePanel::Kingdom ? ImGuiBridge::SidePanel::None : ImGuiBridge::SidePanel::Kingdom;
 		if ( bridge.activeSidePanel == ImGuiBridge::SidePanel::Kingdom )
 			bridge.cmdRequestInventoryCategories();
 	}
 	ImGui::SameLine();
-	if ( ImGui::Button( "Stockpiles", ImVec2( rightButtonW, 30 ) ) )
+	if ( ImGui::Button( "Stockpiles", ImVec2( rightButtonW, 36 ) ) )
 	{
 		bridge.activeSidePanel = bridge.activeSidePanel == ImGuiBridge::SidePanel::Stockpile ? ImGuiBridge::SidePanel::None : ImGuiBridge::SidePanel::Stockpile;
 	}
 	ImGui::SameLine();
-	if ( ImGui::Button( "Military", ImVec2( rightButtonW, 30 ) ) )
+	if ( ImGui::Button( "Military", ImVec2( rightButtonW, 36 ) ) )
 	{
 		bridge.activeSidePanel = bridge.activeSidePanel == ImGuiBridge::SidePanel::Military ? ImGuiBridge::SidePanel::None : ImGuiBridge::SidePanel::Military;
 		if ( bridge.activeSidePanel == ImGuiBridge::SidePanel::Military )
 			bridge.cmdRequestMilitaryUpdate();
 	}
 	ImGui::SameLine();
-	if ( ImGui::Button( "Population", ImVec2( rightButtonW, 30 ) ) )
+	if ( ImGui::Button( "Population", ImVec2( rightButtonW, 36 ) ) )
 	{
 		bridge.activeSidePanel = bridge.activeSidePanel == ImGuiBridge::SidePanel::Population ? ImGuiBridge::SidePanel::None : ImGuiBridge::SidePanel::Population;
 		if ( bridge.activeSidePanel == ImGuiBridge::SidePanel::Population )
 			bridge.cmdRequestPopulationUpdate();
 	}
 	ImGui::SameLine();
-	if ( ImGui::Button( "Missions", ImVec2( rightButtonW, 30 ) ) )
+	if ( ImGui::Button( "Missions", ImVec2( rightButtonW, 36 ) ) )
 	{
 		bridge.activeSidePanel = bridge.activeSidePanel == ImGuiBridge::SidePanel::Missions ? ImGuiBridge::SidePanel::None : ImGuiBridge::SidePanel::Missions;
 		if ( bridge.activeSidePanel == ImGuiBridge::SidePanel::Missions )
 			bridge.cmdRequestNeighborsUpdate();
 	}
 	ImGui::SameLine();
-	if ( ImGui::Button( "Log", ImVec2( rightButtonW, 30 ) ) )
+	if ( ImGui::Button( "Log", ImVec2( rightButtonW, 36 ) ) )
 	{
 		bridge.activeSidePanel = bridge.activeSidePanel == ImGuiBridge::SidePanel::EventLog ? ImGuiBridge::SidePanel::None : ImGuiBridge::SidePanel::EventLog;
 	}
 
 	ImGui::End();
+	ImGui::PopStyleVar(); // WindowPadding
 
 	// =========================================================================
 	// Toolbar expansion panels (above the bottom toolbar)
 	// =========================================================================
 	if ( bridge.currentToolbar == ButtonSelection::Build )
 	{
-		ImGui::SetNextWindowPos( ImVec2( 5, io.DisplaySize.y - toolbarHeight - 340 ) );
-		ImGui::SetNextWindowSize( ImVec2( 120, 330 ) );
+		ImGui::SetNextWindowPos( ImVec2( 5, io.DisplaySize.y - toolbarHeight - 400 ) );
+		ImGui::SetNextWindowSize( ImVec2( 150, 390 ) );
 		ImGui::Begin( "##buildcats", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar );
+
+		float catBtnW = ImGui::GetContentRegionAvail().x;
 
 		for ( int i = 0; i < 9; ++i )
 		{
 			bool active = ( bridge.currentBuildCategory == buildCategories[i].selection );
 			if ( active ) ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.3f, 0.5f, 0.7f, 1.0f ) );
-			if ( ImGui::Button( buildCategories[i].label, ImVec2( 100, 25 ) ) )
+			if ( ImGui::Button( buildCategories[i].label, ImVec2( catBtnW, 30 ) ) )
 			{
 				bridge.currentBuildCategory = buildCategories[i].selection;
 				bridge.currentBuildMaterial.clear();
@@ -521,7 +525,7 @@ void drawGameHUD( ImGuiBridge& bridge )
 			if ( active ) ImGui::PopStyleColor();
 		}
 
-		if ( ImGui::Button( "Deconstruct", ImVec2( 100, 25 ) ) )
+		if ( ImGui::Button( "Deconstruct", ImVec2( catBtnW, 30 ) ) )
 		{
 			bridge.currentBuildCategory = BuildSelection::None;
 			bridge.buildItems.clear();
@@ -531,7 +535,7 @@ void drawGameHUD( ImGuiBridge& bridge )
 		ImGui::End();
 
 		// Subcategory buttons (materials, workshop tabs, furniture groups, etc.)
-		float subcatPanelRight = 130; // default if no subcats
+		float subcatPanelRight = 160; // default if no subcats
 		const BuildCategorySubcats* sc = getSubcatsFor( bridge.currentBuildCategory );
 		if ( sc && sc->count > 0 )
 		{
@@ -540,8 +544,8 @@ void drawGameHUD( ImGuiBridge& bridge )
 
 			float subcatBtnH = 70.0f;
 			float subcatH = sc->count * ( subcatBtnH + 5 ) + 10.0f;
-			ImGui::SetNextWindowPos( ImVec2( 130, io.DisplaySize.y - toolbarHeight - subcatH - 10 ) );
-			ImGui::SetNextWindowSize( ImVec2( 100, subcatH ) );
+			ImGui::SetNextWindowPos( ImVec2( 160, io.DisplaySize.y - toolbarHeight - subcatH - 10 ) );
+			ImGui::SetNextWindowSize( ImVec2( 110, subcatH ) );
 			ImGui::Begin( "##buildsubcats", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar );
 
 			// Map subcategory labels to representative sprites for icons

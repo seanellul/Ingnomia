@@ -398,19 +398,26 @@ void EventManager::spawnInvasion( Position location, int amount, QVariantMap dat
 {
 	QString type = data.value( "Species" ).toString();
 
-	// Determine armored goblin ratio based on difficulty and year
+	// Determine special goblin ratios based on difficulty and year
 	int armoredPercent = 0;
+	int rangedPercent  = 0;
 	if ( type == "Goblin" && GameState::difficulty >= 2 ) // Normal or higher
 	{
 		armoredPercent = qMin( 50, GameState::year * 10 + ( GameState::difficulty - 2 ) * 10 );
+		rangedPercent  = qMin( 30, GameState::year * 5 + ( GameState::difficulty - 2 ) * 5 );
 	}
 
 	for ( int i = 0; i < amount; ++i )
 	{
 		QString spawnType = type;
-		if ( armoredPercent > 0 && ( rand() % 100 ) < armoredPercent )
+		int roll = rand() % 100;
+		if ( armoredPercent > 0 && roll < armoredPercent )
 		{
 			spawnType = "GoblinArmored";
+		}
+		else if ( rangedPercent > 0 && roll < ( armoredPercent + rangedPercent ) )
+		{
+			spawnType = "GoblinRanged";
 		}
 		g->m_creatureManager->addCreature( CreatureType::MONSTER, spawnType, location, Gender::MALE, true, false, 1 );
 	}

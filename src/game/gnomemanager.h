@@ -126,11 +126,6 @@ public:
 
 	void setInMission( unsigned int gnomeID, unsigned int missionID );
 
-	// Sleep/Wake system (Phase D)
-	void sleepGnome( Gnome* gnome );
-	void wakeGnome( Gnome* gnome );
-	void safetyNetScan( quint64 tickNumber );
-
 	QString name( unsigned int gnomeID );
 	
 	unsigned int roleID( unsigned int gnomeID );

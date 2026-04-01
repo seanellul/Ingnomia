@@ -44,10 +44,11 @@ enum Connection : unsigned int
 
 
 enum class ScheduleActivity : unsigned char {
-	None,
+	None,      // Work only — gnome seeks jobs, ignores needs until critical
 	Eat,
 	Sleep,
-	Training
+	Training,
+	Anything   // Self-manage: eat/sleep when needs are moderate, otherwise work
 };
 Q_DECLARE_METATYPE( ScheduleActivity )
 

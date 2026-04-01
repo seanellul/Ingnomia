@@ -1,0 +1,50 @@
+<root main_tree_to_execute="MainTree">
+    <!--  ===================================  -->
+    <BehaviorTree ID="MainTree">
+        <Fallback>
+            <SequenceStar name="RangedAttack">
+                <Action ID="GetTarget"/>
+                <Fallback>
+                    <!-- If in range, shoot -->
+                    <SequenceStar>
+                        <Condition ID="TargetInRange"/>
+                        <Action ID="RangedAttack"/>
+                    </SequenceStar>
+                    <!-- Otherwise close distance -->
+                    <SequenceStar>
+                        <Action ID="Move"/>
+                        <Sequence>
+                            <Condition ID="TargetInRange"/>
+                            <Action ID="RangedAttack"/>
+                        </Sequence>
+                    </SequenceStar>
+                </Fallback>
+            </SequenceStar>
+            <!-- Fallback: if target is adjacent, melee -->
+            <SequenceStar name="MeleeFallback">
+                <Action ID="GetTarget"/>
+                <Action ID="Move"/>
+                <Sequence>
+                    <Condition ID="TargetAdjacent"/>
+                    <Action ID="AttackTarget"/>
+                </Sequence>
+            </SequenceStar>
+            <Action ID="RandomMove"/>
+        </Fallback>
+    </BehaviorTree>
+    <!--  ===================================  -->
+    <TreeNodesModel>
+        <Action ID="AttackTarget"/>
+        <Action ID="GetTarget"/>
+        <Action ID="Move"/>
+        <Action ID="RandomMove"/>
+        <Action ID="RangedAttack"/>
+        <Condition ID="IsDay"/>
+        <Condition ID="IsFemale"/>
+        <Condition ID="IsMale"/>
+        <Condition ID="IsNight"/>
+        <Condition ID="TargetAdjacent"/>
+        <Condition ID="TargetInRange"/>
+    </TreeNodesModel>
+    <!--  ===================================  -->
+</root>

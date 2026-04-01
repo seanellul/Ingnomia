@@ -6,9 +6,11 @@ struct ImFont;
 
 struct ImGuiFonts
 {
-	ImFont* title    = nullptr; // HermeneusOne ~48px (decorative title)
-	ImFont* ui       = nullptr; // PT Root UI ~18px (default UI font)
-	ImFont* uiSmall  = nullptr; // PT Root UI ~14px (version, captions)
+	ImFont* title     = nullptr; // HermeneusOne ~48px (decorative title)
+	ImFont* uiMedium  = nullptr; // PT Root UI ~20px (section headers)
+	ImFont* ui        = nullptr; // PT Root UI ~18px (main menu buttons)
+	ImFont* uiDefault = nullptr; // PT Root UI ~16px (in-game default)
+	ImFont* uiSmall   = nullptr; // PT Root UI ~14px (captions, log entries)
 };
 
 ImGuiFonts& GetImGuiFonts();

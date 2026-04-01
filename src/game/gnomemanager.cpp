@@ -837,36 +837,6 @@ int GnomeManager::backstoryCompatibility( Gnome* a, Gnome* b ) const
 
 // --- Sleep/Wake System (Phase D) ---
 
-void GnomeManager::sleepGnome( Gnome* gnome )
-{
-	if ( !gnome || gnome->isSleeping() ) return;
-	gnome->setIsSleeping( true );
-}
-
-void GnomeManager::wakeGnome( Gnome* gnome )
-{
-	if ( !gnome || !gnome->isSleeping() ) return;
-	gnome->setIsSleeping( false );
-	gnome->setForceFullTick( true );
-}
-
-void GnomeManager::safetyNetScan( quint64 tickNumber )
-{
-	Q_UNUSED( tickNumber );
-	for ( auto* gn : m_gnomes )
-	{
-		if ( !gn->isSleeping() ) continue;
-
-		// Check critical needs — wake if hunger or thirst is dangerously low
-		float hunger = gn->need( "Hunger" );
-		float thirst = gn->need( "Thirst" );
-		if ( hunger < 20 || thirst < 20 )
-		{
-			wakeGnome( gn );
-		}
-	}
-}
-
 void GnomeManager::processSocialInteractions( quint64 tickNumber )
 {
 	// Process once per in-game hour (600 ticks) — gives ~1-2 interactions/pair/day
