@@ -715,8 +715,23 @@ void drawGameHUD( ImGuiBridge& bridge )
 			for ( size_t i = bridge.lastLogCount; i < logMessages.size(); ++i )
 			{
 				auto& lm = logMessages[i];
+
+				// Combat logs: group into a single updating combat toast
+				if ( lm.type == LogType::COMBAT )
+				{
+					bridge.combatToast.active = true;
+					bridge.combatToast.latestEvent = lm.message;
+					bridge.combatToast.lastUpdateTick = GameState::tick;
+					bridge.combatToast.eventCount++;
+					bridge.combatToast.entityID = lm.source;
+					bridge.combatToast.posX = lm.posX;
+					bridge.combatToast.posY = lm.posY;
+					bridge.combatToast.posZ = lm.posZ;
+					continue; // don't create individual toast
+				}
+
 				if ( lm.type == LogType::WARNING || lm.type == LogType::DANGER ||
-					 lm.type == LogType::COMBAT || lm.type == LogType::DEATH ||
+					 lm.type == LogType::DEATH ||
 					 lm.type == LogType::MIGRATION )
 				{
 					ImGuiBridge::ToastNotification toast;
@@ -737,6 +752,17 @@ void drawGameHUD( ImGuiBridge& bridge )
 				}
 			}
 			bridge.lastLogCount = logMessages.size();
+		}
+
+		// Deactivate combat toast if no updates for 300 ticks (~30 seconds)
+		if ( bridge.combatToast.active )
+		{
+			quint64 combatAge = GameState::tick - bridge.combatToast.lastUpdateTick;
+			if ( combatAge > 300 )
+			{
+				bridge.combatToast.active = false;
+				bridge.combatToast.eventCount = 0;
+			}
 		}
 
 		// Remove dismissed and faded toasts
@@ -760,7 +786,7 @@ void drawGameHUD( ImGuiBridge& bridge )
 		}
 
 		// Render all toasts in a single stacked window
-		if ( !bridge.activeToasts.isEmpty() )
+		if ( !bridge.activeToasts.isEmpty() || bridge.combatToast.active )
 		{
 			float toastWidth = 350.0f;
 			ImGui::SetNextWindowPos( ImVec2( io.DisplaySize.x - toastWidth - 10, 80 ), ImGuiCond_Always );
@@ -773,6 +799,47 @@ void drawGameHUD( ImGuiBridge& bridge )
 				ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
 				ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
 				ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize );
+
+			// Grouped combat toast — single live-updating entry
+			if ( bridge.combatToast.active )
+			{
+				ImGui::PushID( "combatToast" );
+
+				// Header: "Combat (N events)"
+				ImVec4 headerColor( 0.9f, 0.25f, 0.25f, 1.0f );
+				ImGui::PushStyleColor( ImGuiCol_Text, headerColor );
+				ImGui::Text( "Combat (%d events)", bridge.combatToast.eventCount );
+				ImGui::PopStyleColor();
+
+				// Latest event
+				float buttonAreaWidth = 90;
+				ImGui::PushStyleColor( ImGuiCol_Text, ImVec4( 0.85f, 0.5f, 0.5f, 1.0f ) );
+				ImGui::PushTextWrapPos( ImGui::GetCursorPosX() + toastWidth - 24 - buttonAreaWidth );
+				ImGui::TextWrapped( "%s", bridge.combatToast.latestEvent.toStdString().c_str() );
+				ImGui::PopTextWrapPos();
+				ImGui::PopStyleColor();
+
+				// Buttons
+				ImGui::SameLine( toastWidth - 24 - buttonAreaWidth );
+				ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.2f, 0.4f, 0.6f, 0.7f ) );
+				if ( ImGui::SmallButton( "Go To" ) )
+				{
+					if ( bridge.combatToast.entityID != 0 )
+						bridge.cmdNavigateToEntity( bridge.combatToast.entityID );
+					if ( !bridge.pendingCameraNav )
+						bridge.cmdNavigateToPosition( Position( bridge.combatToast.posX, bridge.combatToast.posY, bridge.combatToast.posZ ) );
+				}
+				ImGui::PopStyleColor();
+				ImGui::SameLine();
+				if ( ImGui::SmallButton( "X" ) )
+				{
+					bridge.combatToast.active = false;
+					bridge.combatToast.eventCount = 0;
+				}
+
+				ImGui::Separator();
+				ImGui::PopID();
+			}
 
 			for ( int i = 0; i < bridge.activeToasts.size(); ++i )
 			{
