@@ -1,4 +1,4 @@
-/*	
+/*
 	This file is part of Ingnomia https://github.com/rschurade/Ingnomia
     Copyright (C) 2017-2020  Ralph Schurade, Ingnomia Team
 
@@ -22,7 +22,7 @@
 AggregatorDebug::AggregatorDebug( QObject* parent ) :
 	QObject(parent)
 {
-	
+
 }
 
 AggregatorDebug::~AggregatorDebug()
@@ -32,37 +32,30 @@ AggregatorDebug::~AggregatorDebug()
 void AggregatorDebug::onSpawnCreature( QString type )
 {
 	qDebug() << "spawn creature:" << type;
-	if( type == "Gnome" )
-	{
-		emit signalTriggerEvent( EventType::MIGRATION, QVariantMap() );
-	}
-	else if( type == "Trader" )
+	if( type == "Trader" )
 	{
 		emit signalTriggerEvent( EventType::TRADER, QVariantMap() );
 	}
-	else if( type == "Goblin" )
-	{
-		QVariantMap args; 
-		args.insert( "Amount", 1 );
-		args.insert( "Type", "Goblin" );
-		emit signalTriggerEvent( EventType::INVASION, args );
-	}
 }
 
-
-void AggregatorDebug::onSpawnMonster( QString species, int amount )
+void AggregatorDebug::onSpawnGnome( unsigned int tileID )
 {
-	emit signalSpawnMonster( species, amount );
+	emit signalSpawnGnome( tileID );
 }
 
-void AggregatorDebug::onSpawnAnimal( QString species, int amount )
+void AggregatorDebug::onSpawnMonster( QString species, int amount, unsigned int tileID )
 {
-	emit signalSpawnAnimal( species, amount );
+	emit signalSpawnMonster( species, amount, tileID );
 }
 
-void AggregatorDebug::onSpawnItem( QString itemSID, QString material, int amount )
+void AggregatorDebug::onSpawnAnimal( QString species, int amount, unsigned int tileID )
 {
-	emit signalSpawnItem( itemSID, material, amount );
+	emit signalSpawnAnimal( species, amount, tileID );
+}
+
+void AggregatorDebug::onSpawnItem( QString itemSID, QString material, int amount, unsigned int tileID )
+{
+	emit signalSpawnItem( itemSID, material, amount, tileID );
 }
 
 void AggregatorDebug::onSetWindowSize( int width, int height )

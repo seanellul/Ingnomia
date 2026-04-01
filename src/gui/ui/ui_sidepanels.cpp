@@ -2837,8 +2837,22 @@ void drawDebugPanel( ImGuiBridge& bridge )
 
 	s_devCache.init();
 
-	ImGui::SetNextWindowSize( ImVec2( 420, 400 ), ImGuiCond_FirstUseEver );
+	ImGui::SetNextWindowSize( ImVec2( 420, 450 ), ImGuiCond_FirstUseEver );
 	ImGui::Begin( "Dev Tools", &bridge.showDebugPanel );
+
+	// Show spawn location info at the top
+	unsigned int spawnTile = bridge.selectedTileID;
+	if ( spawnTile > 0 )
+	{
+		Position spawnPos( spawnTile );
+		ImGui::TextColored( ImVec4( 0.4f, 0.9f, 0.4f, 1.0f ), "Spawn at: selected tile (%d, %d, %d)",
+			spawnPos.x, spawnPos.y, spawnPos.z );
+	}
+	else
+	{
+		ImGui::TextColored( ImVec4( 0.8f, 0.8f, 0.3f, 1.0f ), "Spawn at: map center (click a tile to target)" );
+	}
+	ImGui::Separator();
 
 	if ( ImGui::BeginTabBar( "DevToolTabs" ) )
 	{
@@ -2848,7 +2862,7 @@ void drawDebugPanel( ImGuiBridge& bridge )
 			// Gnome spawn
 			if ( ImGui::Button( "Spawn Gnome" ) )
 			{
-				bridge.cmdSpawnCreature( "Gnome" );
+				bridge.cmdSpawnGnome( spawnTile );
 			}
 
 			ImGui::Separator();
@@ -2862,7 +2876,7 @@ void drawDebugPanel( ImGuiBridge& bridge )
 
 			if ( ImGui::Button( "Spawn Monsters" ) )
 			{
-				bridge.cmdSpawnMonster( s_devCache.monsterIDs[monsterIdx], monsterAmt );
+				bridge.cmdSpawnMonster( s_devCache.monsterIDs[monsterIdx], monsterAmt, spawnTile );
 			}
 
 			ImGui::Separator();
@@ -2876,7 +2890,7 @@ void drawDebugPanel( ImGuiBridge& bridge )
 
 			if ( ImGui::Button( "Spawn Animals" ) )
 			{
-				bridge.cmdSpawnAnimal( s_devCache.animalIDs[animalIdx], animalAmt );
+				bridge.cmdSpawnAnimal( s_devCache.animalIDs[animalIdx], animalAmt, spawnTile );
 			}
 
 			ImGui::EndTabItem();
@@ -2934,7 +2948,7 @@ void drawDebugPanel( ImGuiBridge& bridge )
 
 			if ( ImGui::Button( "Spawn Items" ) && !selectedItem.isEmpty() )
 			{
-				bridge.cmdSpawnItem( selectedItem, selectedMat, itemAmt );
+				bridge.cmdSpawnItem( selectedItem, selectedMat, itemAmt, spawnTile );
 			}
 
 			ImGui::EndTabItem();
@@ -2943,11 +2957,6 @@ void drawDebugPanel( ImGuiBridge& bridge )
 		// ===================== TRIGGER EVENTS =====================
 		if ( ImGui::BeginTabItem( "Events" ) )
 		{
-			if ( ImGui::Button( "Trigger Migration (new gnome)" ) )
-			{
-				bridge.cmdSpawnCreature( "Gnome" );
-			}
-
 			if ( ImGui::Button( "Trigger Trader" ) )
 			{
 				bridge.cmdSpawnCreature( "Trader" );
@@ -2964,7 +2973,7 @@ void drawDebugPanel( ImGuiBridge& bridge )
 
 			if ( ImGui::Button( "Trigger Invasion" ) )
 			{
-				bridge.cmdSpawnMonster( s_devCache.monsterIDs[invasionMonsterIdx], invasionAmt );
+				bridge.cmdSpawnMonster( s_devCache.monsterIDs[invasionMonsterIdx], invasionAmt, spawnTile );
 			}
 
 			ImGui::EndTabItem();
